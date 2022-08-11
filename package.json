@@ -1,8 +1,8 @@
 {
-  "name": "snarkjs",
+  "name": "uni-groth16-js",
   "type": "module",
-  "version": "0.4.24",
-  "description": "zkSNARKs implementation in JavaScript",
+  "version": "0.0.1",
+  "description": "Universial groth16 implementation forked from snarkjs",
   "main": "./build/main.cjs",
   "module": "./main.js",
   "exports": {
@@ -18,24 +18,6 @@
   },
   "bin": {
     "snarkjs": "build/cli.cjs"
-  },
-  "directories": {
-    "templates": "templates"
-  },
-  "keywords": [
-    "zksnark",
-    "zcash",
-    "ethereum",
-    "zero",
-    "knowlage",
-    "cryptography",
-    "circuit"
-  ],
-  "author": "Jordi Baylina",
-  "license": "GPL-3.0",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/iden3/snarkjs.git"
   },
   "dependencies": {
     "@iden3/binfileutils": "0.0.11",
