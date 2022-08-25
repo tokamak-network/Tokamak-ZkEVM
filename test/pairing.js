@@ -1,10 +1,9 @@
 import chai from 'chai'
 const assert = chai.assert
 import { Scalar } from 'ffjavascript'
-import { getCurveFromName } from '../../src/curves.js'
-// import { createTauKey } from '../../src/uni_setup.js'
-import * as misc from '../../src/misc.js'
-import BigArray from "../../src/bigarray.js"
+import { getCurveFromName } from '../src/curves.js'
+// import { createTauKey } from '../src/uni_setup.js'
+import * as misc from '../src/misc.js'
 
 // Uni-setup is not working yet; this function can be imported if the file is completed
 function createTauKey(Field, rng) {
@@ -26,9 +25,8 @@ describe('Zkey New', function () {
 	const params = {}
 
 	// Uni zkey new arguments
-	// TODO: let으로 바꾸고 애초에 bigInt 로 정의하자.
-	let n = 100000
-	let s_max = 128
+	let n = 10
+	let s_max = 1
 
 	before (async () => {
 		curve = await getCurveFromName('bn128')
@@ -76,9 +74,9 @@ describe('Zkey New', function () {
 		const exp_omega_y = q_y
 		const omega_y = Fr.exp(Fr.e(n), exp_omega_y)
 
-		// console.log(`one: ${Fr.e(1)}`)
-		// console.log(`omega_x ${omega_x}, Fr.e(s_max) ${Fr.e(s_max)}`)
-		// console.log(`exp(omega_x, Fr.e(s_max)) ${Fr.exp(omega_x, Fr.e(s_max))}, Fr.one ${Fr.one} `)
+		 // console.log(`one: ${Fr.e(1)}`)
+		 // console.log(`omega_x ${omega_x}, Fr.e(s_max) ${Fr.e(s_max)}`)
+		 // console.log(`exp(omega_x, Fr.e(s_max)) ${Fr.exp(omega_x, Fr.e(s_max))}, Fr.one ${Fr.one} `)
     assert(Fr.eq(Fr.exp(Fr.e(n), params.primeR), Fr.e(n)))
     assert(Fr.eq(Fr.exp(Fr.e(omega_x), n), Fr.one))
     assert(Fr.eq(Fr.exp(Fr.e(omega_y), s_max), Fr.one))
@@ -91,6 +89,7 @@ describe('Zkey New', function () {
 	// End of the test code //
 	it('paring curve', async () => {
 		const Fr = curve.Fr
+
 		// Tau
 		const num_keys = 6 // the number of keys in tau
 		const rng = new Array(num_keys)
@@ -107,9 +106,6 @@ describe('Zkey New', function () {
 
 		// xy_pows
     const xy_pows = Array.from(Array(n), () => new Array(s_max)) // n by s_max 2d array
-		// console.log(`n: ${n}, smax: ${s_max}`)
-		// console.log(xy_pows.length, xy_pows[0].length)
-
 
     for(var i = 0; i < n; i++) {
         for(var j = 0; j < s_max; j++){
@@ -118,11 +114,23 @@ describe('Zkey New', function () {
     }
 
 		// t_xy
+		const gamma_a_inv = Fr.inv(tau.gamma_a)
 		const t_xy = Fr.mul(Fr.sub(Fr.exp(x, n), Fr.one), Fr.sub(Fr.exp(y, s_max),Fr.one))
-		const vk2_gamma_a = await G2.timesFr(params.buffG2, tau.gamma_a)
+		const vk2_gamma_a = await params.G2.timesFr(params.buffG2, tau.gamma_a)
+		const t_xy_g = Fr.mul(t_xy, gamma_a_inv)
+
 		for (let i = 0; i < n - 1; i++) {
 			for (let j = 0; j < s_max - 1; j++) {
-				assert(curve.pairingEq(G1.timesFr(params.buffG1, xy_pows[i][j]), G2.timesFr(params.buffG2, t_xy)) == curve.pairingEq(vk1_xy_pows_tg, vk2_gamma_a))
+				const xy_pows_tg = await Fr.mul(xy_pows[i][j], t_xy_g)
+				const vk1_xy_pows_tg = await params.G1.timesFr(params.buffG1, xy_pows_tg);
+				assert(
+					curve.pairingEq(
+						params.G1.timesFr(params.buffG1, xy_pows[i][j]),
+						params.G2.timesFr(params.buffG2, t_xy), 
+						params.G1.neg(vk1_xy_pows_tg),
+						vk2_gamma_a
+					)
+				)
 			}
 		}
 	})

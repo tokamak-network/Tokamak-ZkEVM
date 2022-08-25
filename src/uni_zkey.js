@@ -17,15 +17,7 @@
     along with snarkJS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-export {default as newZKey} from "./zkey_new.js";
-export {default as exportBellman} from "./zkey_export_bellman.js";
-export {default as importBellman} from "./zkey_import_bellman.js";
-export {default as verifyFromR1cs} from "./zkey_verify_fromr1cs.js";
-export {default as verifyFromInit} from "./zkey_verify_frominit.js";
-export {default as contribute} from "./zkey_contribute.js";
-export {default as beacon} from "./zkey_beacon.js";
-export {default as exportJson} from "./zkey_export_json.js";
-export {default as bellmanContribute} from "./zkey_bellman_contribute.js";
-export {default as exportVerificationKey} from "./zkey_export_verificationkey.js";
-export {default as exportSolidityVerifier} from "./zkey_export_solidityverifier.js";
-export {default as uniSetup} from "./uni_zkey_new.js";
+export {default as uniSetup} from "./uni_setup.js";
+export {default as uniDerive} from "./uni_derive.js";
+export {default as groth16Prove} from "./uni_prove.js";
+export {default as groth16Verify} from "./uni_verify.js";

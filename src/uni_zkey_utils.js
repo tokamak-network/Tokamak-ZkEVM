@@ -44,11 +44,13 @@
 // PointsH(9)
 // Contributions(10)
 
-import { Scalar, F1Field } from "ffjavascript";
+import { Scalar, F1Field} from "ffjavascript";
 import * as binFileUtils from "@iden3/binfileutils";
 
 import { getCurveFromQ as getCurve } from "./curves.js";
 import { log2 } from "./misc.js";
+import * as fastFile from "fastfile"
+
 /* 
 export async function writeHeader(fd, zkey) {
 
@@ -178,6 +180,19 @@ export async function writeZKey(fileName, zkey) {
 
 }
  */
+export async function readULE32(fd) {
+    const b = await fd.read(4);
+    const view = new Uint32Array(b.buffer);
+    return view[0];
+}
+
+export async function writeULE32(fd, v) {
+    const tmpBuff32 = new Uint8Array(4);
+    const tmpBuff32v = new DataView(tmpBuff32.buffer);
+    tmpBuff32v.setUint32(0, v, true);
+    await fd.write(tmpBuff32);
+}
+
 export async function writeG1(fd, curve, p) {
     const buff = new Uint8Array(curve.G1.F.n8*2);
     curve.G1.toRprLEM(buff, 0, p);
@@ -252,43 +267,196 @@ async function readHeaderGroth16(fd, sections, toObject) {
 }
  */
 
-export async function readRSParams(fd, sections) {
-    const urs = {};
+export async function processConstraints(curve, n_k, sR1cs_k) { 
+    // parameters: curve, the number of k-th subcircuit's constraints, k-th subcircuit's r1cs
+    let r1csPos = 0;
+    let results={};
+    //const n_k = r1cs[k].nConstraints;
+    let U = new Array(n_k);
+    let Uid = new Array(n_k);
+    let V = new Array(n_k);
+    let Vid = new Array(n_k);
+    let W = new Array(n_k);
+    let Wid = new Array(n_k);
 
-    urs.protocol = "groth16";
+    function r1cs_readULE32toUInt() {
+        const buff = sR1cs_k.slice(r1csPos, r1csPos+4);
+        r1csPos += 4;
+        const buffV = new DataView(buff.buffer);
+        return buffV.getUint32(0, true)
+    }
+    function r1cs_readULE256toFr() {
+        const buff = sR1cs_k.slice(r1csPos, r1csPos+32);
+        r1csPos += 32;
+        const buffV = curve.Fr.fromRprLE(buff);
+        return buffV
+    }
+    for (var c=0; c<n_k; c++) {
+        //if ((logger)&&(c%10000 == 0)) logger.debug(`processing constraints: ${c}/${r1cs.nConstraints}`);
+        const nA = r1cs_readULE32toUInt();
+        let coefsA = new Array(nA);
+        let idsA = new Array(nA);
+        for (let i=0; i<nA; i++) {
+            idsA[i] = r1cs_readULE32toUInt();
+            coefsA[i] = r1cs_readULE256toFr();
+        }
+        //if (typeof A[s] === "undefined") A[s] = [];
+        U[c] = coefsA;
+        Uid[c] = idsA;
+
+        const nB = r1cs_readULE32toUInt();
+        let coefsB = new Array(nB);
+        let idsB = new Array(nB);
+        for (let i=0; i<nB; i++) {
+            idsB[i] = r1cs_readULE32toUInt();
+            coefsB[i] = r1cs_readULE256toFr();
+        }
+        V[c] = coefsB;
+        Vid[c] = idsB;
+
+        const nC = r1cs_readULE32toUInt();
+        let coefsC = new Array(nC);
+        let idsC = new Array(nC);
+        for (let i=0; i<nC; i++) {
+            idsC[i] = r1cs_readULE32toUInt();
+            coefsC[i] = r1cs_readULE256toFr();
+        }
+        W[c] = coefsC;
+        Wid[c] = idsC;
+    }
+    results.U = U;
+    results.Uid = Uid;
+    results.V = V;
+    results.Vid = Vid;
+    results.W = W;
+    results.Wid = Wid;
+    return results
+}
+
+export async function readWtnsHeader(fd, sections) {
+
+    await binFileUtils.startReadUniqueSection(fd, sections, 1);
+    const n8 = await fd.readULE32();
+    const q = await binFileUtils.readBigInt(fd, n8);
+    const nWitness = await fd.readULE32();
+    await binFileUtils.endReadSection(fd);
+
+    return {n8, q, nWitness};
+
+}
+
+export async function readWtns(fileName) {
+
+    const {fd, sections} = await binFileUtils.readBinFile(fileName, "wtns", 2);
+
+    const {n8, nWitness} = await readWtnsHeader(fd, sections);
+
+    await binFileUtils.startReadUniqueSection(fd, sections, 2);
+    const res = [];
+    for (let i=0; i<nWitness; i++) {
+        const v = await binFileUtils.readBigInt(fd, n8);
+        res.push(v);
+    }
+    await binFileUtils.endReadSection(fd);
+
+    await fd.close();
+
+    return res;
+}
+
+export async function readOpList(fd){
+    const ListSize = await fd.readULE32()
+    let OpList = new Array(ListSize)
+
+    for(var k=0; k<ListSize; k++){
+        OpList[k] = await fd.readULE32()
+    }
+
+    return OpList
+}
+
+export async function readWireList(fd) {
+    const listSize = await fd.readULE32()
+    let result = new Array(listSize);
+    for(var i=0; i<listSize; i++){
+        result[i] = [await fd.readULE32(), await fd.readULE32()]
+    }
+
+    return result
+
+    // PreImages[i] = row^(-1)[m_i] = {(k1, i1), (k2, i2), (k3, i3), ...},
+    // where the index i denotes the i-th wire of a derived (chained) circuit,
+    // and m_i = (k', i') denotes the i'-th (output) wire in the k'-th subcircuit,
+    // which is a linear combination of the i1-th, i2-th, i3-th, and ... (input) wires respectively from the k1-th, k2-th, k3-th, and ... subcircuits.
+}
+
+export async function readIndSet(fd) {
+    const setSize = await fd.readULE32()
+    const IndSet = {}
+    IndSet.set=[]
+    for(var i=0; i<setSize; i++){
+        IndSet.set.push(await fd.readULE32())
+    }
+    let PreImages = new Array(setSize)
+    let PreImgSize
+    for(var i=0; i<setSize; i++){
+        PreImgSize = await fd.readULE32()
+        PreImages[i] = new Array(PreImgSize)
+        for(var j=0; j<PreImgSize; j++){
+            PreImages[i][j] = [await fd.readULE32(), await fd.readULE32()]
+        }
+    }
+    IndSet.PreImgs=PreImages
+
+    return IndSet
+
+    // PreImages[i] = row^(-1)[m_i] = {(k1, i1), (k2, i2), (k3, i3), ...},
+    // where the index i denotes the i-th wire of a derived (chained) circuit,
+    // and m_i = (k', i') denotes the i'-th (output) wire in the k'-th subcircuit,
+    // which is a linear combination of the i1-th, i2-th, i3-th, and ... (input) wires respectively from the k1-th, k2-th, k3-th, and ... subcircuits.
+}
+
+export async function readRSParams(fd, sections) {
+    // read only urs params from urs or crs file
+    // crs params are read by readRS()
+    const rs = {};
+
+    rs.protocol = "groth16";
 
     // Read parameters
     /////////////////////
     await binFileUtils.startReadUniqueSection(fd, sections, 2);
     // Group parameters
     const n8q = await fd.readULE32();
-    urs.n8q = n8q;
-    urs.q = await binFileUtils.readBigInt(fd, n8q);
+    rs.n8q = n8q;
+    rs.q = await binFileUtils.readBigInt(fd, n8q);
 
     const n8r = await fd.readULE32();
-    urs.n8r = n8r;
-    urs.r = await binFileUtils.readBigInt(fd, n8r);
-    urs.curve = await getCurve(urs.q);
+    rs.n8r = n8r;
+    rs.r = await binFileUtils.readBigInt(fd, n8r);
+    rs.curve = await getCurve(rs.q);
     
     // Instruction set constants
     const s_D = await fd.readULE32();
-    urs.s_D = s_D
-    urs.r1cs = new Array(s_D)
+    rs.s_D = s_D
+    rs.r1cs = new Array(s_D)
     for(var i=0; i<s_D; i++){
-        urs.r1cs[i].m = await fdRS.readULE32()
-        urs.r1cs[i].mPublic = await fdRS.readULE32()
-        urs.r1cs[i].mPrivate = urs.r1cs[i].m - urs.r1cs[i].mPublic
+        rs.r1cs[i] = {}
+        rs.r1cs[i].m = await fd.readULE32()
+        rs.r1cs[i].mPublic = await fd.readULE32()
+        rs.r1cs[i].mPrivate = rs.r1cs[i].m - rs.r1cs[i].mPublic
+        rs.r1cs[i].nConstraints = await fd.readULE32()
     }
 
     // QAP constants
-    urs.n = await fd.readULE32()
-    urs.s_max = await fd.readULE32()
-    urs.omega_x = await fd.readULE32()
-    urs.omega_y = await fd.readULE32()
+    rs.n = await fd.readULE32()
+    rs.s_max = await fd.readULE32()
+    rs.omega_x = rs.curve.Fr.e(await binFileUtils.readBigInt(fd, n8r));
+    rs.omega_y = rs.curve.Fr.e(await binFileUtils.readBigInt(fd, n8r));
 
     await binFileUtils.endReadSection(fd);
 
-    return urs;
+    return rs;
 
 }
 
@@ -334,17 +502,22 @@ async function readHeaderPlonk(fd, sections, toObject) {
 }
  */
 
-export async function readRS(fd, sections, rsParam, toObject) {
+export async function readRS(fd, sections, rsParam, rsType, toObject) {
+    //rsType?crs:urs
     const curve = rsParam.curve
     // const Fr = curve.Fr
     // const Rr = Scalar.mod(Scalar.shl(1, rsParam.n8r*8), rsParam.r)
     // const Rri = Fr.inv(Rr);
     // const Rri2 = Fr.mul(Rri, Rri);
-    const rsContent = {}
+    const n = rsParam.n;
+    const s_max = rsParam.s_max;
+    const s_D = rsParam.s_D;
+    const rsContent = {};
 
     // Read sigma_G section
     ///////////
     await binFileUtils.startReadUniqueSection(fd, sections, 3);
+    rsContent.sigma_G = {};
     rsContent.sigma_G.vk1_alpha_u = await readG1(fd, curve, toObject)
     rsContent.sigma_G.vk1_alpha_v = await readG1(fd, curve, toObject)
     rsContent.sigma_G.vk1_gamma_a = await readG1(fd, curve, toObject)
@@ -372,6 +545,7 @@ export async function readRS(fd, sections, rsParam, toObject) {
     // Read sigma_H section
     ///////////
     await binFileUtils.startReadUniqueSection(fd, sections, 4);
+    rsContent.sigma_H = {}
     rsContent.sigma_H.vk2_alpha_u = await readG2(fd, curve, toObject)
     rsContent.sigma_H.vk2_gamma_z = await readG2(fd, curve, toObject)
     rsContent.sigma_H.vk2_gamma_a = await readG2(fd, curve, toObject)
@@ -387,51 +561,106 @@ export async function readRS(fd, sections, rsParam, toObject) {
     await binFileUtils.endReadSection(fd);
     // End of reading sigma_H
 
-    // Read theta_G[k] sections for k in [0, 1, ..., s_D]
-    ///////////
-    let vk1_uxy_kij = new Array(s_D)
-    let vk1_vxy_kij = new Array(s_D)
-    let vk1_zxy_kij = new Array(s_D)
-    let vk1_axy_kij = new Array(s_D)
-    for(var k=0; k<s_D; k++){
-        const m_k = rsParam.r1cs[k].m
-        const mPublic_k = rsParam.r1cs[k].mPublic
-        const mPrivate_k = rsParam.r1cs[k].mPrivate
-        let vk1_uxy_ij = Array.from(Array(m_k), () => new Array(s_max))
-        let vk1_vxy_ij = Array.from(Array(m_k), () => new Array(s_max))
-        let vk1_zxy_ij = Array.from(Array(mPublic_k), () => new Array(s_max))
-        let vk1_axy_ij = Array.from(Array(mPrivate_k), () => new Array(s_max))
-        await binFileUtils.startReadUniqueSection(fd, sections, 5+k);
-        for(var i=0; i < m_k; i++){
-            for(var j=0; j < s_max; j++){
-                vk1_uxy_ij[i][j] = await readG1(fd, curve, toObject)
+    if (!rsType) //urs
+    {
+        // Read theta_G[k] sections for k in [0, 1, ..., s_D]
+        ///////////
+        rsContent.theta_G = {};
+        let vk1_uxy_kij = new Array(s_D)
+        let vk1_vxy_kij = new Array(s_D)
+        let vk2_vxy_kij = new Array(s_D)
+        let vk1_zxy_kij = new Array(s_D)
+        let vk1_axy_kij = new Array(s_D)
+        for(var k=0; k<s_D; k++){
+            const m_k = rsParam.r1cs[k].m
+            const mPublic_k = rsParam.r1cs[k].mPublic
+            const mPrivate_k = rsParam.r1cs[k].mPrivate
+            let vk1_uxy_ij = Array.from(Array(m_k), () => new Array(s_max))
+            let vk1_vxy_ij = Array.from(Array(m_k), () => new Array(s_max))
+            let vk2_vxy_ij = Array.from(Array(m_k), () => new Array(s_max))
+            let vk1_zxy_ij = Array.from(Array(mPublic_k), () => new Array(s_max))
+            let vk1_axy_ij = Array.from(Array(mPrivate_k), () => new Array(s_max))
+            await binFileUtils.startReadUniqueSection(fd, sections, 5+k);
+            for(var i=0; i < m_k; i++){
+                for(var j=0; j < s_max; j++){
+                    vk1_uxy_ij[i][j] = await readG1(fd, curve, toObject)
+                }
             }
+            for(var i=0; i < m_k; i++){
+                for(var j=0; j < s_max; j++){
+                    vk1_vxy_ij[i][j] = await readG1(fd, curve, toObject)
+                }
+            }
+            for(var i=0; i < m_k; i++){
+                for(var j=0; j < s_max; j++){
+                    vk2_vxy_ij[i][j] = await readG2(fd, curve, toObject)
+                }
+            }
+            for(var i=0; i < mPublic_k; i++){
+                for(var j=0; j < s_max; j++){
+                    vk1_zxy_ij[i][j] = await readG1(fd, curve, toObject)
+                }
+            }
+            for(var i=0; i < mPrivate_k; i++){
+                for(var j=0; j < s_max; j++){
+                    vk1_axy_ij[i][j] = await readG1(fd, curve, toObject)
+                }
+            }
+            await binFileUtils.endReadSection(fd);
+            vk1_uxy_kij[k] = vk1_uxy_ij
+            vk1_vxy_kij[k] = vk1_vxy_ij
+            vk2_vxy_kij[k] = vk2_vxy_ij
+            vk1_zxy_kij[k] = vk1_zxy_ij
+            vk1_axy_kij[k] = vk1_axy_ij
         }
-        for(var i=0; i < m_k; i++){
-            for(var j=0; j < s_max; j++){
-                vk1_vxy_ij[i][j] = await readG1(fd, curve, toObject)
-            }
+        rsContent.theta_G.vk1_uxy_kij = vk1_uxy_kij
+        rsContent.theta_G.vk1_vxy_kij = vk1_vxy_kij
+        rsContent.theta_G.vk2_vxy_kij = vk2_vxy_kij
+        rsContent.theta_G.vk1_zxy_kij = vk1_zxy_kij
+        rsContent.theta_G.vk1_axy_kij = vk1_axy_kij
+    
+    } else if(rsType==1){ //crs
+        rsContent.crs ={};
+        await binFileUtils.startReadUniqueSection(fd, sections, 5);
+        rsContent.crs.param={};
+        const m = await fd.readULE32();
+        rsContent.crs.param.m = m;
+        const mPublic = await fd.readULE32();
+        rsContent.crs.param.mPublic = mPublic;
+        const mPrivate = await fd.readULE32();
+        rsContent.crs.param.mPrivate = mPrivate;
+        
+        let vk1_uxy_i = new Array(m);
+        let vk1_vxy_i = new Array(m);
+        let vk1_zxy_i = new Array(mPublic);
+        let vk1_axy_i = new Array(mPrivate);
+        let vk2_vxy_i = new Array(m);
+
+        for(var i=0; i<m; i++){
+            vk1_uxy_i[i] = await readG1(fd, curve, toObject);
         }
-        for(var i=0; i < mPublic_k; i++){
-            for(var j=0; j < s_max; j++){
-                vk1_zxy_ij[i][j] = await readG1(fd, curve, toObject)
-            }
+        for(var i=0; i<m; i++){
+            vk1_vxy_i[i] = await readG1(fd, curve, toObject);
         }
-        for(var i=0; i < mPrivate_k; i++){
-            for(var j=0; j < s_max; j++){
-                vk1_axy_ij[i][j] = await readG1(fd, curve, toObject)
-            }
+        for(var i=0; i<mPublic; i++){
+            vk1_zxy_i[i] = await readG1(fd, curve, toObject);
+        }
+        // vk1_zxy[i] represents the IdSetV.set(i)-th wire of circuit
+        for(var i=0; i<mPrivate; i++){
+            vk1_axy_i[i] = await readG1(fd, curve, toObject);
+        }
+        // vk1_axy[i] represents the IdSetP.set(i)-th wire of circuit
+        for(var i=0; i<m; i++){
+            vk2_vxy_i[i] = await readG2(fd, curve, toObject);
         }
         await binFileUtils.endReadSection(fd);
-        vk1_uxy_kij[k] = vk1_uxy_ij
-        vk1_vxy_kij[k] = vk1_vxy_ij
-        vk1_zxy_kij[k] = vk1_zxy_ij
-        vk1_axy_kij[k] = vk1_axy_ij
+        
+        rsContent.crs.vk1_uxy_i = vk1_uxy_i;
+        rsContent.crs.vk1_vxy_i = vk1_vxy_i;
+        rsContent.crs.vk1_zxy_i = vk1_zxy_i;
+        rsContent.crs.vk1_axy_i = vk1_axy_i;
+        rsContent.crs.vk2_vxy_i = vk2_vxy_i;
     }
-    rsContent.theta_G.vk1_uxy_kij = vk1_uxy_kij
-    rsContent.theta_G.vk1_vxy_kij = vk1_vxy_kij
-    rsContent.theta_G.vk1_zxy_kij = vk1_zxy_kij
-    rsContent.theta_G.vk1_axy_kij = vk1_axy_kij
 
     return rsContent
 
@@ -550,7 +779,6 @@ export async function readZKey(fileName, toObject) {
     }
 
 }
-
 
 /* 
 async function readContribution(fd, curve, toObject) {
