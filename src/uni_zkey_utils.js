@@ -531,14 +531,24 @@ export async function readRS(fd, sections, rsParam, rsType, toObject) {
     }
     rsContent.sigma_G.vk1_xy_pows = vk1_xy_pows
 
-    let vk1_xy_pows_tg = Array.from(Array(n-1), () => new Array(s_max-1))
+    let vk1_xy_pows_t1g = Array.from(Array(n-1), () => new Array(2*s_max-1))
     for(var i = 0; i < n-1; i++) {
-        for(var j=0; j<s_max-1; j++){
-            vk1_xy_pows_tg[i][j] = await readG1(fd, curve, toObject)
+        for(var j=0; j<2*s_max-1; j++){
+            vk1_xy_pows_t1g[i][j] = await readG1(fd, curve, toObject)
             // vk1_xy_pows_tg[i][j] = G1*(x^i * y^j)*t(x)*inv(gamma_a)
         }
     }
-    rsContent.sigma_G.vk1_xy_pows_tg = vk1_xy_pows_tg
+    rsContent.sigma_G.vk1_xy_pows_t1g = vk1_xy_pows_t1g;
+
+    let vk1_xy_pows_t2g = Array.from(Array(n), () => new Array(s_max-1));
+    for(var i = 0; i < n; i++) {
+        for(var j=0; j<s_max-1; j++){
+            vk1_xy_pows_t2g[i][j] = await readG1(fd, curve, toObject)
+            // vk1_xy_pows_tg[i][j] = G1*(x^i * y^j)*t(x)*inv(gamma_a)
+        }
+    }
+    rsContent.sigma_G.vk1_xy_pows_t2g = vk1_xy_pows_t2g;
+
     await binFileUtils.endReadSection(fd);
     // End of reading sigma_G
 

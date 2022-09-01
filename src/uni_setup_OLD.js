@@ -1,7 +1,6 @@
 import * as curves from "./curves.js"
 import * as misc from './misc.js'
 import * as zkeyUtils from "./uni_zkey_utils.js";
-import * as polyUtils from "./uni_poly_utils.js";
 import BigArray from "./bigarray.js";
 import chai from "chai";
 const assert = chai.assert
@@ -35,77 +34,11 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
         r1cs.push(await readR1csHeader(fdR1cs, sectionsR1cs, false));
         sR1cs.push(await readSection(fdR1cs, sectionsR1cs, 2));
         await fdR1cs.close();
-        // if(max_constraints == undefined){
-        //     max_constraints = r1cs[i].nConstraints;
-        // } else {
-        //     if(r1cs[i].nConstraints>max_constraints){
-        //         max_constraints = r1cs[i].nConstraints;
-        //     }
-        // }
     }
     const fdRS = await createBinFile('resource/universal_rs/'+RSName+".urs", "zkey", 1, 4+s_D, 1<<22, 1<<24);
-    
-    
-    // //fdRS.fd.write(new Array())
-    // //const fdRS = await fs.promises.open(RSName+".urs", O_TRUNC|O_CREAT|O_RDWR)
-    // const buff = new Uint8Array(4);
-    // for (let i=0; i<4; i++) buff[i] = "zkey".charCodeAt(i);
-    // await fdRS.fd.write(buff, 0); // Magic "r1cs"
-    // let tmpBuff32 = new Uint8Array(4);
-    // let tmpBuff32v = new DataView(tmpBuff32.buffer);
-    // tmpBuff32v.setUint32(0, 1, true);
-    // await fdRS.fd.write(tmpBuff32);
-    // tmpBuff32v.setUint32(0, 32, true);
-    // await fdRS.fd.write(tmpBuff32);
-    // fdRS.close()
-    
-    // const fdRSr = await fs.promises.open(RSName+".urs", O_RDONLY)
-
-    // const b1 =new Uint8Array(4);
-    // await fdRSr.read(b1,0,4,4);
-    // const b2 =new Uint8Array(4);
-    // await fdRSr.read(b2,0,4);
-    // console.log(fdRSr.fd)
-    // const b3 =new Uint8Array(4);
-    // await fdRSr.read(b3,0,4);
-    // console.log(fdRSr.fd)
-    
-    // const b1v = new DataView(b1.buffer);
-    // const b2v = new DataView(b2.buffer);
-    // const b3v = new DataView(b3.buffer);
-    // console.log(b1v.getUint32(0, true));
-    // console.log(b2.buffer);
-    // console.log(b2v.getUint32(0, true));
-    // console.log(b3.buffer);
-    // console.log(b3v.getUint32(0, true));
-    
-    
+        
     console.log('checkpoint0')
-
-   
-
-    //const fdRS = await fastFile.createOverride(RSName+".urs", 1<<22, 1<<24);
-    //const fdRS =await fs.promises.open(RSName+".urs",  O_TRUNC | O_CREAT | O_RDWR);
-
-    //await fdRS.writeULE32(1); // Version
-    //await fdRS.writeULE32(4+s_D); // Number of Sections
-
-    // const {fd: fdR1cs, sections: sectionsR1cs} = await readBinFile(r1csName+"0"+".r1cs", "r1cs", 1, 1<<22, 1<<24);
-    // // await startReadUniqueSection(fdR1cs, sectionsR1cs, 1)
-    // // let temp = await fdR1cs.readULE32();
-    // // await readBigInt(fdR1cs, temp);
-    // // await endReadSection(fdR1cs,1)
-    // const r1cs = await readR1csHeader(fdR1cs, sectionsR1cs);
-    // const fdZKey = await createBinFile(RSName, "zkey", 1, 9, 1<<22, 1<<24); // (fileName, type, version, nSections, cacheSize, pageSize)
-    
-    // let tmpBuff32 = new Uint8Array(4);
-    // let tmpBuff32v = new DataView(tmpBuff32.buffer);
-    // tmpBuff32v.setUint32(0, 255, true);
-    // await fdZKey.fd.write(tmpBuff32);
-
-    
-
-      
+ 
     const curve = await curves.getCurveFromName(curveName);
     // const sG1 = curve.G1.F.n8*2              // unused
     // const sG2 = curve.G2.F.n8*2              // unused
@@ -116,7 +49,96 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
     const G2 = curve.G2;
     const NConstWires = 1;
 
+    /// polynomial arithmetic test
+/*     
+    if (TESTFLAG){
+        // A = B * Q
+        // A = [[8,0,2,0], [4,0,1,0], [0,4,0,1], [0,6,0,0], [0,3,0,0], [0,0,3,0]]; // bivariate polynomial 1;
 
+        // B = 3(x^3)(y) + (y^2) + 4
+        const B = [[4,0,1], [0,0,0], [0,0,0], [0,3,0]]; // bivariate polynomial 2;
+
+        // Q = (x^2)(y) + (x) + 2
+        const Q = [[2,0], [1,0], [0,1]];
+
+        let BFr = Array.from(Array(4), () => new Array(3));
+        for (var i=0; i<4; i++){
+            for (var j=0; j<3; j++){
+                BFr[i][j] = Fr.e(B[i][j]);
+            }
+        }
+        let QFr = Array.from(Array(3), () => new Array(2));
+        for (var i=0; i<3; i++){
+            for (var j=0; j<2; j++){
+                QFr[i][j] = Fr.e(Q[i][j]);
+            }
+        }
+        const test1_A = await polyUtils.mulPoly(Fr, BFr, QFr, true);
+        //console.log(test1_A)
+    }
+    if (TESTFLAG){
+        // A = B * Q
+        // A = [[20, 10, 5, 10],[4, 2, 1, 2],[28, 14, 7, 14],[8, 4, 2, 4],[12, 6, 3, 6]]; // bivariate polynomial 1;
+
+        // B = 3x^4+2x^3+7x^2+x^1+5;
+        const B = [[5],[1],[7],[2],[3]]; // bivariate polynomial 2;
+
+        // Q = 2y^3+y^2+2y^1+4
+        const Q = [[4, 2, 1, 2]];
+
+        let BFr = Array.from(Array(5), () => new Array(1));
+        for (var i=0; i<5; i++){
+            for (var j=0; j<1; j++){
+                BFr[i][j] = Fr.e(B[i][j]);
+            }
+        }
+        let QFr = Array.from(Array(1), () => new Array(4));
+        for (var i=0; i<1; i++){
+            for (var j=0; j<4; j++){
+                QFr[i][j] = Fr.e(Q[i][j]);
+            }
+        }
+        const test1_A = await polyUtils.mulPoly(Fr, BFr, QFr, true);
+        //console.log(test1_A)
+    }
+    if (TESTFLAG){
+        // A = B * Q
+        const A = [[20, 10, 5, 10],[4, 2, 1, 2],[28, 14, 7, 14],[8, 4, 2, 4],[12, 6, 3, 6]]; // bivariate polynomial 1;
+
+        // B = 3x^4+2x^3+7x^2+x^1+5;
+        const B = [[5],[1],[7],[2],[3]]; // bivariate polynomial 2;
+
+        // Q = 2y^3+y^2+2y^1+4
+        const Q = [[4, 2, 1, 2]];
+
+        let AFr = Array.from(Array(5), () => new Array(4));
+        for (var i=0; i<5; i++){
+            for (var j=0; j<4; j++){
+                AFr[i][j] = Fr.e(A[i][j]);
+            }
+        }
+
+        let BFr = Array.from(Array(5), () => new Array(1));
+        for (var i=0; i<5; i++){
+            for (var j=0; j<1; j++){
+                BFr[i][j] = Fr.e(B[i][j]);
+            }
+        }
+        let QFr = Array.from(Array(1), () => new Array(4));
+        for (var i=0; i<1; i++){
+            for (var j=0; j<4; j++){
+                QFr[i][j] = Fr.e(Q[i][j]);
+            }
+        }
+        const {res: test1_Q, finalrem: test1_Q_r} = await polyUtils.divPoly(Fr, AFr, BFr, true);
+        console.log(test1_Q)
+        console.log(test1_Q_r)
+        const {res: test1_B, finalrem: test1_B_r} = await polyUtils.divPoly(Fr, AFr, QFr, true);
+
+        console.log(test1_B)
+        console.log(test1_B_r)
+    }
+*/
     
     if (r1cs[0].prime != curve.r) {
         console.log('checkpoint1');
@@ -208,42 +230,6 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
     rs.omega_x = omega_x;
     rs.omega_y = omega_y;
 
-    // let s_max = BigInt(min_s_max)
-    // let q_y = (primeR - BigInt(1)) / s_max
-    // while ((primeR - BigInt(1)) !== s_max * q_y){
-    //     s_max += BigInt(1)
-    //     q_y = (primeR - BigInt(1)) / s_max
-    // }
-    // const exp_omega_y = q_y 
-    // let omega_y = await Fr.exp(Fr.e(AnyNumber), exp_omega_y)
-    // console.log(Fr.toObject(omega_y))
-    // while(Fr.eq(omega_y, Fr.e(1))){
-    //     AnyNumber += BigInt(1)
-    //     omega_y = await Fr.exp(Fr.e(AnyNumber), exp_omega_y)
-    // }
-
-    // let q_x = (primeR - BigInt(1)) / n
-    // while ((primeR - BigInt(1)) !== q_x * n){
-    //     n += BigInt(1)
-    //     q_x = (primeR - BigInt(1)) / n
-    // }
-
-    // console.log('n: ', n)
-
-    // const exp_omega_x = q_x
-    // let AnyNumber = BigInt(13)
-    // let omega_x = await Fr.exp(Fr.e(AnyNumber), exp_omega_x)
-    // while(Fr.eq(omega_x, Fr.e(1))){
-    //     AnyNumber += BigInt(1)
-    //     omega_x = await Fr.exp(Fr.e(AnyNumber), exp_omega_x)
-    // }
-    // let ws=new Array(Fr.w.length);
-    // for(var i=0; i<Fr.w.length; i++){
-    //     ws[i] = Fr.toObject(Fr.w[i]);
-    // }
-    // console.log(Fr.s)
-    // console.log(Fr.toObject(await Fr.exp(Fr.w[Fr.s], Fr.toObject(await Fr.exp(Fr.e(2), Fr.s)))))
-
     // Test code 1 // --> DONE
     if(TESTFLAG){
         console.log(`Running Test 1`)
@@ -254,11 +240,6 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
     }
     // End of test code 1 //
 
-    //const n8n = (Math.floor( (Scalar.bitLength(n) - 1) / 64) +1)*8;
-    //await fdRS.writeULE32(n8n);                     // byte length of n
-    //await writeBigInt(fdRS, n, n8n);                
-    //n = Number(n)
-    //s_max = Number(s_max)
     await fdRS.writeULE32(n);                       // the maximum number of gates in each subcircuit: n>=NEqs/3 and n|(r-1)
     await fdRS.writeULE32(s_max);                  // the maximum number of subcircuits in a p-code: s_max>min_s_max and s_max|(r-1)
     await writeBigInt(fdRS, Fr.toObject(omega_x), n8r);                    // Generator for evaluation points on X
@@ -289,20 +270,29 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
     await zkeyUtils.writeG1(fdRS, curve, vk1_alpha_u);
     await zkeyUtils.writeG1(fdRS, curve, vk1_alpha_v);
     await zkeyUtils.writeG1(fdRS, curve, vk1_gamma_a);
-    //const x=tau.x;
-    const x=Fr.one;
-    const y=tau.y;
+    let x=tau.x;
+    let y=tau.y;
+    if (TESTFLAG){
+        x = Fr.e(13);
+        y = Fr.e(23);
+    }
+
     // if(TESTFLAG){  // UNUSED, since pairingEQ doesnt work for the points of infinity
     //     x=Fr.exp(omega_x, Fr.toObject(tau.x));
     //     y=Fr.exp(omega_y, Fr.toObject(tau.y));
     // }
     
     let vk1_xy_pows = Array.from(Array(n), () => new Array(s_max));
-    let xy_pows = Array.from(Array(n), () => new Array(s_max)); // n by s_max 2d array
+    let xy_pows = Array.from(Array(n), () => new Array(2*s_max-1)); // n by s_max 2d array
+
+    for(var i = 0; i < n; i++) {
+        for(var j = 0; j < 2*s_max-1; j++){
+            xy_pows[i][j] = await Fr.mul(await Fr.exp(x,i), await Fr.exp(y,j));
+        }
+    }
 
     for(var i = 0; i < n; i++) {
         for(var j = 0; j < s_max; j++){
-            xy_pows[i][j] = await Fr.mul(await Fr.exp(x,i), await Fr.exp(y,j));
             vk1_xy_pows[i][j] = await G1.timesFr(buffG1, xy_pows[i][j]);
             await zkeyUtils.writeG1(fdRS, curve, vk1_xy_pows[i][j]);
             // [x^0*y^0], [x^0*y^1], ..., [x^0*y^(s_max-1)], [x^1*y^0], ...
@@ -310,18 +300,32 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
     }
 
     const gamma_a_inv=Fr.inv(tau.gamma_a);
-    let xy_pows_tg;
-    let vk1_xy_pows_tg = Array.from(Array(n-1), () => new Array(s_max-1));
-    const t_xy=Fr.mul(Fr.sub(await Fr.exp(x,n),Fr.one), Fr.sub(await Fr.exp(y,s_max),Fr.one));
-    const t_xy_g=Fr.mul(t_xy, gamma_a_inv);
+    let xy_pows_t1g;
+    let vk1_xy_pows_t1g = Array.from(Array(n-1), () => new Array(2*s_max-1));
+    const t1_x=Fr.sub(await Fr.exp(x,n),Fr.one);
+    const t1_x_g=Fr.mul(t1_x, gamma_a_inv);
     for(var i = 0; i < n-1; i++) {
-        for(var j=0; j<s_max-1; j++){
-            xy_pows_tg= await Fr.mul(xy_pows[i][j], t_xy_g);
-            vk1_xy_pows_tg[i][j]= await G1.timesFr( buffG1, xy_pows_tg );
-            await zkeyUtils.writeG1( fdRS, curve, vk1_xy_pows_tg[i][j] );
+        for(var j=0; j<2*s_max-1; j++){
+            xy_pows_t1g= await Fr.mul(xy_pows[i][j], t1_x_g);
+            vk1_xy_pows_t1g[i][j]= await G1.timesFr( buffG1, xy_pows_t1g );
+            await zkeyUtils.writeG1( fdRS, curve, vk1_xy_pows_t1g[i][j] );
             // [x^0*y^0*t*g], [x^0*y^1*t*g], ..., [x^0*y^(s_max-1)*t*g], [x^1*y^0*t*g], ...
         }
     }
+
+    let xy_pows_t2g;
+    let vk1_xy_pows_t2g = Array.from(Array(n), () => new Array(s_max-1));
+    const t2_y=Fr.sub(await Fr.exp(y,s_max),Fr.one);
+    const t2_y_g=Fr.mul(t2_y, gamma_a_inv);
+    for(var i = 0; i < n; i++) {
+        for(var j=0; j<s_max-1; j++){
+            xy_pows_t2g= await Fr.mul(xy_pows[i][j], t2_y_g);
+            vk1_xy_pows_t2g[i][j]= await G1.timesFr( buffG1, xy_pows_t2g );
+            await zkeyUtils.writeG1( fdRS, curve, vk1_xy_pows_t2g[i][j] );
+            // [x^0*y^0*t*g], [x^0*y^1*t*g], ..., [x^0*y^(s_max-1)*t*g], [x^1*y^0*t*g], ...
+        }
+    }
+    
     await endWriteSection(fdRS);
     // End of the sigma_G section
     ///////////
@@ -358,7 +362,7 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
     // B = t(x,y)*H
     // C is the target,
     // D = [gamma_a]_H in sigma_H
-    if(TESTFLAG){
+    if(false){
         console.log(`Running Test 3`)
         let vk2_t_xy =  await G2.timesFr(buffG2, t_xy)
         for (let i = 0; i < n - 1; i++) {
@@ -397,8 +401,6 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
     // }
     // console.log('Lags ', temp)
     console.log(`checkpoint6`)
-
-    const {uX_ki: uX_ki, vX_ki: vX_ki, wX_ki: wX_ki} = await polyUtils.buildR1csPolys(rs, sR1cs);
 
     for(var k = 0; k < s_D; k++){
                
@@ -459,15 +461,6 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
                     Lagrange_term=Fr.mul(W_coefs[j],Lagrange_basis[i]);
                     wx[W_idx]=Fr.add(wx[W_idx],Lagrange_term);
                 }
-            }
-        }
-        if (k==1){
-            console.log(U_ids[0])
-            const test_ux = await polyUtils.evalPoly(Fr, uX_ki[k][U_ids[0]], x, Fr.one);
-            console.log(`test: ${Fr.toObject(test_ux)}`)
-            console.log(`target: ${Fr.toObject(ux[U_ids[0]])}`)
-            if (!Fr.eq(test_ux, ux[U_ids[0]])){
-                throw new Error(`Polynomial evaluation failed`)
             }
         }
         console.log(`checkpoint8`)
@@ -539,55 +532,6 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
         }
         // End of the test code 4//
 
-        // Test code 5//
-        // Init: s_D=1, min_s_max=1, r1csName = (any small subcircuit)
-        // Hardcode any testing wire instance and witness (in BigInt) into: const wire = new Array(m[0])
-        if(TESTFLAG && k==6) // k==6 --> MOD subcircuit, c2 mod c3 = c1 <==> c4*c3+c1 = c2 <==> c4*c3 = -c1+c2
-        {
-            console.log('Running Test 5')
-            const t_x=Fr.mul(Fr.sub(await Fr.exp(x,n),Fr.one), Fr.sub(await Fr.exp(y,s_max),Fr.one));
-            const witness = [1, 4, 7, 3, 1];
-            // c0=1 (unused), c1=4, c2=7, c3=3, c4=1 <==> 1*3 = -4 + 7
-            // one constraint with U[0]=[1], Uid[0]=[4], V[0]=[1], Vid[0]=[3], W[0]=[-1, 1], Wid[0]=[1,2]
-            console.log('Uid[0]: ',Uid[0])
-            console.log('Vid[0]: ',Vid[0])
-            console.log('Wid[0]: ',Wid[0])
-            let vk1_U
-            let vk2_V
-            let vk1_Z
-            let vk1_A
-            vk1_U = await G1.timesFr(buffG1, Fr.e(0))
-            vk2_V = await G2.timesFr(buffG2, Fr.e(0))
-            vk1_Z = vk1_U
-            vk1_A = vk1_U
-            for(var i=0; i<m[k]; i++){
-                vk1_U = await G1.add(vk1_U, await G1.timesFr(vk1_ux[i], Fr.e(witness[i])))
-                vk2_V = await G2.add(vk2_V, await G2.timesFr(vk2_vx[i], Fr.e(witness[i])))
-                if( i>=NConstWires && i<NConstWires+mPublic[k] ){
-                    vk1_Z = await G1.add(vk1_Z, await G1.timesFr(vk1_zx[i-NConstWires], Fr.e(witness[i])))
-                } else {
-                    vk1_A = await G1.add(vk1_A, await G1.timesFr(vk1_ax[Math.max(0,i-mPublic[k])], Fr.e(witness[i])))
-                }
-            }
-            // let LHS1
-            // let LHS2
-            // let LHS3
-            // let RHS
-            // LHS1 = pairing( vk1_U, vk2_V )
-            // LHS2 = pairing( vk1_U, vk2_alpha_u )
-            // LHS3 = pairing( vk1_alpha_v, vk2_V )
-            // RHS1 = pairing( vk1_Z, vk2_gamma_r )
-            // RHS2 = pairing( vk1_A, vk2_gamma_a )
-            // assert( Fr.mul(Fr.mul(LHS1, LHS2), LHS3) == RHS )
-            res = await curve.pairingEq(vk1_U, vk2_V,
-                vk1_U, vk2_alpha_u,
-                vk1_alpha_v, vk2_V,
-                vk1_Z,  await G2.neg(vk2_gamma_z),
-                vk1_A,  await G2.neg(vk2_gamma_a))
-            assert(res)
-            console.log(`Test 5 finished`)
-        }
-        // End of the test code 5//
         await startWriteSection(fdRS, 5+k);
         console.log(`checkpoint9`)
         let multiplier
@@ -650,6 +594,24 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
         await endWriteSection(fdRS)
         console.log(`checkpoint11`)
     }
+        // Test code 5//
+    
+    if(TESTFLAG) // k==6 --> MOD subcircuit, c2 mod c3 = c1 <==> c4*c3+c1 = c2 <==> c4*c3 = -c1+c2
+    {
+        console.log('Running Test 5')
+        let res = [];
+        res.push(await curve.pairingEq(vk1_xy_pows_t1g[1][1], vk2_gamma_a,
+            await G1.timesFr(buffG1, Fr.mul(x,y)), await G2.neg(await G2.timesFr(buffG2, t1_x))
+            )
+        );
+        console.log(res)
+        
+        if (!res[0]){
+            throw new Error('Test 5 failed')
+        }
+        console.log(`Test 5 finished`)
+    }
+    // End of the test code 5//
     
 
     await fdRS.close()
@@ -657,6 +619,52 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
 
     // End of the theta_G section
     ///////////
+/* 
+    // TEST CODE 6
+    if (TESTFLAG == true){
+        console.log(`Running Test 1`)
+        
+        const sR1cs = new Array(); 
+        for(var i=0; i<s_D; i++){
+            let r1csIdx = String(i);
+            const {fd: fdR1cs, sections: sectionsR1cs} = await readBinFile('resource/subcircuits/r1cs/subcircuit'+r1csIdx+'.r1cs', "r1cs", 1, 1<<22, 1<<24);
+            sR1cs.push(await readSection(fdR1cs, sectionsR1cs, 2));
+            await fdR1cs.close();
+        }
+
+        const {uX_ki: uX_ki, vX_ki: vX_ki, wX_ki: wX_ki, tXY: tXY} = await polyUtils.buildR1csPolys(urs.param, sR1cs);
+        let fY = Array.from(Array(1), () => new Array(s_max));
+        const Fr_s_max_inv = Fr.inv(Fr.e(s_max));
+        fY = await polyUtils.scalePoly(Fr, fY, Fr_s_max_inv);
+
+        
+        let XY_pows = Array.from(Array(n-1), () => new Array(s_max-1));
+        XY_pows = await polyUtils.scalePoly(Fr, XY_pows, Fr.one);
+        const XY_pows_tXY = await polyUtils.mulPoly(Fr, tXY, XY_pows);
+
+        const test_xy_pows_t = await polyUtils.evalPoly(Fr, XY_pows_tXY, x, y);
+
+
+        
+
+
+
+        
+
+
+
+        console.log(U_ids[0])
+        const test_ux = await polyUtils.evalPoly(Fr, uX_ki[k][U_ids[0]], x, Fr.one);
+        console.log(`test: ${Fr.toObject(test_ux)}`)
+        console.log(`target: ${Fr.toObject(ux[U_ids[0]])}`)
+        if (!Fr.eq(test_ux, ux[U_ids[0]])){
+            throw new Error(`Polynomial evaluation failed`)
+        }
+        
+        console.log(`Test 1 finished`)
+    }
+    // END OF TEST CODE 6
+ */
     
 
 

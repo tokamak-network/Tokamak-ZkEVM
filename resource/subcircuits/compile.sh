@@ -1,4 +1,4 @@
-names=("load" "add" "mul" "sub" "div" "sdiv" "mod" "smod" "addmod" "mulmod" "exp" "lt" "gt" "slt" "sgt" "eq" "iszero" "and" "or" "xor" "not" "shl" "shr_l" "shr_r" "sar" "sha3")
+names=("load" "add" "mul" "sub" "div" "sha3" "sdiv" "mod" "smod" "addmod" "mulmod" "exp" "lt" "gt" "slt" "sgt" "eq" "iszero" "and" "or" "xor" "not" "shl" "shr_l" "shr_r" "sar")
 
 for (( i = 0 ; i < ${#names[@]} ; i++ )) ; do
   echo "id[$i] = ${names[$i]}"

@@ -21,3 +21,5 @@ export {default as uniSetup} from "./uni_setup.js";
 export {default as uniDerive} from "./uni_derive.js";
 export {default as groth16Prove} from "./uni_prove.js";
 export {default as groth16Verify} from "./uni_verify.js";
+export {default as uniBuildQAP} from "./uni_buildQAP.js"
+export {default as uniBuildQAP_single} from "./uni_buildQAP_single.js"

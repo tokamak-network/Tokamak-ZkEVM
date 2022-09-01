@@ -14,6 +14,7 @@ var fastFile = require('fastfile');
 var chai = require('chai');
 var r1csfile = require('r1csfile');
 require('constants');
+var hash = require('js-sha3');
 var Logger = require('logplease');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
@@ -45,6 +46,7 @@ var crypto__default = /*#__PURE__*/_interopDefaultLegacy(crypto);
 var binFileUtils__namespace = /*#__PURE__*/_interopNamespace(binFileUtils);
 var fastFile__namespace = /*#__PURE__*/_interopNamespace(fastFile);
 var chai__default = /*#__PURE__*/_interopDefaultLegacy(chai);
+var hash__default = /*#__PURE__*/_interopDefaultLegacy(hash);
 var Logger__default = /*#__PURE__*/_interopDefaultLegacy(Logger);
 
 /*
@@ -738,14 +740,24 @@ async function readRS(fd, sections, rsParam, rsType, toObject) {
     }
     rsContent.sigma_G.vk1_xy_pows = vk1_xy_pows;
 
-    let vk1_xy_pows_tg = Array.from(Array(n-1), () => new Array(s_max-1));
+    let vk1_xy_pows_t1g = Array.from(Array(n-1), () => new Array(2*s_max-1));
     for(var i = 0; i < n-1; i++) {
-        for(var j=0; j<s_max-1; j++){
-            vk1_xy_pows_tg[i][j] = await readG1(fd, curve, toObject);
+        for(var j=0; j<2*s_max-1; j++){
+            vk1_xy_pows_t1g[i][j] = await readG1(fd, curve, toObject);
             // vk1_xy_pows_tg[i][j] = G1*(x^i * y^j)*t(x)*inv(gamma_a)
         }
     }
-    rsContent.sigma_G.vk1_xy_pows_tg = vk1_xy_pows_tg;
+    rsContent.sigma_G.vk1_xy_pows_t1g = vk1_xy_pows_t1g;
+
+    let vk1_xy_pows_t2g = Array.from(Array(n), () => new Array(s_max-1));
+    for(var i = 0; i < n; i++) {
+        for(var j=0; j<s_max-1; j++){
+            vk1_xy_pows_t2g[i][j] = await readG1(fd, curve, toObject);
+            // vk1_xy_pows_tg[i][j] = G1*(x^i * y^j)*t(x)*inv(gamma_a)
+        }
+    }
+    rsContent.sigma_G.vk1_xy_pows_t2g = vk1_xy_pows_t2g;
+
     await binFileUtils__namespace.endReadSection(fd);
     // End of reading sigma_G
 
@@ -994,26 +1006,64 @@ export function hashPubKey(hasher, curve, c) {
 }
  */
 
+function start() {
+  return new Date();
+}
+
+function end(startTime) {
+  const endTime = new Date();
+  var timeDiff = endTime - startTime; //in ms
+  // strip the ms
+  //timeDiff /= 1000;
+
+  // get seconds 
+  var seconds = Math.round(timeDiff);
+  console.log(`Elapsed time: ${seconds} [ms]`);
+}
+
+function check(startTime) {
+  const endTime = new Date();
+  var timeDiff = endTime - startTime; //in ms
+  // strip the ms
+  //timeDiff /= 1000;
+
+  // get seconds 
+  var seconds = Math.round(timeDiff);
+  console.log(`Elapsed time: ${seconds} [ms]`);
+  return endTime;
+}
+
 chai__default["default"].assert;
 
 
 
-async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSName, entropy) {
+async function uni_Setup(paramName, RSName, entropy) {
+    const startTime = start();
+    
+    const TESTFLAG = false;
+    console.log(`TESTMODE = ${TESTFLAG}`);
+    
+    const {fd: fdParam, sections: sectionsParam} = await binFileUtils.readBinFile(`resource/subcircuits/${paramName}.dat`, "zkey", 2, 1<<25, 1<<23);
+    const param = await readRSParams(fdParam, sectionsParam);
+    const s_D = param.s_D;
+    
+    const fdRS = await binFileUtils.createBinFile('resource/universal_rs/'+RSName+".urs", "zkey", 1, 4+s_D, 1<<22, 1<<24);
+    await binFileUtils.copySection(fdParam, sectionsParam, fdRS, 1);
+    await binFileUtils.copySection(fdParam, sectionsParam, fdRS, 2);
+    
+    await fdParam.close();
+
     const r1cs = new Array();
     const sR1cs = new Array();
-     
     for(var i=0; i<s_D; i++){
         let r1csIdx = String(i);
-        const {fd: fdR1cs, sections: sectionsR1cs} = await binFileUtils.readBinFile('resource/subcircuits/r1cs/'+r1csName+r1csIdx+".r1cs", "r1cs", 1, 1<<22, 1<<24);
+        const {fd: fdR1cs, sections: sectionsR1cs} = await binFileUtils.readBinFile('resource/subcircuits/r1cs/subcircuit'+r1csIdx+".r1cs", "r1cs", 1, 1<<22, 1<<24);
         r1cs.push(await r1csfile.readR1csHeader(fdR1cs, sectionsR1cs, false));
         sR1cs.push(await binFileUtils.readSection(fdR1cs, sectionsR1cs, 2));
         await fdR1cs.close();
     }
-    const fdRS = await binFileUtils.createBinFile('resource/universal_rs/'+RSName+".urs", "zkey", 1, 4+s_D, 1<<22, 1<<24);
-        
-    console.log('checkpoint0');
- 
-    const curve = await getCurveFromName(curveName);
+
+    const curve = param.curve;
     // const sG1 = curve.G1.F.n8*2              // unused
     // const sG2 = curve.G2.F.n8*2              // unused
     const buffG1 = curve.G1.oneAffine;
@@ -1023,146 +1073,11 @@ async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSName, entropy) {
     const G2 = curve.G2;
     const NConstWires = 1;
 
-    /// polynomial arithmetic test
-/*     
-    if (TESTFLAG){
-        // A = B * Q
-        // A = [[8,0,2,0], [4,0,1,0], [0,4,0,1], [0,6,0,0], [0,3,0,0], [0,0,3,0]]; // bivariate polynomial 1;
+    const n = param.n;
+    const s_max = param.s_max;
+    const omega_x = param.omega_x;
+    param.omega_y;
 
-        // B = 3(x^3)(y) + (y^2) + 4
-        const B = [[4,0,1], [0,0,0], [0,0,0], [0,3,0]]; // bivariate polynomial 2;
-
-        // Q = (x^2)(y) + (x) + 2
-        const Q = [[2,0], [1,0], [0,1]];
-
-        let BFr = Array.from(Array(4), () => new Array(3));
-        for (var i=0; i<4; i++){
-            for (var j=0; j<3; j++){
-                BFr[i][j] = Fr.e(B[i][j]);
-            }
-        }
-        let QFr = Array.from(Array(3), () => new Array(2));
-        for (var i=0; i<3; i++){
-            for (var j=0; j<2; j++){
-                QFr[i][j] = Fr.e(Q[i][j]);
-            }
-        }
-        const test1_A = await polyUtils.mulPoly(Fr, BFr, QFr, true);
-        //console.log(test1_A)
-    }
-    if (TESTFLAG){
-        // A = B * Q
-        // A = [[20, 10, 5, 10],[4, 2, 1, 2],[28, 14, 7, 14],[8, 4, 2, 4],[12, 6, 3, 6]]; // bivariate polynomial 1;
-
-        // B = 3x^4+2x^3+7x^2+x^1+5;
-        const B = [[5],[1],[7],[2],[3]]; // bivariate polynomial 2;
-
-        // Q = 2y^3+y^2+2y^1+4
-        const Q = [[4, 2, 1, 2]];
-
-        let BFr = Array.from(Array(5), () => new Array(1));
-        for (var i=0; i<5; i++){
-            for (var j=0; j<1; j++){
-                BFr[i][j] = Fr.e(B[i][j]);
-            }
-        }
-        let QFr = Array.from(Array(1), () => new Array(4));
-        for (var i=0; i<1; i++){
-            for (var j=0; j<4; j++){
-                QFr[i][j] = Fr.e(Q[i][j]);
-            }
-        }
-        const test1_A = await polyUtils.mulPoly(Fr, BFr, QFr, true);
-        //console.log(test1_A)
-    }
-    if (TESTFLAG){
-        // A = B * Q
-        const A = [[20, 10, 5, 10],[4, 2, 1, 2],[28, 14, 7, 14],[8, 4, 2, 4],[12, 6, 3, 6]]; // bivariate polynomial 1;
-
-        // B = 3x^4+2x^3+7x^2+x^1+5;
-        const B = [[5],[1],[7],[2],[3]]; // bivariate polynomial 2;
-
-        // Q = 2y^3+y^2+2y^1+4
-        const Q = [[4, 2, 1, 2]];
-
-        let AFr = Array.from(Array(5), () => new Array(4));
-        for (var i=0; i<5; i++){
-            for (var j=0; j<4; j++){
-                AFr[i][j] = Fr.e(A[i][j]);
-            }
-        }
-
-        let BFr = Array.from(Array(5), () => new Array(1));
-        for (var i=0; i<5; i++){
-            for (var j=0; j<1; j++){
-                BFr[i][j] = Fr.e(B[i][j]);
-            }
-        }
-        let QFr = Array.from(Array(1), () => new Array(4));
-        for (var i=0; i<1; i++){
-            for (var j=0; j<4; j++){
-                QFr[i][j] = Fr.e(Q[i][j]);
-            }
-        }
-        const {res: test1_Q, finalrem: test1_Q_r} = await polyUtils.divPoly(Fr, AFr, BFr, true);
-        console.log(test1_Q)
-        console.log(test1_Q_r)
-        const {res: test1_B, finalrem: test1_B_r} = await polyUtils.divPoly(Fr, AFr, QFr, true);
-
-        console.log(test1_B)
-        console.log(test1_B_r)
-    }
-*/
-    
-    if (r1cs[0].prime != curve.r) {
-        console.log('checkpoint1');
-        console.log("r1cs_prime: ", r1cs[0].prime);
-        console.log("curve_r: ", curve.r);
-        throw new Error("r1cs curve does not match powers of tau ceremony curve")
-        //return -1
-    }
-
-    // const cirPower = log2(r1cs.nConstraints + r1cs.nPubInputs + r1cs.nOutputs +1 -1) +1
-    // const domainSize = 2 ** cirPower;
-
-
-    // Generate tau
-    var num_keys = 6; // the number of keys in tau
-    let rng = new Array(num_keys);
-    for(var i = 0; i < num_keys; i++) {
-        rng[i] = await getRandomRng(entropy + i);
-    }    
-    const tau = createTauKey(Fr, rng);
-    console.log(`checkpoint2`);
-
-    // Write Header
-    ///////////
-    await binFileUtils.startWriteSection(fdRS, 1);
-    await fdRS.writeULE32(1); // Groth
-    await binFileUtils.endWriteSection(fdRS);
-    // End of the Header
-    console.log(`checkpoint3`);
-
-    // Write parameters section
-    ///////////
-    await binFileUtils.startWriteSection(fdRS, 2);
-    const primeQ = curve.q;
-    const n8q = (Math.floor( (ffjavascript.Scalar.bitLength(primeQ) - 1) / 64) +1)*8;
-    console.log(`checkpoint4`);
-
-    // Group parameters
-    const primeR = curve.r;
-    const n8r = (Math.floor( (ffjavascript.Scalar.bitLength(primeR) - 1) / 64) +1)*8;
-    const Rr = ffjavascript.Scalar.mod(ffjavascript.Scalar.shl(1, n8r*8), primeR);
-    curve.Fr.e(ffjavascript.Scalar.mod(ffjavascript.Scalar.mul(Rr,Rr), primeR));
-
-    await fdRS.writeULE32(n8q);                   // byte length of primeQ
-    await binFileUtils.writeBigInt(fdRS, primeQ, n8q);
-    await fdRS.writeULE32(n8r);                   // byte length of primeR
-    await binFileUtils.writeBigInt(fdRS, primeR, n8r);
-
-    // Instruction set constants
-    await fdRS.writeULE32(s_D);
     const m = new Array();          // the numbers of wires
     const mPublic = new Array();    // the numbers of public wires (not including constant wire at zero index)
     const mPrivate = new Array();
@@ -1172,38 +1087,20 @@ async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSName, entropy) {
         nConstraints.push(r1cs[i].nConstraints);
         mPublic.push(r1cs[i].nOutputs + r1cs[i].nPubInputs + r1cs[i].nPrvInputs); 
         mPrivate.push(m[i] - mPublic[i]);
-        await fdRS.writeULE32(m[i]);
-        await fdRS.writeULE32(mPublic[i]);
-        await fdRS.writeULE32(nConstraints[i]);
     }
-
-    // QAP constants
-    const sum_mPublic = mPublic.reduce((accu,curr) => accu + curr);
-    const sum_mPrivate = mPrivate.reduce((accu,curr) => accu + curr);
-    const NEqs = Math.max(sum_mPublic, sum_mPrivate);
-    let n = Math.ceil(NEqs/3);
-    
-    const expon = Math.ceil(Math.log2(n));
-    n = 2**expon;
-    const omega_x = await Fr.exp(Fr.w[Fr.s], ffjavascript.Scalar.exp(2, Fr.s-expon));
     //console.log(Fr.toObject(omega_x))
     //console.log(Fr.toObject(await Fr.exp(omega_x, n)))
+       
+    // Generate tau
+    var num_keys = 6; // the number of keys in tau
+    let rng = new Array(num_keys);
+    for(var i = 0; i < num_keys; i++) {
+        rng[i] = await getRandomRng(entropy + i);
+    }    
+    const tau = createTauKey(Fr, rng);
+    console.log(`checkpoint2`);
+
     
-    let expos = Math.ceil(Math.log2(min_s_max));
-    const s_max = 2**expos;
-    const omega_y = await Fr.exp(Fr.w[Fr.s], ffjavascript.Scalar.exp(2, Fr.s-expos));
-    // End of test code 1 //
-
-    await fdRS.writeULE32(n);                       // the maximum number of gates in each subcircuit: n>=NEqs/3 and n|(r-1)
-    await fdRS.writeULE32(s_max);                  // the maximum number of subcircuits in a p-code: s_max>min_s_max and s_max|(r-1)
-    await binFileUtils.writeBigInt(fdRS, Fr.toObject(omega_x), n8r);                    // Generator for evaluation points on X
-    await binFileUtils.writeBigInt(fdRS, Fr.toObject(omega_y), n8r);             // Generator for evaluation points on Y
-    console.log(`checkpoint5`);
-    // End of test code 2 //
-
-    await binFileUtils.endWriteSection(fdRS);
-    // End of the parameters section
-
     // Write the sigma_G section
     ///////////
     await binFileUtils.startWriteSection(fdRS, 3);
@@ -1217,19 +1114,25 @@ async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSName, entropy) {
     await writeG1(fdRS, curve, vk1_alpha_u);
     await writeG1(fdRS, curve, vk1_alpha_v);
     await writeG1(fdRS, curve, vk1_gamma_a);
-    const x=tau.x;
-    const y=tau.y;
+    let x=tau.x;
+    let y=tau.y;
+
     // if(TESTFLAG){  // UNUSED, since pairingEQ doesnt work for the points of infinity
     //     x=Fr.exp(omega_x, Fr.toObject(tau.x));
     //     y=Fr.exp(omega_y, Fr.toObject(tau.y));
     // }
     
     let vk1_xy_pows = Array.from(Array(n), () => new Array(s_max));
-    let xy_pows = Array.from(Array(n), () => new Array(s_max)); // n by s_max 2d array
+    let xy_pows = Array.from(Array(n), () => new Array(2*s_max-1)); // n by s_max 2d array
+
+    for(var i = 0; i < n; i++) {
+        for(var j = 0; j < 2*s_max-1; j++){
+            xy_pows[i][j] = await Fr.mul(await Fr.exp(x,i), await Fr.exp(y,j));
+        }
+    }
 
     for(var i = 0; i < n; i++) {
         for(var j = 0; j < s_max; j++){
-            xy_pows[i][j] = await Fr.mul(await Fr.exp(x,i), await Fr.exp(y,j));
             vk1_xy_pows[i][j] = await G1.timesFr(buffG1, xy_pows[i][j]);
             await writeG1(fdRS, curve, vk1_xy_pows[i][j]);
             // [x^0*y^0], [x^0*y^1], ..., [x^0*y^(s_max-1)], [x^1*y^0], ...
@@ -1237,18 +1140,32 @@ async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSName, entropy) {
     }
 
     const gamma_a_inv=Fr.inv(tau.gamma_a);
-    let xy_pows_tg;
-    let vk1_xy_pows_tg = Array.from(Array(n-1), () => new Array(s_max-1));
-    const t_xy=Fr.mul(Fr.sub(await Fr.exp(x,n),Fr.one), Fr.sub(await Fr.exp(y,s_max),Fr.one));
-    const t_xy_g=Fr.mul(t_xy, gamma_a_inv);
+    let xy_pows_t1g;
+    let vk1_xy_pows_t1g = Array.from(Array(n-1), () => new Array(2*s_max-1));
+    const t1_x=Fr.sub(await Fr.exp(x,n),Fr.one);
+    const t1_x_g=Fr.mul(t1_x, gamma_a_inv);
     for(var i = 0; i < n-1; i++) {
-        for(var j=0; j<s_max-1; j++){
-            xy_pows_tg= await Fr.mul(xy_pows[i][j], t_xy_g);
-            vk1_xy_pows_tg[i][j]= await G1.timesFr( buffG1, xy_pows_tg );
-            await writeG1( fdRS, curve, vk1_xy_pows_tg[i][j] );
+        for(var j=0; j<2*s_max-1; j++){
+            xy_pows_t1g= await Fr.mul(xy_pows[i][j], t1_x_g);
+            vk1_xy_pows_t1g[i][j]= await G1.timesFr( buffG1, xy_pows_t1g );
+            await writeG1( fdRS, curve, vk1_xy_pows_t1g[i][j] );
             // [x^0*y^0*t*g], [x^0*y^1*t*g], ..., [x^0*y^(s_max-1)*t*g], [x^1*y^0*t*g], ...
         }
     }
+
+    let xy_pows_t2g;
+    let vk1_xy_pows_t2g = Array.from(Array(n), () => new Array(s_max-1));
+    const t2_y=Fr.sub(await Fr.exp(y,s_max),Fr.one);
+    const t2_y_g=Fr.mul(t2_y, gamma_a_inv);
+    for(var i = 0; i < n; i++) {
+        for(var j=0; j<s_max-1; j++){
+            xy_pows_t2g= await Fr.mul(xy_pows[i][j], t2_y_g);
+            vk1_xy_pows_t2g[i][j]= await G1.timesFr( buffG1, xy_pows_t2g );
+            await writeG1( fdRS, curve, vk1_xy_pows_t2g[i][j] );
+            // [x^0*y^0*t*g], [x^0*y^1*t*g], ..., [x^0*y^(s_max-1)*t*g], [x^1*y^0*t*g], ...
+        }
+    }
+    
     await binFileUtils.endWriteSection(fdRS);
     // End of the sigma_G section
     ///////////
@@ -1301,7 +1218,7 @@ async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSName, entropy) {
     console.log(`checkpoint6`);
 
     for(var k = 0; k < s_D; k++){
-               
+        console.log(`k: ${k}`);
         let processResults_k;
         processResults_k = await processConstraints(curve, nConstraints[k], sR1cs[k]); // to fill U, V, W
         let U = processResults_k.U;
@@ -1397,11 +1314,6 @@ async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSName, entropy) {
         var i; 
         // End of the test code 4//
 
-        // Test code 5//
-        // Init: s_D=1, min_s_max=1, r1csName = (any small subcircuit)
-        // Hardcode any testing wire instance and witness (in BigInt) into: const wire = new Array(m[0])
-        var i; 
-        // End of the test code 5//
         await binFileUtils.startWriteSection(fdRS, 5+k);
         console.log(`checkpoint9`);
         let multiplier;
@@ -1464,10 +1376,13 @@ async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSName, entropy) {
         await binFileUtils.endWriteSection(fdRS);
         console.log(`checkpoint11`);
     }
+    // End of the test code 5//
     
 
     await fdRS.close();
     console.log(`checkpoint12`);
+
+    end(startTime);
 
     // End of the theta_G section
     ///////////
@@ -1538,17 +1453,125 @@ async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSName, entropy) {
 
 }
 
-async function buildR1csPolys(rs, sR1cs){
+async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, flagMemorySave){
+    const Fr = curve.Fr;
+    const ParamR1cs = r1cs_k;
+    let flag_memory = true;
+    if ( (flagMemorySave === undefined) || (flagMemorySave == false) ){
+        flag_memory = false;
+    }
+
+    let U;
+    let Uid;
+    let V;
+    let Vid;
+    let W;
+    let Wid;
+
+    let constraints_k;
+
+    let U_ids;
+    let U_coefs;
+    let V_ids;
+    let V_coefs;
+    let W_ids;
+    let W_coefs;
+    let Lagrange_poly;
+
+    let m_k = ParamR1cs.nVars;
+    if (ParamR1cs.nVars === undefined){
+        m_k = ParamR1cs.m;
+    }
+    let n_k = ParamR1cs.nConstraints;
+
+    let uX_i = new Array(m_k);
+    let vX_i = new Array(m_k);
+    let wX_i = new Array(m_k);
+    console.log(`checkpoint 0-0`);
+    
+    constraints_k = await processConstraints(curve, n_k, sR1cs_k);
+    U = constraints_k.U;
+    Uid = constraints_k.Uid;
+    V = constraints_k.V;
+    Vid = constraints_k.Vid;
+    W = constraints_k.W;
+    Wid = constraints_k.Wid;
+
+    console.log(`checkpoint 0-1`);
+
+    for(var i=0; i<m_k; i++){
+        uX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        vX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        wX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        if (flag_memory){
+            uX_i[i] = _transToObject(Fr, uX_i[i]);
+            vX_i[i] = _transToObject(Fr, vX_i[i]);
+            wX_i[i] = _transToObject(Fr, wX_i[i]);
+        }
+    }
+    let item_i;
+    for(var i=0; i<ParamR1cs.nConstraints; i++){
+        U_ids = Uid[i];
+        U_coefs = U[i];
+        V_ids = Vid[i];
+        V_coefs = V[i];
+        W_ids = Wid[i];
+        W_coefs = W[i];
+        for(var j=0; j<U_ids.length; j++){
+            let U_idx=U_ids[j];
+            if(U_idx>=0){
+                Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], U_coefs[j]);
+                item_i = await addPoly(Fr, uX_i[U_idx], Lagrange_poly);
+                if (flag_memory){
+                    item_i = _transToObject(Fr, item_i);
+                }
+                uX_i[U_idx] = item_i;
+            }
+        }
+        for(var j=0; j<V_ids.length; j++){
+            let V_idx=V_ids[j];
+            if(V_idx>=0){
+                Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], V_coefs[j]);
+                item_i = await addPoly(Fr, vX_i[V_idx], Lagrange_poly);
+                if (flag_memory){
+                    item_i = _transToObject(Fr, item_i);
+                }
+                vX_i[V_idx] = item_i;
+            }
+        }
+        for(var j=0; j<W_ids.length; j++){
+            let W_idx=W_ids[j];
+            if(W_idx>=0){
+                Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], W_coefs[j]);
+                item_i = await addPoly(Fr, wX_i[W_idx], Lagrange_poly);
+                if (flag_memory){
+                    item_i = _transToObject(Fr, item_i);
+                }
+                wX_i[W_idx] = item_i;
+            }
+        }
+    }
+
+    console.log(`checkpoint 0-2`);
+
+    return {uX_i, vX_i, wX_i}
+    // uX_ki[k][i] = polynomial of the i-th wire in the k-th subcircuit.
+}
+
+async function buildCommonPolys(rs, flagMemorySave){
     const curve = rs.curve;
     const Fr = curve.Fr;
     const n = rs.n;
-    const s_max = rs.s_max;
+    rs.s_max;
     const omega_x = await Fr.e(rs.omega_x);
-    await Fr.e(rs.omega_y);
-    const ParamR1cs = rs.r1cs;
-    const s_D = rs.s_D;
+    let flag_memory = true;
+    if ( (flagMemorySave === undefined) || (flagMemorySave == false) ){
+        flag_memory = false;
+    }
 
+    console.log(`checkpoint 0-0`);
     let Lagrange_basis = new Array(n);
+    let item_i;
     for(var i=0; i<n; i++){
         let terms = Array.from(Array(n), () => new Array(1));
         let multiplier = await Fr.exp(Fr.inv(omega_x),i);
@@ -1556,91 +1579,16 @@ async function buildR1csPolys(rs, sR1cs){
         for(var j=1; j<n; j++){
             terms[j][0]=await Fr.mul(terms[j-1][0], multiplier);
         }
-        Lagrange_basis[i]=await scalePoly(Fr, terms, Fr.inv(Fr.e(n)));
+        item_i = await scalePoly(Fr, terms, Fr.inv(Fr.e(n)));
+        if (flag_memory){
+            item_i = _transToObject(Fr, item_i);
+        }
+        Lagrange_basis[i] = item_i;
     }
+    console.log(`checkpoint 0-1`);
 
-    let uX_ki = new Array(s_D);
-    let vX_ki = new Array(s_D);
-    let wX_ki = new Array(s_D);
-
-    for(var k=0; k<s_D; k++){
-        let m_k = ParamR1cs[k].nVars;
-        if (ParamR1cs[k].nVars === undefined){
-            m_k = ParamR1cs[k].m;
-        }
-        let n_k = ParamR1cs[k].nConstraints;
-        
-        const constraints_k = await processConstraints(curve, n_k, sR1cs[k]);
-        let U = constraints_k.U;
-        let Uid = constraints_k.Uid;
-        let V = constraints_k.V;
-        let Vid = constraints_k.Vid;
-        let W = constraints_k.W;
-        let Wid = constraints_k.Wid;
-
-        let uX = new Array(m_k);
-        let vX = new Array(m_k);
-        let wX = new Array(m_k);
-
-        for(var i=0; i<m_k; i++){
-            uX[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-            vX[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-            wX[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-        }
-        for(var i=0; i<ParamR1cs[k].nConstraints; i++){
-            let U_ids = Uid[i];
-            let U_coefs = U[i];
-            let V_ids = Vid[i];
-            let V_coefs = V[i];
-            let W_ids = Wid[i];
-            let W_coefs = W[i];
-            let Lagrange_poly;
-            for(var j=0; j<U_ids.length; j++){
-                let U_idx=U_ids[j];
-                if(U_idx>=0){
-                    Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], U_coefs[j]);
-                    uX[U_idx] = await addPoly(Fr, uX[U_idx], Lagrange_poly);
-                }
-            }
-            for(var j=0; j<V_ids.length; j++){
-                let V_idx=V_ids[j];
-                if(V_idx>=0){
-                    Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], V_coefs[j]);
-                    vX[V_idx] = await addPoly(Fr, vX[V_idx], Lagrange_poly);
-                }
-            }
-            for(var j=0; j<W_ids.length; j++){
-                let W_idx=W_ids[j];
-                if(W_idx>=0){
-                    Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], W_coefs[j]);
-                    wX[W_idx] = await addPoly(Fr, wX[W_idx], Lagrange_poly);
-                }
-            }
-        }
-        uX_ki[k] = uX;
-        vX_ki[k] = vX;
-        wX_ki[k] = wX;
-    }
-
-    //let fY = Array.from(Array(1), () => new Array(s_max));
-    //const Fr_s_max_inv = Fr.inv(Fr.e(s_max));
-    //fY = await scalePoly(Fr, fY, Fr_s_max_inv);
-
-    let tX = Array.from(Array(n+1), () => new Array(1));
-    let tY = Array.from(Array(1), () => new Array(s_max+1));
-    tX = await scalePoly(Fr, tX, Fr.zero);
-    tY = await scalePoly(Fr, tY, Fr.zero);
-    tX[0][0] = Fr.negone;
-    tX[n][0] = Fr.one;
-    tY[0][0] = Fr.negone;
-    tY[0][s_max] = Fr.one;
-    const tXY = await mulPoly(Fr, tX, tY);
-    // t(X,Y) = (X^n-1) * (X^s_max-1) = PI(X-omega_x^i) for i=0,...,n * PI(Y-omega_y^j) for j =0,...,s_max
-    // P(X,Y) = (SUM c_i*u_i(X,Y))*(SUM c_i*v_i(X,Y)) - (SUM c_i*w_i(X,Y)) = 0 at X=omega_x^i, Y=omega_y^j
-    // <=> P(X,Y) has zeros at least the points omega_x^i and omega_y^j
-    // <=> there exists h(X,Y) such that p(X,Y) = t(X,Y) * h(X,Y)
-    // <=> finding h(X,Y) is the goal of Prove algorithm
-    return {uX_ki, vX_ki, wX_ki, tXY, tX, tY}
+   
+    return Lagrange_basis
     // uX_ki[k][i] = polynomial of the i-th wire in the k-th subcircuit.
 }
 
@@ -1665,19 +1613,6 @@ function _polyCheck(coefs){
     return {N_X, N_Y}
 }
 
-async function evalPoly(Fr, coefs, x, y){
-    const {N_X: N_X, N_Y: N_Y} = _polyCheck(coefs);
-    let sum = Fr.zero;
-    for (var i=0; i<N_X; i++){
-        for (var j=0; j<N_Y; j++){
-            let xy_pows = Fr.mul(await Fr.exp(x, i), await Fr.exp(y,j));
-            let term = Fr.mul(xy_pows, coefs[i][j]);
-            sum = Fr.add(sum, term);
-        }
-    }
-    return sum
-}
-
 async function filterPoly(Fr, coefs1, vect, dir){
     // Elemetwise multiplication of the coefficients of a polynomial along with a directed variable with a filtering vector
     // dir? Y:X
@@ -1685,6 +1620,8 @@ async function filterPoly(Fr, coefs1, vect, dir){
     if ( !((!dir) && (N1_X == vect.length) || (dir) && (N1_Y == vect.length)) ){
         throw new Error('filterPoly: the lengths of two coefficients are not equal')
     }
+
+    coefs1 = _autoTransFromObject(Fr, coefs1);
 
     let res = Array.from(Array(N1_X), () => new Array(N1_Y));
     for(var i=0; i<N1_X; i++){
@@ -1709,6 +1646,7 @@ async function filterPoly(Fr, coefs1, vect, dir){
 async function scalePoly(Fr, coefs, scaler){
     // Assume scaler is in Fr
     const {N_X: NSlots_X, N_Y: NSlots_Y} = _polyCheck(coefs);
+    coefs = _autoTransFromObject(Fr, coefs);
 
     let res = Array.from(Array(NSlots_X), () => new Array(NSlots_Y));
     for(var i=0; i<NSlots_X; i++){
@@ -1721,12 +1659,15 @@ async function scalePoly(Fr, coefs, scaler){
             res[i][j] = Fr.mul(target, scaler); 
         }
     }
-    return res
+    return res;
 }
 
 async function addPoly(Fr, coefs1, coefs2, SUBFLAG){
     const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
     const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
+
+    coefs1 = _autoTransFromObject(Fr, coefs1);
+    coefs2 = _autoTransFromObject(Fr, coefs2);
 
     if (SUBFLAG !== undefined){
         if (SUBFLAG == 1){
@@ -1760,10 +1701,17 @@ async function addPoly(Fr, coefs1, coefs2, SUBFLAG){
 }
 
 async function mulPoly(Fr, coefs1, coefs2, object_flag){
+    
+    coefs1 = reduceDimPoly(Fr, coefs1);
+    coefs2 = reduceDimPoly(Fr, coefs2);
+
     const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
     const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
     const N3_X = N1_X+N2_X-1;
     const N3_Y = N1_Y+N2_Y-1;
+
+    coefs1 = _autoTransFromObject(Fr, coefs1);
+    coefs2 = _autoTransFromObject(Fr, coefs2);
 
     let res = Array.from(Array(N3_X), () => new Array(N3_Y));
     for (var i=0; i<N3_X; i++){
@@ -1788,6 +1736,12 @@ async function mulPoly(Fr, coefs1, coefs2, object_flag){
 }
 
 function _transToObject(Fr, coefs){
+    if ( (typeof coefs[0][0] == "bigint") || (coefs[0][0] === undefined) ){
+        return coefs
+    } else if(typeof coefs[0][0] != "object"){
+        throw new Error('transFromObject: unexpected input type')
+    }
+    
     let res = Array.from(Array(coefs.length), () => new Array(coefs[0].length));
     for (var i=0; i<coefs.length; i++){
         for (var j=0; j<coefs[0].length; j++){
@@ -1797,7 +1751,25 @@ function _transToObject(Fr, coefs){
     return res
 }
 
+function _autoTransFromObject(Fr, coefs){
+    if ( (typeof coefs[0][0] == "object") || (coefs[0][0] === undefined) ){
+        return coefs
+    } else if(typeof coefs[0][0] != "bigint"){
+        throw new Error('autoTransFromObject: unexpected input type')
+    }
+    
+    let res = Array.from(Array(coefs.length), () => new Array(coefs[0].length));
+    for (var i=0; i<coefs.length; i++){
+        for (var j=0; j<coefs[0].length; j++){
+            res[i][j] = Fr.fromObject(coefs[i][j]);
+        }
+    }
+    return res
+}
+
 async function divPoly(Fr, coefs1, coefs2, object_flag){
+    coefs1 = _autoTransFromObject(Fr, coefs1);
+    coefs2 = _autoTransFromObject(Fr, coefs2);
     const denom = coefs2;
     const {xId: de_order_X, yId: de_order_Y, coef: de_high_coef} = _findOrder(Fr, denom);
     //console.log(`i: ${de_order_X}, j: ${de_order_Y}`)
@@ -1848,7 +1820,7 @@ async function divPoly(Fr, coefs1, coefs2, object_flag){
         const energy = await mulPoly(Fr, quo, denom);
         //console.log(`x_o_dif: ${diff_order_X}, y_o_dif: ${diff_order_Y}`)
         //console.log(_transToObject(Fr, numer))
-        const rem = await addPoly(Fr, numer, energy, true);
+        const rem = reduceDimPoly(Fr, await addPoly(Fr, numer, energy, true));
 
         return {quo, rem}
     }
@@ -1886,9 +1858,91 @@ function _findOrder(Fr, coefs, dir){
 
 function _orderPoly(Fr, coefs){
     /// highest orders of respective variables
+    coefs = _autoTransFromObject(Fr, coefs);
     const {xId: x_order} = _findOrder(Fr, coefs, 0);
     const {yId: y_order} = _findOrder(Fr, coefs, 1);
     return {x_order, y_order}
+}
+
+function reduceDimPoly(Fr, coefs){
+    const {x_order: x_order, y_order: y_order} = _orderPoly(Fr,coefs);
+    const N_X = x_order+1;
+    const N_Y = y_order+1;
+    let res = Array.from(Array(N_X), () => new Array(N_Y));
+    for (var i=0; i<N_X; i++){
+        res[i] = coefs[i].slice(0, N_Y);
+    }
+
+    return res
+}
+
+async function readQAP(QAPName, k, m_k, n, n8r){
+    
+    const {fd: fdQAP, sections: sectionsQAP}  = await binFileUtils__namespace.readBinFile(`resource/subcircuits/${QAPName}/subcircuit${k}.qap`, "qapp", 1, 1<<22, 1<<24);
+        
+    let uX_i = new Array(m_k);
+    let vX_i = new Array(m_k);
+    let wX_i = new Array(m_k);
+    await binFileUtils__namespace.startReadUniqueSection(fdQAP,sectionsQAP, 2);
+    for (var i=0; i<m_k; i++){
+        let data = Array.from(Array(n), () => new Array(1));
+        for (var xi=0; xi<n; xi++){
+            data[xi][0] = await binFileUtils__namespace.readBigInt(fdQAP, n8r);
+        }
+        uX_i[i] = data;
+    }
+    for (var i=0; i<m_k; i++){
+        let data = Array.from(Array(n), () => new Array(1));
+        for (var xi=0; xi<n; xi++){
+            data[xi][0] = await binFileUtils__namespace.readBigInt(fdQAP, n8r);
+        }
+        vX_i[i] = data;
+    }
+
+    for (var i=0; i<m_k; i++){
+        let data = Array.from(Array(n), () => new Array(1));
+        for (var xi=0; xi<n; xi++){
+            data[xi][0] = await binFileUtils__namespace.readBigInt(fdQAP, n8r);
+        }
+        wX_i[i] = data;
+    }
+
+    await binFileUtils__namespace.endReadSection(fdQAP);
+    await fdQAP.close();
+
+    return {uX_i, vX_i, wX_i}
+}
+
+async function readCircuitQAP_i(Fr, fdQAP, sectionsQAP, i, n, s_max, n8r){
+    
+    
+    await binFileUtils__namespace.startReadUniqueSection(fdQAP,sectionsQAP, 2+i);
+
+    let uXY_i = Array.from(Array(n), () => new Array(s_max));
+    let vXY_i = Array.from(Array(n), () => new Array(s_max));
+    let wXY_i = Array.from(Array(n), () => new Array(s_max));
+
+    for (var xi=0; xi<n; xi++){
+        for (var yi=0; yi<s_max; yi++){
+            uXY_i[xi][yi] = Fr.e(await binFileUtils__namespace.readBigInt(fdQAP, n8r));
+        }
+    }
+
+    for (var xi=0; xi<n; xi++){
+        for (var yi=0; yi<s_max; yi++){
+            vXY_i[xi][yi] = Fr.e(await binFileUtils__namespace.readBigInt(fdQAP, n8r));
+        }
+    }
+
+    for (var xi=0; xi<n; xi++){
+        for (var yi=0; yi<s_max; yi++){
+            wXY_i[xi][yi] = Fr.e(await binFileUtils__namespace.readBigInt(fdQAP, n8r));
+        }
+    }
+
+    await binFileUtils__namespace.endReadSection(fdQAP);
+
+    return {uXY_i, vXY_i, wXY_i}
 }
 
 /*
@@ -1941,7 +1995,9 @@ async function read(fileName) {
     return res;
 }
 
-async function uniDerive$1(RSName, cRSName, circuitName) {
+async function uniDerive$1(RSName, cRSName, circuitName, QAPName) {
+    const startTime = start();
+    let interTime;
     const dirPath = `resource/circuits/${circuitName}`;
     
     const URS=0;
@@ -1970,14 +2026,16 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
     const G1 = urs.param.curve.G1;
     const G2 = urs.param.curve.G2;
     const Fr = urs.param.curve.Fr;
+    const n8r = urs.param.n8r;
+    const n = urs.param.n;
     const buffG1 = curve.G1.oneAffine;
     const buffG2 = curve.G2.oneAffine;
     const s_max = urs.param.s_max;
     const s_D = urs.param.s_D;
+    const s_F = OpList.length;
     const omega_y = await Fr.e(urs.param.omega_y);
 
     console.log('smax: ', s_max);
-    console.log('checkpoint0');
 
     const mPublic = IdSetV.set.length; // length of input instance + the total number of subcircuit outputs
     const mPrivate = IdSetP.set.length; 
@@ -1993,8 +2051,15 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
     let kPrime;
     let s_kPrime;
     let iPrime;
-    let OmegaFactor;
 
+        
+    console.log('checkpoint0');
+    let OmegaFactors = new Array(s_max);
+    OmegaFactors[0] = Fr.one;
+    const omega_y_inv = Fr.inv(omega_y);
+    for (var j=1; j<s_max; j++){
+        OmegaFactors[j] = Fr.mul(OmegaFactors[j-1], omega_y_inv);
+    }
     
     if (Math.max(OpList) >= s_D){
         throw new Error('An opcode in the target EVM bytecode has no subcircuit');
@@ -2004,7 +2069,7 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
     for(var i=0; i<mPublic; i++){
         PreImgSet = IdSetV.PreImgs[i];
         PreImgSize = IdSetV.PreImgs[i].length;
-        vk1_zxy[i] = await G1.timesFr(buffG1, Fr.e(0));
+        vk1_zxy[i] = await G1.timesFr(buffG1, Fr.zero);
         for(var j=0; j<s_max; j++){
             for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
                 kPrime = PreImgSet[PreImgIdx][0];
@@ -2017,8 +2082,9 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
                 }
                 arrayIdx = iPrime-NZeroWires;
                 vk1_term = urs.content.theta_G.vk1_zxy_kij[s_kPrime][arrayIdx][j];
-                OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j));
-                vk1_term = await G1.timesFr(vk1_term, OmegaFactor);
+                //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
+                //vk1_term = await G1.timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1.timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
                 vk1_zxy[i] = await G1.add(vk1_zxy[i], vk1_term);
             }
         }
@@ -2030,7 +2096,7 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
     for(var i=0; i<mPrivate; i++){
         PreImgSet = IdSetP.PreImgs[i];
         PreImgSize = IdSetP.PreImgs[i].length;
-        vk1_axy[i] = await G1.timesFr(buffG1, Fr.e(0));
+        vk1_axy[i] = await G1.timesFr(buffG1, Fr.zero);
         for(var j=0; j<s_max; j++){
             for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
                 kPrime = PreImgSet[PreImgIdx][0];
@@ -2047,8 +2113,9 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
                 }
 
                 vk1_term = urs.content.theta_G.vk1_axy_kij[s_kPrime][arrayIdx][j];
-                OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j));
-                vk1_term = await G1.timesFr(vk1_term, OmegaFactor);
+                //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
+                //vk1_term = await G1.timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1.timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
                 vk1_axy[i] = await G1.add(vk1_axy[i], vk1_term);
             }
         }
@@ -2066,15 +2133,16 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
             PreImgSet = IdSetP.PreImgs[arrayIdx];
         }
         PreImgSize = PreImgSet.length;
-        vk1_uxy[i] = await G1.timesFr(buffG1, Fr.e(0));
+        vk1_uxy[i] = await G1.timesFr(buffG1, Fr.zero);
         for(var j=0; j<s_max; j++){
             for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
                 kPrime = PreImgSet[PreImgIdx][0];
                 s_kPrime = OpList[kPrime];
                 iPrime = PreImgSet[PreImgIdx][1];
                 vk1_term = urs.content.theta_G.vk1_uxy_kij[s_kPrime][iPrime][j];
-                OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j));
-                vk1_term = await G1.timesFr(vk1_term, OmegaFactor);
+                //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
+                //vk1_term = await G1.timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1.timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
                 vk1_uxy[i] = await G1.add(vk1_uxy[i], vk1_term);
             }
         }
@@ -2092,7 +2160,7 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
             PreImgSet = IdSetP.PreImgs[arrayIdx];
         }
         PreImgSize = PreImgSet.length;
-        vk1_vxy[i] = await G1.timesFr(buffG1, Fr.e(0));
+        vk1_vxy[i] = await G1.timesFr(buffG1, Fr.zero);
         for(var j=0; j<s_max; j++){
             for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
                 kPrime = PreImgSet[PreImgIdx][0];
@@ -2100,8 +2168,9 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
                 iPrime = PreImgSet[PreImgIdx][1];
 
                 vk1_term = urs.content.theta_G.vk1_vxy_kij[s_kPrime][iPrime][j];
-                OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j));
-                vk1_term = await G1.timesFr(vk1_term, OmegaFactor);
+                //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
+                //vk1_term = await G1.timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1.timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
                 vk1_vxy[i] = await G1.add(vk1_vxy[i], vk1_term);
             }
         }
@@ -2119,7 +2188,7 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
             PreImgSet = IdSetP.PreImgs[arrayIdx];
         }
         PreImgSize = PreImgSet.length;
-        vk2_vxy[i] = await G2.timesFr(buffG2, Fr.e(0));
+        vk2_vxy[i] = await G2.timesFr(buffG2, Fr.zero);
         for(var j=0; j<s_max; j++){
             for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
                 kPrime = PreImgSet[PreImgIdx][0];
@@ -2127,8 +2196,9 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
                 iPrime = PreImgSet[PreImgIdx][1];
 
                 vk2_term = urs.content.theta_G.vk2_vxy_kij[s_kPrime][iPrime][j];
-                OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j));
-                vk2_term = await G2.timesFr(vk2_term, OmegaFactor);
+                //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
+                //vk2_term = await G2.timesFr(vk2_term, OmegaFactor)
+                vk2_term = await G2.timesFr(vk2_term, OmegaFactors[(kPrime*j)%s_max]);
                 vk2_vxy[i] = await G2.add(vk2_vxy[i], vk2_term);
             }
         }
@@ -2167,6 +2237,106 @@ async function uniDerive$1(RSName, cRSName, circuitName) {
     await binFileUtils.endWriteSection(fdcRS);
 
     await fdcRS.close();
+
+
+    let uX_ki = new Array(s_D);
+    let vX_ki = new Array(s_D);
+    let wX_ki = new Array(s_D);
+    interTime = start();
+    for (var i=0; i<s_F; i++){
+        let k = OpList[i];
+        if ( (uX_ki[k] === undefined) ){
+            let m_k = ParamR1cs[k].m;
+
+            let {uX_i: uX_i, vX_i: vX_i, wX_i: wX_i} = await readQAP(QAPName, k, m_k, n, n8r);
+            uX_ki[k] = uX_i;
+            vX_ki[k] = vX_i;
+            wX_ki[k] = wX_i;
+        }
+    }
+    console.log(`Reading QAP is completed`);
+    end(interTime);
+
+    const fdQAP = await binFileUtils.createBinFile(`${dirPath}/circuitQAP.qap`, "qapp", 1, 1+m, 1<<22, 1<<24);
+
+    await binFileUtils.startWriteSection(fdQAP, 1);
+    await fdQAP.writeULE32(1); // Groth
+    await binFileUtils.endWriteSection(fdQAP);
+
+    interTime = start();
+    let fY_k = new Array(s_F);
+    const fY = Array.from(Array(1), () => new Array(s_max));
+    const Fr_s_max_inv = Fr.inv(Fr.e(s_max));
+    for (var k=0; k<s_F; k++){
+        let inv_omega_y_k = new Array(s_max);
+        inv_omega_y_k[0] = Fr.one;
+        for (i=1; i<s_max; i++){
+            inv_omega_y_k[i] = Fr.mul(inv_omega_y_k[i-1], await Fr.exp(Fr.inv(omega_y), k));
+        }
+        let LagY = await filterPoly(Fr, fY, inv_omega_y_k, 1);
+        fY_k[k] = await scalePoly(Fr, LagY, Fr_s_max_inv);
+    }
+    console.log(`Generating fY_k is completed`);
+    end(interTime);
+
+    let InitPoly = Array.from(Array(n), () => new Array(s_max));
+    InitPoly = await scalePoly(Fr, InitPoly, Fr.zero);
+    console.log(`m: ${m}`);
+    for(var i=0; i<m; i++){
+        await binFileUtils.startWriteSection(fdQAP, 2+i);
+        let arrayIdx;
+        let PreImgSet;
+        if(IdSetV.set.indexOf(i) > -1){
+            arrayIdx = IdSetV.set.indexOf(i);
+            PreImgSet = IdSetV.PreImgs[arrayIdx];
+        } else {
+            arrayIdx = IdSetP.set.indexOf(i);
+            PreImgSet = IdSetP.PreImgs[arrayIdx];
+        }
+        let PreImgSize = PreImgSet.length;
+        let uXY_i = InitPoly;
+        let vXY_i = InitPoly;
+        let wXY_i = InitPoly;
+        interTime = start();
+        for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
+            let kPrime = PreImgSet[PreImgIdx][0];
+            let iPrime = PreImgSet[PreImgIdx][1];
+            let s_kPrime = OpList[kPrime];
+
+            let u_term = await mulPoly(Fr, uX_ki[s_kPrime][iPrime], fY_k[kPrime]);
+            uXY_i = await addPoly(Fr, uXY_i, u_term);
+
+            let v_term = await mulPoly(Fr, vX_ki[s_kPrime][iPrime], fY_k[kPrime]);
+            vXY_i = await addPoly(Fr, vXY_i, v_term);
+
+            let w_term = await mulPoly(Fr, wX_ki[s_kPrime][iPrime], fY_k[kPrime]);
+            wXY_i = await addPoly(Fr, wXY_i, w_term);
+        }
+        
+        interTime = check(interTime);
+        for (var xi=0; xi<n; xi++){            for (var yi=0; yi<s_max; yi++){
+                await binFileUtils.writeBigInt(fdQAP, Fr.toObject(uXY_i[xi][yi]), n8r);
+            }
+        }
+        end(interTime);
+
+        for (var xi=0; xi<n; xi++){
+            for (var yi=0; yi<s_max; yi++){
+                await binFileUtils.writeBigInt(fdQAP, Fr.toObject(vXY_i[xi][yi]), n8r);
+            }
+        }
+
+        for (var xi=0; xi<n; xi++){
+            for (var yi=0; yi<s_max; yi++){
+                await binFileUtils.writeBigInt(fdQAP, Fr.toObject(wXY_i[xi][yi]), n8r);
+            }
+        }
+        await binFileUtils.endWriteSection(fdQAP);
+        console.log(`checkpoint derive-${i} of ${m}`);
+    }
+    await fdQAP.close();
+
+    end(startTime);
 }
 
 async function builder(code, options) {
@@ -2520,9 +2690,15 @@ async function generateWitness(circuitName){
     along with snarkJS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-async function groth16Prove$1(cRSName, proofName, circuitName, entropy) {
+async function groth16Prove$1(cRSName, proofName, QAPName, circuitName, entropy) {
+    const startTime = start();
+    let interTime;
+
     const dirPath = `resource/circuits/${circuitName}`;
+    const TESTFLAG = false;
     const CRS = 1;
+
+    console.log(`TESTMODE = ${TESTFLAG}`);
 
     const {fd: fdRS, sections: sectionsRS} = await binFileUtils__namespace.readBinFile(`${dirPath}/${cRSName}.crs`, "zkey", 2, 1<<25, 1<<23);
     const fdIdV = await fastFile__namespace.readExisting(`${dirPath}/Set_I_V.bin`, 1<<25, 1<<23);
@@ -2564,96 +2740,41 @@ async function groth16Prove$1(cRSName, proofName, circuitName, entropy) {
     const buffG1 = curve.G1.oneAffine;
     const buffG2 = curve.G2.oneAffine;
     const n = urs.param.n;
+    const n8r = urs.param.n8r;
     const s_max = urs.param.s_max;
-    const s_D = urs.param.s_D;
-    const s_F = OpList.length;
-    const omega_x = await Fr.e(urs.param.omega_x);
-    const omega_y = await Fr.e(urs.param.omega_y);
+    urs.param.s_D;
+    OpList.length;
+    await Fr.e(urs.param.omega_x);
+    await Fr.e(urs.param.omega_y);
     
     const mPublic = crs.param.mPublic;
     const mPrivate = crs.param.mPrivate;
     const m = mPublic + mPrivate;
+
+    console.log(`n = ${n}`);
+    console.log(`s_max = ${s_max}`);
      
 
     if(!((mPublic == IdSetV.set.length) && (mPrivate == IdSetP.set.length)))
     {
         throw new Error(`Error in crs file: invalid crs parameters. mPublic: ${mPublic}, IdSetV: ${IdSetV.set.length}, mPrivate: ${mPrivate}, IdSetP: ${IdSetP.set.length},`)
     }
+    console.log(`checkpoint 1`);
 
     /// load subcircuit polynomials
-    const sR1cs = new Array(); 
-    for(var i=0; i<s_D; i++){
-        let r1csIdx = String(i);
-        const {fd: fdR1cs, sections: sectionsR1cs} = await binFileUtils__namespace.readBinFile('resource/subcircuits/r1cs/subcircuit'+r1csIdx+'.r1cs', "r1cs", 1, 1<<22, 1<<24);
-        sR1cs.push(await binFileUtils__namespace.readSection(fdR1cs, sectionsR1cs, 2));
-        await fdR1cs.close();
-    }
-    const {uX_ki: uX_ki, vX_ki: vX_ki, wX_ki: wX_ki, tXY: tXY, tX: tX, tY: tY} = await buildR1csPolys(urs.param, sR1cs);
+    // const sR1cs = new Array(); 
+    // for(var i=0; i<s_D; i++){
+    //     let r1csIdx = String(i);
+    //     const {fd: fdR1cs, sections: sectionsR1cs} = await binFileUtils.readBinFile('resource/subcircuits/r1cs/subcircuit'+r1csIdx+'.r1cs', "r1cs", 1, 1<<22, 1<<24);
+    //     sR1cs.push(await binFileUtils.readSection(fdR1cs, sectionsR1cs, 2));
+    //     await fdR1cs.close();
+    // }
+    // console.log(`checkpoint 0`)
     
+    // const {uX_ki: uX_ki, vX_ki: vX_ki, wX_ki: wX_ki, tX: tX, tY: tY} = await polyUtils.buildR1csPolys(urs.param, sR1cs, true);
+    // console.log(`checkpoint 1`)  
 
-    let fY_k = new Array(s_F);
-    const fY = Array.from(Array(1), () => new Array(s_max));
-    const Fr_s_max_inv = Fr.inv(Fr.e(s_max));
-    for (var k=0; k<s_F; k++){
-        let inv_omega_y_k = new Array(s_max);
-        inv_omega_y_k[0] = Fr.one;
-        for (i=1; i<s_max; i++){
-            inv_omega_y_k[i] = Fr.mul(inv_omega_y_k[i-1], await Fr.exp(Fr.inv(omega_y), k));
-        }
-        let LagY = await filterPoly(Fr, fY, inv_omega_y_k, 1);
-        fY_k[k] = await scalePoly(Fr, LagY, Fr_s_max_inv);
-    }
-    /// TEST CODE 1
-    {
-        console.log('Running Test 1');
-        const EVAL_k = 2;
-        const eval_point = await Fr.exp(omega_y, EVAL_k);
-        for (var k=0; k<s_F; k++){
-            let flag = await evalPoly(Fr, fY_k[k], Fr.one, eval_point);
-            if ( !( (k == EVAL_k && Fr.eq(flag, Fr.one)) || (k != EVAL_k && Fr.eq(flag, Fr.zero)) ) ){
-                throw new Error('Error in fY_k');
-            }
-        }
-        console.log(`Test 1 finished`);
-    }
-    let uXY_i = new Array(m);
-    let vXY_i = new Array(m);
-    let wXY_i = new Array(m);
-    let InitPoly = Array.from(Array(n), () => new Array(s_max));
-    InitPoly = await scalePoly(Fr, InitPoly, Fr.zero);
-    for (var i = 0; i<m; i++){
-        uXY_i[i] = InitPoly;
-        vXY_i[i] = InitPoly;
-        wXY_i[i] = InitPoly;
-    }
-    for(var i=0; i<m; i++){
-        let arrayIdx;
-        let PreImgSet;
-        if(IdSetV.set.indexOf(i) > -1){
-            arrayIdx = IdSetV.set.indexOf(i);
-            PreImgSet = IdSetV.PreImgs[arrayIdx];
-        } else {
-            arrayIdx = IdSetP.set.indexOf(i);
-            PreImgSet = IdSetP.PreImgs[arrayIdx];
-        }
-        let PreImgSize = PreImgSet.length;
-        for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
-            let kPrime = PreImgSet[PreImgIdx][0];
-            let iPrime = PreImgSet[PreImgIdx][1];
-            let s_kPrime = OpList[kPrime];
-
-            let u_term = await mulPoly(Fr, uX_ki[s_kPrime][iPrime], fY_k[kPrime]);
-            uXY_i[i] = await addPoly(Fr, uXY_i[i], u_term);
-
-            let v_term = await mulPoly(Fr, vX_ki[s_kPrime][iPrime], fY_k[kPrime]);
-            vXY_i[i] = await addPoly(Fr, vXY_i[i], v_term);
-
-            let w_term = await mulPoly(Fr, wX_ki[s_kPrime][iPrime], fY_k[kPrime]);
-            wXY_i[i] = await addPoly(Fr, wXY_i[i], w_term);
-        }
-    }
-
-
+    
     // generate witness for each subcircuit
     await generateWitness(circuitName);
     const wtns = [];
@@ -2668,70 +2789,7 @@ async function groth16Prove$1(cRSName, proofName, circuitName, entropy) {
     }
 
     /// TEST CODE 2
-    {   
-        console.log(`Running test 2`);
-        const sR1cs = new Array();
-        for(var k=0; k<s_D; k++){
-            const {fd: fdR1cs, sections: sectionsR1cs} = await binFileUtils__namespace.readBinFile(`resource/subcircuits/r1cs/subcircuit${k}.r1cs`, "r1cs", 1, 1<<22, 1<<24);
-            sR1cs.push(await binFileUtils__namespace.readSection(fdR1cs, sectionsR1cs, 2));
-            await fdR1cs.close();
-        }
-        for(var k=0; k<OpList.length; k++){
-            const kPrime = OpList[k];
-            let processResults_k;
-            processResults_k = await processConstraints(curve, ParamR1cs[kPrime].nConstraints, sR1cs[kPrime]); // to fill U, V, W
-            let U = processResults_k.U;
-            let Uid = processResults_k.Uid;
-            let V = processResults_k.V;
-            let Vid = processResults_k.Vid;
-            let W = processResults_k.W;
-            let Wid = processResults_k.Wid;
-            const wtns_k = wtns[k];
-
-            let U_ids;
-            let U_coefs;
-            let V_ids;
-            let V_coefs;
-            let W_ids;
-            let W_coefs;
-
-            for(var i=0; i<ParamR1cs[kPrime].nConstraints; i++){
-                U_ids=Uid[i];
-                U_coefs=U[i];
-                V_ids=Vid[i];
-                V_coefs=V[i];
-                W_ids=Wid[i];
-                W_coefs=W[i];
-
-                let constraintU = Fr.e(0);
-                for(var j=0; j<U_ids.length; j++){
-                    let term = Fr.mul(U_coefs[j], Fr.e(wtns_k[U_ids[j]]));
-                    constraintU = Fr.add(constraintU, term);
-                }
-                let constraintV = Fr.e(0);
-                for(var j=0; j<V_ids.length; j++){
-                    let term = Fr.mul(V_coefs[j], Fr.e(wtns_k[V_ids[j]]));
-                    constraintV = Fr.add(constraintV, term);
-                }
-                let constraintW = Fr.mul(constraintU, constraintV);
-                for(var j=0; j<W_ids.length; j++){
-                    let term = Fr.mul(W_coefs[j], Fr.e(wtns_k[W_ids[j]]));
-                    constraintW = Fr.sub(constraintW, term);
-                }
-                if(!Fr.eq(constraintW, Fr.e(0))){
-                    console.log(`U_ids: ${U_ids}`);
-                    console.log(`U_coefs: ${U_coefs}`);
-                    console.log(`V_ids: ${V_ids}`);
-                    console.log(`V_coefs: ${V_coefs}`);
-                    console.log(`W_ids: ${W_ids}`);
-                    console.log(`W_coefs: ${W_coefs}`);
-                    console.log(`wtns_k: ${wtns_k}`);
-                    throw new Error(`assertion not passed at k: ${k}, i: ${i}, constraint: ${Fr.toObject(constraintW)}`)
-                }
-            }
-        }
-        console.log(`Test 2 finished`);
-    }
+    var k, i, j; 
     /// END of TEST CODE 2
 
     /// arrange circuit witness
@@ -2741,54 +2799,68 @@ async function groth16Prove$1(cRSName, proofName, circuitName, entropy) {
         const idx = WireList[i][1];
         cWtns[i] = Fr.e(wtns[kPrime][idx]);
     }
-    /// compute p(X,Y)
-    let p1XY = Array.from(Array(n), () => new Array(s_max));
-    p1XY = await scalePoly(Fr, p1XY, Fr.zero);
-    let p2XY = p1XY;
-    let p3XY = p1XY;
+    console.log(`checkpoint 2`);
 
-    for (var i=0; i<m; i++){
-        let term1 = await scalePoly(Fr, uXY_i[i], cWtns[i]);
-        let term2 = await scalePoly(Fr, vXY_i[i], cWtns[i]);
-        let term3 = await scalePoly(Fr, wXY_i[i], cWtns[i]);
+    let tX = Array.from(Array(n+1), () => new Array(1));
+    let tY = Array.from(Array(1), () => new Array(s_max+1));
+    tX = await scalePoly(Fr, tX, Fr.zero);
+    tY = await scalePoly(Fr, tY, Fr.zero);
+    tX[0][0] = Fr.negone;
+    tX[n][0] = Fr.one;
+    tY[0][0] = Fr.negone;
+    tY[0][s_max] = Fr.one;
+    // t(X,Y) = (X^n-1) * (X^s_max-1) = PI(X-omega_x^i) for i=0,...,n * PI(Y-omega_y^j) for j =0,...,s_max
+    // P(X,Y) = (SUM c_i*u_i(X,Y))*(SUM c_i*v_i(X,Y)) - (SUM c_i*w_i(X,Y)) = 0 at X=omega_x^i, Y=omega_y^j
+    // <=> P(X,Y) has zeros at least the points omega_x^i and omega_y^j
+    // <=> there exists h(X,Y) such that p(X,Y) = t(X,Y) * h(X,Y)
+    // <=> finding h(X,Y) is the goal of Prove algorithm
+
+
+    /// TEST CODE 1
+    var k; 
+    /// End of TEST CODE 1  
+    console.log(`checkpoint 3`); 
+    
+    /// compute p(X,Y)
+    const {fd: fdQAP, sections: sectionsQAP}  = await binFileUtils__namespace.readBinFile(`resource/circuits/${circuitName}/circuitQAP.qap`, "qapp", 1, 1<<22, 1<<24);
+    let InitPoly = Array.from(Array(n), () => new Array(s_max));
+    InitPoly = await scalePoly(Fr, InitPoly, Fr.zero);
+    let p1XY = InitPoly;
+    let p2XY = InitPoly;
+    let p3XY = InitPoly;
+    for(var i=0; i<m; i++){
+        let interTime = start();
+        const {uXY_i, vXY_i, wXY_i} = await readCircuitQAP_i(Fr, fdQAP, sectionsQAP, i, n, s_max, n8r);
+        interTime = check(interTime);
+        let term1 = await scalePoly(Fr, uXY_i, cWtns[i]);
+        interTime = check(interTime);
         p1XY = await addPoly(Fr, p1XY, term1);
+        end(interTime);
+        let term2 = await scalePoly(Fr, vXY_i, cWtns[i]);
         p2XY = await addPoly(Fr, p2XY, term2);
+        let term3 = await scalePoly(Fr, wXY_i, cWtns[i]);
         p3XY = await addPoly(Fr, p3XY, term3);
+        console.log(`checkpoint 3-${i} of ${m}`);
     }
+    await fdQAP.close();
 
     const temp = await mulPoly(Fr, p1XY, p2XY);
     const pXY = await addPoly(Fr, temp, p3XY, true);
-
-
-    /// TEST CODE 3
-    {
-        console.log('Running Test 3');
-        for (var i=0; i<n; i++){
-            for (var j=0; j<s_max; j++){
-                const eval_point_X = await Fr.exp(omega_x, i);
-                const eval_point_Y = await Fr.exp(omega_y, j);
-                const flag = await evalPoly(Fr, pXY, eval_point_X, eval_point_Y);
-                if( !Fr.eq(flag, Fr.zero) ){
-                    throw new Error('Error in pXY');
-                }
-            }
-        }
-        console.log(`Test 3 finished`);
-    }
-    /// End of TEST CODE 3   
+    console.log(`checkpoint 4`);
     
     /// compute H
+    interTime = start();
     const {res: h1XY, finalrem: rem1} =  await divPoly(Fr, pXY, tX);
+    interTime = check(interTime);
+    console.log(`checkpoint 4-1`);
     const {res: h2XY, finalrem: rem2} =  await divPoly(Fr, rem1, tY);
+    end(interTime);
 
-    console.log(`rem2: ${_transToObject(Fr, rem2)}`);
-    const {x_order: h1_x_order, y_order: h1_y_order} = _orderPoly(Fr, h1XY);
-    const {x_order: h2_x_order, y_order: h2_y_order} = _orderPoly(Fr, h2XY);
-    console.log(`h1_x_order: ${h1_x_order}, h1_y_order: ${h1_y_order}`);
-    console.log(`h2_x_order: ${h2_x_order}, h2_y_order: ${h2_y_order}`);
-    console.log(`n: ${n}, s_max: ${s_max}`);
+    console.log(`checkpoint 5`);
 
-
+        /// TEST CODE 3
+        var i, j;        
+        /// End of TEST CODE 3   
 
     // Generate r and s
     const rawr = await getRandomRng(entropy);
@@ -2827,7 +2899,7 @@ async function groth16Prove$1(cRSName, proofName, circuitName, entropy) {
     const vk2_B = await G2.add(await G2.add(vk2_B_p1, vk2_B_p2), vk2_B_p3);
 
     // Compute proof C_G
-    let vk1_C_p = new Array(5);
+    let vk1_C_p = new Array(6);
     vk1_C_p[0] = await G1.timesFr(buffG1, Fr.e(0));
     for(var i=0; i<mPrivate; i++){
         let term = await G1.timesFr(crs.vk1_axy_i[i], cWtns[IdSetP.set[i]]);
@@ -2835,18 +2907,35 @@ async function groth16Prove$1(cRSName, proofName, circuitName, entropy) {
     }
     vk1_C_p[1] = await G1.timesFr(buffG1, Fr.e(0));
     for(var i=0; i<n-1; i++){
-        for(var j=0; j<s_max-1; j++){
-            let term = G1.timesFr(urs.sigma_G.vk1_xy_pows_tg[i][j], hXY[i][j]);
+        for(var j=0; j<2*s_max-1; j++){
+            let term = G1.timesFr(urs.sigma_G.vk1_xy_pows_t1g[i][j], h1XY[i][j]);
             vk1_C_p[1] = G1.add(vk1_C_p[1], term);
         }
     }
-    vk1_C_p[2] = await G1.timesFr(vk1_A, s);
-    vk1_C_p[3] = await G1.timesFr(vk1_B, r);
-    vk1_C_p[4] = await G1.timesFr(urs.sigma_G.vk1_gamma_a, Fr.mul(r,s));
+    vk1_C_p[2] = await G1.timesFr(buffG1, Fr.e(0));
+    for(var i=0; i<n; i++){
+        for(var j=0; j<s_max-1; j++){
+            let term = G1.timesFr(urs.sigma_G.vk1_xy_pows_t2g[i][j], h2XY[i][j]);
+            vk1_C_p[2] = G1.add(vk1_C_p[2], term);
+        }
+    }
+    vk1_C_p[3] = await G1.timesFr(vk1_A, s);
+    vk1_C_p[4] = await G1.timesFr(vk1_B, r);
+    vk1_C_p[5] = await G1.timesFr(urs.sigma_G.vk1_gamma_a, Fr.neg(Fr.mul(r,s)));
     let vk1_C = vk1_C_p[0];
-    for(var i=1; i<5; i++){
+    for(var i=1; i<6; i++){
         vk1_C = await G1.add(vk1_C, vk1_C_p[i]);
     }
+
+    console.log(`checkpoint 6`);
+
+    /// TEST CODE 4
+    var i; 
+    /// End of TEST CODE 4
+
+    /// TEST CODE 5
+    var i; 
+    /// END of TEST CODE 5
 
     // Write Header
     ///////////
@@ -2863,6 +2952,8 @@ async function groth16Prove$1(cRSName, proofName, circuitName, entropy) {
     await binFileUtils__namespace.endWriteSection(fdPrf);
 
     await fdPrf.close();
+
+    end(startTime);
 }
 
 /*
@@ -2885,6 +2976,9 @@ async function groth16Prove$1(cRSName, proofName, circuitName, entropy) {
 */
 
 async function groth16Verify$1(proofName, cRSName, circuitName) {
+    const startTime = start();
+    const ID_KECCAK = 5;
+    
     const dirPath = `resource/circuits/${circuitName}`;
     const CRS = 1;
 
@@ -2945,19 +3039,40 @@ async function groth16Verify$1(proofName, cRSName, circuitName) {
         throw new Error(`Error in crs file: invalid crs parameters. mPublic: ${mPublic}, IdSetV: ${IdSetV.set.length}, mPrivate: ${mPrivate}, IdSetP: ${IdSetP.set.length},`)
     }
 
+    /// list keccak instances
+    const keccakList = [];
+    for (var k=0; k<OpList.length; k++){
+        let kPrime = OpList[k];
+        if (kPrime == ID_KECCAK){
+            keccakList.push(k);
+        }
+    }
+
     /// generate instance for each subcircuit
+    const hex_keccakInstance = [];
     let subInstance = new Array(OpList.length);
     await OpList.forEach((kPrime, index) => {
 		const inputs = JSON.parse(fs.readFileSync(`${dirPath}/instance/Input_opcode${index}.json`, "utf8"));
         const outputs = JSON.parse(fs.readFileSync(`${dirPath}/instance/Output_opcode${index}.json`, "utf8"));
         const instance_k_hex = [];
         for(var i=0; i<NConstWires; i++){
-            instance_k_hex.push(1);
+            instance_k_hex.push('0x01');
         }
-        instance_k_hex.push(...outputs.out);
+        if (keccakList.indexOf(kPrime)>-1){
+            instance_k_hex.push('0x01');
+        } else {
+            instance_k_hex.push(...outputs.out);
+        }
         instance_k_hex.push(...inputs.in);
         if(instance_k_hex.length != ParamR1cs[kPrime].mPublic+NConstWires){
             throw new Error(`Error in loading subinstances: wrong instance size`)
+        }
+        if (keccakList.indexOf(kPrime)>-1){
+            let keccakItems = [];
+            keccakItems.push('0x01');
+            keccakItems.push(...outputs.out);
+            keccakItems.push(...inputs.in);
+            hex_keccakInstance.push(keccakItems);
         }
         let instance_k = new Array(ParamR1cs[kPrime].mPublic+NConstWires);
         for(var i=0; i<instance_k.length; i++){
@@ -2974,20 +3089,15 @@ async function groth16Verify$1(proofName, cRSName, circuitName) {
         if(iPrime<NConstWires || iPrime>=NConstWires+ParamR1cs[kPrime].mPublic){
             throw new Error(`Error in arranging circuit instance: containing a private wire`);
         }
+        // if(iPrime<NConstWires || iPrime>=NConstWires+NOutputWires){
+        //     throw new Error(`Error in arranging circuit instance: containing an input wire`);
+        // }
         cInstance[i] = subInstance[kPrime][iPrime];
     }
     if (cInstance.length != mPublic){
         throw new Error('Error in arranging circuit instance: wrong instance size');
     }
    
-    /// Compute term D
-
-    let vk1_D;
-    vk1_D = await G1.timesFr(buffG1, Fr.e(0));
-    for(var i=0; i<mPublic; i++){
-        let term = await G1.timesFr(crs.vk1_zxy_i[i], Fr.e(cInstance[i]));
-        vk1_D = await G1.add(vk1_D, term);
-    }
     
     /// read proof
     await binFileUtils__namespace.startReadUniqueSection(fdPrf, sectionsPrf, 2);
@@ -2997,12 +3107,315 @@ async function groth16Verify$1(proofName, cRSName, circuitName) {
     await binFileUtils__namespace.endReadSection(fdPrf);
     await fdPrf.close();
 
+    /// Compute term D
+    let vk1_D;
+    vk1_D = await G1.timesFr(buffG1, Fr.e(0));
+    for(var i=0; i<mPublic; i++){
+        let term = await G1.timesFr(crs.vk1_zxy_i[i], Fr.e(cInstance[i]));
+        vk1_D = await G1.add(vk1_D, term);
+    }
+    
     /// Verify
     const res = await curve.pairingEq(urs.sigma_G.vk1_alpha_v, urs.sigma_H.vk2_alpha_u,
         vk1_D, urs.sigma_H.vk2_gamma_z,
         vk1_C, urs.sigma_H.vk2_gamma_a,
         vk1_A,  await G2.neg(vk2_B));
-    console.log(`Verify result = ${res}`);
+    console.log(`Circuit verification result = ${res}`);
+
+    const { keccak256 } = hash__default["default"];
+    let res2 = true;
+    for (var i=0; i<keccakList.length; i++){
+        // keccak has two inputs and one output
+        const hex_expected = hex_keccakInstance[i][1].slice(2);
+        let hex_inputs=[];
+        hex_inputs[0] = hex_keccakInstance[i][2].slice(2);
+        hex_inputs[1] = hex_keccakInstance[i][3].slice(2);
+        const con_hex_in = hex_inputs[0] + hex_inputs[1];
+        const string_input = hexToString(con_hex_in);
+        
+        const hex_hashout = keccak256(string_input);
+        res2 = res2 && (hex_expected == hex_hashout);
+    }
+    if (keccakList.length>0){
+        console.log(`Keccak verification result = ${res2}`);
+    }
+
+    end(startTime);
+
+    function hexToString(hex) {
+        if (!hex.match(/^[0-9a-fA-F]+$/)) {
+          throw new Error('is not a hex string.');
+        }
+        if (hex.length % 2 !== 0) {
+          hex = '0' + hex;
+        }
+        var bytes = [];
+        for (var n = 0; n < hex.length; n += 2) {
+          var code = parseInt(hex.substr(n, 2), 16);
+          bytes.push(code);
+        }
+        return bytes;
+      }
+}
+
+chai__default["default"].assert;
+
+
+async function uni_buildQAP(curveName, s_D, min_s_max) {
+    const startTime = start();
+    const r1cs = new Array();
+    const sR1cs = new Array();
+    
+    fs.mkdir(path__default["default"].join(`resource/subcircuits`, `QAP_${s_D}_${min_s_max}`), (err) => {});
+    const dirPath = `resource/subcircuits/QAP_${s_D}_${min_s_max}`;
+
+    for(var i=0; i<s_D; i++){
+        let r1csIdx = String(i);
+        const {fd: fdR1cs, sections: sectionsR1cs} = await binFileUtils.readBinFile('resource/subcircuits/r1cs/subcircuit'+r1csIdx+'.r1cs', "r1cs", 2, 1<<22, 1<<24);
+        r1cs.push(await r1csfile.readR1csHeader(fdR1cs, sectionsR1cs, false));
+        sR1cs.push(await binFileUtils.readSection(fdR1cs, sectionsR1cs, 2));
+        await fdR1cs.close();
+    }
+    const fdRS = await binFileUtils.createBinFile(`resource/subcircuits/param_${s_D}_${min_s_max}.dat`, "zkey", 1, 2, 1<<22, 1<<24);
+        
+    console.log('checkpoint0');
+ 
+    const curve = await getCurveFromName(curveName);
+    const Fr = curve.Fr;
+    
+    if (r1cs[0].prime != curve.r) {
+        console.log('checkpoint1');
+        console.log("r1cs_prime: ", r1cs[0].prime);
+        console.log("curve_r: ", curve.r);
+        throw new Error("r1cs curve does not match powers of tau ceremony curve")
+        //return -1
+    }
+
+    // Write Header
+    ///////////
+    await binFileUtils.startWriteSection(fdRS, 1);
+    await fdRS.writeULE32(1); // Groth
+    await binFileUtils.endWriteSection(fdRS);
+    // End of the Header
+    console.log(`checkpoint3`);
+
+    // Write parameters section
+    ///////////
+    await binFileUtils.startWriteSection(fdRS, 2);
+    const primeQ = curve.q;
+    const n8q = (Math.floor( (ffjavascript.Scalar.bitLength(primeQ) - 1) / 64) +1)*8;
+    console.log(`checkpoint4`);
+
+    // Group parameters
+    const primeR = curve.r;
+    const n8r = (Math.floor( (ffjavascript.Scalar.bitLength(primeR) - 1) / 64) +1)*8;
+
+    await fdRS.writeULE32(n8q);                   // byte length of primeQ
+    await binFileUtils.writeBigInt(fdRS, primeQ, n8q);
+    await fdRS.writeULE32(n8r);                   // byte length of primeR
+    await binFileUtils.writeBigInt(fdRS, primeR, n8r);
+
+    // Instruction set constants
+    await fdRS.writeULE32(s_D);
+    const m = new Array();          // the numbers of wires
+    const mPublic = new Array();    // the numbers of public wires (not including constant wire at zero index)
+    const mPrivate = new Array();
+    const nConstraints = new Array();
+    for(var i=0; i<s_D; i++){
+        m.push(r1cs[i].nVars);
+        nConstraints.push(r1cs[i].nConstraints);
+        mPublic.push(r1cs[i].nOutputs + r1cs[i].nPubInputs + r1cs[i].nPrvInputs); 
+        mPrivate.push(m[i] - mPublic[i]);
+        await fdRS.writeULE32(m[i]);
+        await fdRS.writeULE32(mPublic[i]);
+        await fdRS.writeULE32(nConstraints[i]);
+    }
+
+    // QAP constants
+    mPublic.reduce((accu,curr) => accu + curr);
+    mPrivate.reduce((accu,curr) => accu + curr);
+    //let n = Math.max(Math.ceil(NEqs/3), Math.max(...nConstraints));
+    let n = Math.max(...nConstraints);
+    console.log(`n_min: ${n}`);
+    
+    const expon = Math.ceil(Math.log2(n));
+    n = 2**expon;
+
+    const omega_x = await Fr.exp(Fr.w[Fr.s], ffjavascript.Scalar.exp(2, Fr.s-expon));
+    //console.log(Fr.toObject(omega_x))
+    //console.log(Fr.toObject(await Fr.exp(omega_x, n)))
+    
+    let expos = Math.ceil(Math.log2(min_s_max));
+    const s_max = 2**expos;
+    console.log(`n: ${n}, s_max: ${s_max}`);
+    const omega_y = await Fr.exp(Fr.w[Fr.s], ffjavascript.Scalar.exp(2, Fr.s-expos));
+    // End of test code 1 //
+
+    await fdRS.writeULE32(n);                       // the maximum number of gates in each subcircuit: n>=NEqs/3 and n|(r-1)
+    await fdRS.writeULE32(s_max);                  // the maximum number of subcircuits in a p-code: s_max>min_s_max and s_max|(r-1)
+    await binFileUtils.writeBigInt(fdRS, Fr.toObject(omega_x), n8r);                    // Generator for evaluation points on X
+    await binFileUtils.writeBigInt(fdRS, Fr.toObject(omega_y), n8r);             // Generator for evaluation points on Y
+    console.log(`checkpoint5`);
+    // End of test code 2 //
+
+    await binFileUtils.endWriteSection(fdRS);
+    /// End of parameters section
+
+    await fdRS.close();
+
+    const rs={};
+    rs.curve = curve;
+    rs.n = n;
+    rs.s_max = s_max;
+    rs.omega_x = omega_x;
+    rs.omega_y = omega_y;
+    const Lagrange_basis = await buildCommonPolys(rs, true);
+
+    for (var k=0; k<s_D; k++){
+        console.log(`k: ${k}`);
+        let {uX_i: uX_i, vX_i: vX_i, wX_i: wX_i} = await buildR1csPolys(curve, Lagrange_basis, r1cs[k], sR1cs[k], true);
+        let fdQAP = await binFileUtils.createBinFile(`${dirPath}/subcircuit${k}.qap`, "qapp", 1, 2, 1<<22, 1<<24);
+        
+        await binFileUtils.startWriteSection(fdQAP, 1);
+        await fdQAP.writeULE32(1); // Groth
+        await binFileUtils.endWriteSection(fdQAP);
+
+        await binFileUtils.startWriteSection(fdQAP, 2);
+        for (var i=0; i<m[k]; i++){
+            for (var xi=0; xi<n; xi++){
+                if (typeof uX_i[i][xi][0] != "bigint"){
+                    throw new Error(`Error in coefficient type of uX_i at k: ${k}, i: ${i}`);
+                }
+                await binFileUtils.writeBigInt(fdQAP, uX_i[i][xi][0], n8r);
+            }
+        }
+        for (var i=0; i<m[k]; i++){
+            for (var xi=0; xi<n; xi++){
+                if (typeof vX_i[i][xi][0] != "bigint"){
+                    throw new Error(`Error in coefficient type of vX_i at k: ${k}, i: ${i}`);
+                }
+                await binFileUtils.writeBigInt(fdQAP, vX_i[i][xi][0], n8r);
+            }
+        }
+        for (var i=0; i<m[k]; i++){
+            for (var xi=0; xi<n; xi++){
+                if (typeof wX_i[i][xi][0] != "bigint"){
+                    throw new Error(`Error in coefficient type of wX_i at k: ${k}, i: ${i}`);
+                }
+                await binFileUtils.writeBigInt(fdQAP, wX_i[i][xi][0], n8r);
+            }
+        }
+        await binFileUtils.endWriteSection(fdQAP);
+        await fdQAP.close();
+    }
+
+    end(startTime);
+
+
+}
+
+chai__default["default"].assert;
+
+
+
+async function uni_buildQAP_single(paramName, id) {
+    
+    const QAPName_suffix = paramName.slice(5);
+    const QAPName = `QAP${QAPName_suffix}`;
+    fs.mkdir(path__default["default"].join(`resource/subcircuits`, QAPName), (err) => {});
+    const dirPath = `resource/subcircuits/` + QAPName;
+
+    const {fd: fdParam, sections: sectionsParam} = await binFileUtils.readBinFile(`resource/subcircuits/${paramName}.dat`, "zkey", 2, 1<<25, 1<<23);
+    const param = await readRSParams(fdParam, sectionsParam);
+    await fdParam.close();
+
+    let r1csIdx = String(id);
+    const {fd: fdR1cs, sections: sectionsR1cs} = await binFileUtils.readBinFile('resource/subcircuits/r1cs/subcircuit'+r1csIdx+'.r1cs', "r1cs", 2, 1<<22, 1<<24);
+    const sR1cs_k = await binFileUtils.readSection(fdR1cs, sectionsR1cs, 2);
+    await fdR1cs.close();
+        
+    console.log('checkpoint0');
+ 
+    const curve = param.curve;
+    curve.Fr;
+    const r1cs_k = param.r1cs[id];
+    if (r1cs_k === undefined){
+        throw new Error(`Parameters in ${paramName}.dat do not support Subcircuit${id}.`)
+    }
+
+    // Write parameters section
+    ///////////
+    console.log(`checkpoint4`);
+
+    // Group parameters
+    const primeR = curve.r;
+    const n8r = (Math.floor( (ffjavascript.Scalar.bitLength(primeR) - 1) / 64) +1)*8;
+    
+    const m_k = r1cs_k.m;
+
+    // QAP constants
+    const n = param.n;
+    
+    const omega_x = param.omega_x;
+    //console.log(Fr.toObject(omega_x))
+    //console.log(Fr.toObject(await Fr.exp(omega_x, n)))
+    
+    const s_max = param.s_max;
+    const omega_y = param.s_max;
+    // End of test code 1 //
+
+    
+    console.log(`checkpoint5`);
+    // End of test code 2 //
+
+    /// End of parameters section
+
+    const rs={};
+    rs.curve = curve;
+    rs.n = n;
+    rs.s_max = s_max;
+    rs.omega_x = omega_x;
+    rs.omega_y = omega_y;
+    const Lagrange_basis = await buildCommonPolys(rs, true);
+
+    console.log(`k: ${id}`);
+    let {uX_i: uX_i, vX_i: vX_i, wX_i: wX_i} = await buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, true);
+    let fdQAP = await binFileUtils.createBinFile(`${dirPath}/subcircuit${id}.qap`, "qapp", 1, 2, 1<<22, 1<<24);
+    
+    await binFileUtils.startWriteSection(fdQAP, 1);
+    await fdQAP.writeULE32(1); // Groth
+    await binFileUtils.endWriteSection(fdQAP);
+
+    await binFileUtils.startWriteSection(fdQAP, 2);
+    for (var i=0; i<m_k; i++){
+        for (var xi=0; xi<n; xi++){
+            if (typeof uX_i[i][xi][0] != "bigint"){
+                throw new Error(`Error in coefficient type of uX_i at k: ${id}, i: ${i}`);
+            }
+            await binFileUtils.writeBigInt(fdQAP, uX_i[i][xi][0], n8r);
+        }
+    }
+    for (var i=0; i<m_k; i++){
+        for (var xi=0; xi<n; xi++){
+            if (typeof vX_i[i][xi][0] != "bigint"){
+                throw new Error(`Error in coefficient type of vX_i at k: ${id}, i: ${i}`);
+            }
+            await binFileUtils.writeBigInt(fdQAP, vX_i[i][xi][0], n8r);
+        }
+    }
+    for (var i=0; i<m_k; i++){
+        for (var xi=0; xi<n; xi++){
+            if (typeof wX_i[i][xi][0] != "bigint"){
+                throw new Error(`Error in coefficient type of wX_i at k: ${id}, i: ${i}`);
+            }
+            await binFileUtils.writeBigInt(fdQAP, wX_i[i][xi][0], n8r);
+        }
+    }
+    await binFileUtils.endWriteSection(fdQAP);
+    await fdQAP.close();
+
+
+
 }
 
 /* eslint-disable no-console */
@@ -3011,19 +3424,19 @@ Logger__default["default"].setLogLevel("INFO");
 
 const commands = [
     {
-        cmd: "setup [curveName] [s_D] [min_s_max] [r1csName] [RSName] [entropy]",
+        cmd: "setup [paramName] [RSName] [entropy]",
         description: "setup phase",
         alias: ["st"],
         action: uniSetup
     },
     {
-        cmd: "derive [RSName] [cRSName] [circuitName]",
+        cmd: "derive [RSName] [cRSName] [circuitName] [QAPName]",
         description: "derive phase",
         alias: ["dr"],
         action: uniDerive
     },
     {
-        cmd: "prove [cRSName] [proofName] [circuitName] [entropy]",
+        cmd: "prove [cRSName] [proofName] [QAPName] [circuitName] [entropy]",
         description: "prove phase",
         alias: ["dr"],
         action: groth16Prove
@@ -3033,6 +3446,18 @@ const commands = [
         description: "verify phase",
         alias: ["dr"],
         action: groth16Verify
+    },
+    {
+        cmd: "QAP_all [curveName] [s_D] [min_s_max]",
+        description: "prephase",
+        alias: ["dr"],
+        action: uniBuildQAP
+    },
+    {
+        cmd: "QAP_single [paramName] [id]",
+        description: "prephase",
+        alias: ["dr"],
+        action: uniBuildQAP_single
     }
 ];
 
@@ -3046,33 +3471,32 @@ clProcessor(commands).then( (res) => {
 
 // setup [curveName], [s_D], [min_s_max], [r1csName], [RSName], [entropy]
 async function uniSetup(params) {
-    const curveName = params[0];
-    const s_D = params[1];
-    const min_x_max = params[2];
-    const r1csName = params[3];
-    const RSName = params[4];
-    const entropy = params[5];
+    const paramName = params[0];
+    const RSName = params[1];
+    const entropy = params[2];
 
     // console.log(curveName, s_D, min_x_max, r1csName, RSName, entropy)
-    return uni_Setup(curveName, s_D, min_x_max, r1csName, RSName, entropy);
+    return uni_Setup(paramName, RSName, entropy);
 }
-// derive [RSName] [cRSName] [circuitName]
+// derive [RSName] [cRSName] [circuitName] [QAPName]
 async function uniDerive(params) {
     const RSName = params[0];
     const cRSName = params[1];
     const circuitName = params[2];
+    const QAPName = params[3];
 
     // console.log(RSName, cRSName, IndSetVName, IndSetPName, OpListName)
-    return uniDerive$1(RSName, cRSName, circuitName);
+    return uniDerive$1(RSName, cRSName, circuitName, QAPName);
 }
 
 async function groth16Prove(params){
     const cRSName = params[0];
     const proofName = params[1];
-    const circuitName = params[2];
-    const entropy = params[3];
+    const QAPName = params[2];
+    const circuitName = params[3];
+    const entropy = params[4];
 
-    return groth16Prove$1(cRSName, proofName, circuitName, entropy)
+    return groth16Prove$1(cRSName, proofName, QAPName, circuitName, entropy)
 }
 
 async function groth16Verify(params){
@@ -3081,4 +3505,20 @@ async function groth16Verify(params){
     const circuitName = params[2];
 
     return groth16Verify$1(proofName, cRSName, circuitName)
+}
+
+async function uniBuildQAP(params){
+    const curveName = params[0];
+    const s_D = params[1];
+    const min_s_max = params[2];
+
+    return uni_buildQAP(curveName, s_D, min_s_max)
+}
+
+// QAP_single [paramName] [id]
+async function uniBuildQAP_single(params){
+    const paramName = params[0];
+    const id = params[1];
+
+    return uni_buildQAP_single(paramName, id)
 }

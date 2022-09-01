@@ -28,10 +28,16 @@ import { Scalar, utils, BigBuffer } from "ffjavascript";
 const {stringifyBigInts} = utils;
 import * as misc from './misc.js'
 import { readFileSync} from 'fs'
+import hash from 'js-sha3'
+import * as timer from "./timer.js"
 
 export default async function groth16Verify(proofName, cRSName, circuitName) {
+    const startTime = timer.start();
+    
+    const TESTFLAG = false;
+    const ID_KECCAK = 5;
+    
     const dirPath = `resource/circuits/${circuitName}`
-    const TESTFLAG = true;
     const CRS = 1;
 
     const {fd: fdRS, sections: sectionsRS} = await binFileUtils.readBinFile(`${dirPath}/${cRSName}.crs`, "zkey", 2, 1<<25, 1<<23);
@@ -84,6 +90,7 @@ export default async function groth16Verify(proofName, cRSName, circuitName) {
     const mPrivate = crs.param.mPrivate;
     const m = mPublic + mPrivate;
     const NConstWires = 1;
+    const NOutputWires = 1;
 
 
 
@@ -92,19 +99,40 @@ export default async function groth16Verify(proofName, cRSName, circuitName) {
         throw new Error(`Error in crs file: invalid crs parameters. mPublic: ${mPublic}, IdSetV: ${IdSetV.set.length}, mPrivate: ${mPrivate}, IdSetP: ${IdSetP.set.length},`)
     }
 
+    /// list keccak instances
+    const keccakList = [];
+    for (var k=0; k<OpList.length; k++){
+        let kPrime = OpList[k];
+        if (kPrime == ID_KECCAK){
+            keccakList.push(k);
+        }
+    }
+
     /// generate instance for each subcircuit
+    const hex_keccakInstance = [];
     let subInstance = new Array(OpList.length);
     await OpList.forEach((kPrime, index) => {
 		const inputs = JSON.parse(readFileSync(`${dirPath}/instance/Input_opcode${index}.json`, "utf8"))
         const outputs = JSON.parse(readFileSync(`${dirPath}/instance/Output_opcode${index}.json`, "utf8"))
         const instance_k_hex = [];
         for(var i=0; i<NConstWires; i++){
-            instance_k_hex.push(1);
+            instance_k_hex.push('0x01');
         }
-        instance_k_hex.push(...outputs.out);
+        if (keccakList.indexOf(kPrime)>-1){
+            instance_k_hex.push('0x01');
+        } else {
+            instance_k_hex.push(...outputs.out);
+        }
         instance_k_hex.push(...inputs.in);
         if(instance_k_hex.length != ParamR1cs[kPrime].mPublic+NConstWires){
             throw new Error(`Error in loading subinstances: wrong instance size`)
+        }
+        if (keccakList.indexOf(kPrime)>-1){
+            let keccakItems = [];
+            keccakItems.push('0x01');
+            keccakItems.push(...outputs.out);
+            keccakItems.push(...inputs.in);
+            hex_keccakInstance.push(keccakItems);
         }
         let instance_k = new Array(ParamR1cs[kPrime].mPublic+NConstWires);
         for(var i=0; i<instance_k.length; i++){
@@ -121,20 +149,15 @@ export default async function groth16Verify(proofName, cRSName, circuitName) {
         if(iPrime<NConstWires || iPrime>=NConstWires+ParamR1cs[kPrime].mPublic){
             throw new Error(`Error in arranging circuit instance: containing a private wire`);
         }
+        // if(iPrime<NConstWires || iPrime>=NConstWires+NOutputWires){
+        //     throw new Error(`Error in arranging circuit instance: containing an input wire`);
+        // }
         cInstance[i] = subInstance[kPrime][iPrime];
     }
     if (cInstance.length != mPublic){
         throw new Error('Error in arranging circuit instance: wrong instance size');
     }
    
-    /// Compute term D
-
-    let vk1_D
-    vk1_D = await G1.timesFr(buffG1, Fr.e(0));
-    for(var i=0; i<mPublic; i++){
-        let term = await G1.timesFr(crs.vk1_zxy_i[i], Fr.e(cInstance[i]));
-        vk1_D = await G1.add(vk1_D, term);
-    }
     
     /// read proof
     await binFileUtils.startReadUniqueSection(fdPrf, sectionsPrf, 2);
@@ -144,10 +167,53 @@ export default async function groth16Verify(proofName, cRSName, circuitName) {
     await binFileUtils.endReadSection(fdPrf);
     await fdPrf.close();
 
+    /// Compute term D
+    let vk1_D
+    vk1_D = await G1.timesFr(buffG1, Fr.e(0));
+    for(var i=0; i<mPublic; i++){
+        let term = await G1.timesFr(crs.vk1_zxy_i[i], Fr.e(cInstance[i]));
+        vk1_D = await G1.add(vk1_D, term);
+    }
+    
     /// Verify
     const res = await curve.pairingEq(urs.sigma_G.vk1_alpha_v, urs.sigma_H.vk2_alpha_u,
         vk1_D, urs.sigma_H.vk2_gamma_z,
         vk1_C, urs.sigma_H.vk2_gamma_a,
         vk1_A,  await G2.neg(vk2_B));
-    console.log(`Verify result = ${res}`);
+    console.log(`Circuit verification result = ${res}`);
+
+    const { keccak256 } = hash
+    let res2 = true;
+    for (var i=0; i<keccakList.length; i++){
+        // keccak has two inputs and one output
+        const hex_expected = hex_keccakInstance[i][1].slice(2);
+        let hex_inputs=[];
+        hex_inputs[0] = hex_keccakInstance[i][2].slice(2);
+        hex_inputs[1] = hex_keccakInstance[i][3].slice(2);
+        const con_hex_in = hex_inputs[0] + hex_inputs[1]
+        const string_input = hexToString(con_hex_in);
+        
+        const hex_hashout = keccak256(string_input);
+        res2 = res2 && (hex_expected == hex_hashout);
+    }
+    if (keccakList.length>0){
+        console.log(`Keccak verification result = ${res2}`);
+    }
+
+    timer.end(startTime);
+
+    function hexToString(hex) {
+        if (!hex.match(/^[0-9a-fA-F]+$/)) {
+          throw new Error('is not a hex string.');
+        }
+        if (hex.length % 2 !== 0) {
+          hex = '0' + hex;
+        }
+        var bytes = [];
+        for (var n = 0; n < hex.length; n += 2) {
+          var code = parseInt(hex.substr(n, 2), 16)
+          bytes.push(code);
+        }
+        return bytes;
+      }
 }

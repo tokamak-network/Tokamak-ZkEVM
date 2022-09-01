@@ -1,0 +1,13 @@
+{
+	"block.chainid": "0xd05",
+	"block.coinbase": "0x0000000000000000000000000000000000000000",
+	"block.difficulty": "70762765929000",
+	"block.gaslimit": 121670,
+	"block.number": 1,
+	"block.timestamp": 1661486394,
+	"msg.sender": "0x5B38Da6a701c568545dCfcB03FcB875f56beddC4",
+	"msg.sig": "0xfbb001d6",
+	"msg.value": "0 Wei",
+	"tx.origin": "0x5B38Da6a701c568545dCfcB03FcB875f56beddC4",
+	"block.basefee": "1 Wei (1)"
+}

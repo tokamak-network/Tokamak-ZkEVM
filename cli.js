@@ -8,19 +8,19 @@ Logger.setLogLevel("INFO");
 
 const commands = [
     {
-        cmd: "setup [curveName] [s_D] [min_s_max] [r1csName] [RSName] [entropy]",
+        cmd: "setup [paramName] [RSName] [entropy]",
         description: "setup phase",
         alias: ["st"],
         action: uniSetup
     },
     {
-        cmd: "derive [RSName] [cRSName] [circuitName]",
+        cmd: "derive [RSName] [cRSName] [circuitName] [QAPName]",
         description: "derive phase",
         alias: ["dr"],
         action: uniDerive
     },
     {
-        cmd: "prove [cRSName] [proofName] [circuitName] [entropy]",
+        cmd: "prove [cRSName] [proofName] [QAPName] [circuitName] [entropy]",
         description: "prove phase",
         alias: ["dr"],
         action: groth16Prove
@@ -30,6 +30,18 @@ const commands = [
         description: "verify phase",
         alias: ["dr"],
         action: groth16Verify
+    },
+    {
+        cmd: "QAP_all [curveName] [s_D] [min_s_max]",
+        description: "prephase",
+        alias: ["dr"],
+        action: uniBuildQAP
+    },
+    {
+        cmd: "QAP_single [paramName] [id]",
+        description: "prephase",
+        alias: ["dr"],
+        action: uniBuildQAP_single
     }
 ];
 
@@ -43,33 +55,32 @@ clProcessor(commands).then( (res) => {
 
 // setup [curveName], [s_D], [min_s_max], [r1csName], [RSName], [entropy]
 async function uniSetup(params) {
-    const curveName = params[0];
-    const s_D = params[1];
-    const min_x_max = params[2];
-    const r1csName = params[3];
-    const RSName = params[4];
-    const entropy = params[5];
+    const paramName = params[0];
+    const RSName = params[1];
+    const entropy = params[2];
 
     // console.log(curveName, s_D, min_x_max, r1csName, RSName, entropy)
-    return zkey.uniSetup(curveName, s_D, min_x_max, r1csName, RSName, entropy);
+    return zkey.uniSetup(paramName, RSName, entropy);
 }
-// derive [RSName] [cRSName] [circuitName]
+// derive [RSName] [cRSName] [circuitName] [QAPName]
 async function uniDerive(params) {
     const RSName = params[0];
     const cRSName = params[1];
     const circuitName = params[2];
+    const QAPName = params[3];
 
     // console.log(RSName, cRSName, IndSetVName, IndSetPName, OpListName)
-    return zkey.uniDerive(RSName, cRSName, circuitName);
+    return zkey.uniDerive(RSName, cRSName, circuitName, QAPName);
 }
 
 async function groth16Prove(params){
     const cRSName = params[0];
     const proofName = params[1];
-    const circuitName = params[2];
-    const entropy = params[3];
+    const QAPName = params[2];
+    const circuitName = params[3];
+    const entropy = params[4];
 
-    return zkey.groth16Prove(cRSName, proofName, circuitName, entropy)
+    return zkey.groth16Prove(cRSName, proofName, QAPName, circuitName, entropy)
 }
 
 async function groth16Verify(params){
@@ -78,5 +89,21 @@ async function groth16Verify(params){
     const circuitName = params[2];
 
     return zkey.groth16Verify(proofName, cRSName, circuitName)
+}
+
+async function uniBuildQAP(params){
+    const curveName = params[0];
+    const s_D = params[1];
+    const min_s_max = params[2];
+
+    return zkey.uniBuildQAP(curveName, s_D, min_s_max)
+}
+
+// QAP_single [paramName] [id]
+async function uniBuildQAP_single(params){
+    const paramName = params[0];
+    const id = params[1];
+
+    return zkey.uniBuildQAP_single(paramName, id)
 }
 

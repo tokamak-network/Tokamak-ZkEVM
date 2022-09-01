@@ -1,0 +1,45 @@
+{
+	"_balances": {
+		"value": {
+			"0000000000000000000000005b38da6a701c568545dcfcb03fcb875f56beddc4": {
+				"value": "999990",
+				"type": "uint128"
+			},
+			"000000000000000000000000ab8483f64d9c6d1ecf9b849ae677dd3315835cb2": {
+				"value": "10",
+				"type": "uint128"
+			}
+		},
+		"type": "mapping(address => uint128)",
+		"constant": false,
+		"immutable": false
+	},
+	"_allowances": {
+		"value": {},
+		"type": "mapping(address => mapping(address => uint128))",
+		"constant": false,
+		"immutable": false
+	},
+	"_totalSupply": {
+		"value": "1000000",
+		"type": "uint128",
+		"constant": false,
+		"immutable": false
+	},
+	"_name": {
+		"length": "0x6",
+		"raw": "0x646572697665",
+		"type": "string",
+		"value": "derive",
+		"constant": false,
+		"immutable": false
+	},
+	"_symbol": {
+		"length": "0x3",
+		"raw": "0x64746b",
+		"type": "string",
+		"value": "dtk",
+		"constant": false,
+		"immutable": false
+	}
+}

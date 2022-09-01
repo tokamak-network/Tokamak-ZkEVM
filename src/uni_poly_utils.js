@@ -1,16 +1,125 @@
 import {processConstraints} from "./uni_zkey_utils.js";
+import * as binFileUtils from "@iden3/binfileutils";
 
-export async function buildR1csPolys(rs, sR1cs){
+export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, flagMemorySave){
+    const Fr = curve.Fr;
+    const ParamR1cs = r1cs_k;
+    let flag_memory = true;
+    if ( (flagMemorySave === undefined) || (flagMemorySave == false) ){
+        flag_memory = false;
+    }
+
+    let U;
+    let Uid;
+    let V;
+    let Vid;
+    let W;
+    let Wid;
+
+    let constraints_k;
+
+    let U_ids;
+    let U_coefs;
+    let V_ids;
+    let V_coefs;
+    let W_ids;
+    let W_coefs;
+    let Lagrange_poly;
+
+    let m_k = ParamR1cs.nVars;
+    if (ParamR1cs.nVars === undefined){
+        m_k = ParamR1cs.m;
+    }
+    let n_k = ParamR1cs.nConstraints;
+
+    let uX_i = new Array(m_k);
+    let vX_i = new Array(m_k);
+    let wX_i = new Array(m_k);
+    console.log(`checkpoint 0-0`)
+    
+    constraints_k = await processConstraints(curve, n_k, sR1cs_k);
+    U = constraints_k.U
+    Uid = constraints_k.Uid
+    V = constraints_k.V
+    Vid = constraints_k.Vid
+    W = constraints_k.W
+    Wid = constraints_k.Wid
+
+    console.log(`checkpoint 0-1`)
+
+    for(var i=0; i<m_k; i++){
+        uX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        vX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        wX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        if (flag_memory){
+            uX_i[i] = _transToObject(Fr, uX_i[i]);
+            vX_i[i] = _transToObject(Fr, vX_i[i]);
+            wX_i[i] = _transToObject(Fr, wX_i[i]);
+        }
+    }
+    let item_i;
+    for(var i=0; i<ParamR1cs.nConstraints; i++){
+        U_ids = Uid[i];
+        U_coefs = U[i];
+        V_ids = Vid[i];
+        V_coefs = V[i];
+        W_ids = Wid[i];
+        W_coefs = W[i];
+        for(var j=0; j<U_ids.length; j++){
+            let U_idx=U_ids[j]
+            if(U_idx>=0){
+                Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], U_coefs[j]);
+                item_i = await addPoly(Fr, uX_i[U_idx], Lagrange_poly);
+                if (flag_memory){
+                    item_i = _transToObject(Fr, item_i);
+                }
+                uX_i[U_idx] = item_i;
+            }
+        }
+        for(var j=0; j<V_ids.length; j++){
+            let V_idx=V_ids[j]
+            if(V_idx>=0){
+                Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], V_coefs[j]);
+                item_i = await addPoly(Fr, vX_i[V_idx], Lagrange_poly);
+                if (flag_memory){
+                    item_i = _transToObject(Fr, item_i);
+                }
+                vX_i[V_idx] = item_i;
+            }
+        }
+        for(var j=0; j<W_ids.length; j++){
+            let W_idx=W_ids[j]
+            if(W_idx>=0){
+                Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], W_coefs[j]);
+                item_i = await addPoly(Fr, wX_i[W_idx], Lagrange_poly);
+                if (flag_memory){
+                    item_i = _transToObject(Fr, item_i);
+                }
+                wX_i[W_idx] = item_i;
+            }
+        }
+    }
+
+    console.log(`checkpoint 0-2`)
+
+    return {uX_i, vX_i, wX_i}
+    // uX_ki[k][i] = polynomial of the i-th wire in the k-th subcircuit.
+}
+
+export async function buildCommonPolys(rs, flagMemorySave){
     const curve = rs.curve;
     const Fr = curve.Fr;
     const n = rs.n;
     const s_max = rs.s_max;
     const omega_x = await Fr.e(rs.omega_x);
-    const omega_y = await Fr.e(rs.omega_y);
-    const ParamR1cs = rs.r1cs;
-    const s_D = rs.s_D;
+    let flag_memory = true;
+    if ( (flagMemorySave === undefined) || (flagMemorySave == false) ){
+        flag_memory = false;
+    }
 
+    console.log(`checkpoint 0-0`)
     let Lagrange_basis = new Array(n);
+    let item_i;
     for(var i=0; i<n; i++){
         let terms = Array.from(Array(n), () => new Array(1));
         let multiplier = await Fr.exp(Fr.inv(omega_x),i);
@@ -18,91 +127,16 @@ export async function buildR1csPolys(rs, sR1cs){
         for(var j=1; j<n; j++){
             terms[j][0]=await Fr.mul(terms[j-1][0], multiplier);
         }
-        Lagrange_basis[i]=await scalePoly(Fr, terms, Fr.inv(Fr.e(n)));
+        item_i = await scalePoly(Fr, terms, Fr.inv(Fr.e(n)));
+        if (flag_memory){
+            item_i = _transToObject(Fr, item_i);
+        }
+        Lagrange_basis[i] = item_i;
     }
+    console.log(`checkpoint 0-1`)
 
-    let uX_ki = new Array(s_D);
-    let vX_ki = new Array(s_D);
-    let wX_ki = new Array(s_D);
-
-    for(var k=0; k<s_D; k++){
-        let m_k = ParamR1cs[k].nVars;
-        if (ParamR1cs[k].nVars === undefined){
-            m_k = ParamR1cs[k].m;
-        }
-        let n_k = ParamR1cs[k].nConstraints;
-        
-        const constraints_k = await processConstraints(curve, n_k, sR1cs[k]);
-        let U = constraints_k.U
-        let Uid = constraints_k.Uid
-        let V = constraints_k.V
-        let Vid = constraints_k.Vid
-        let W = constraints_k.W
-        let Wid = constraints_k.Wid
-
-        let uX = new Array(m_k);
-        let vX = new Array(m_k);
-        let wX = new Array(m_k);
-
-        for(var i=0; i<m_k; i++){
-            uX[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-            vX[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-            wX[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-        }
-        for(var i=0; i<ParamR1cs[k].nConstraints; i++){
-            let U_ids = Uid[i];
-            let U_coefs = U[i];
-            let V_ids = Vid[i];
-            let V_coefs = V[i];
-            let W_ids = Wid[i];
-            let W_coefs = W[i];
-            let Lagrange_poly;
-            for(var j=0; j<U_ids.length; j++){
-                let U_idx=U_ids[j]
-                if(U_idx>=0){
-                    Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], U_coefs[j]);
-                    uX[U_idx] = await addPoly(Fr, uX[U_idx], Lagrange_poly);
-                }
-            }
-            for(var j=0; j<V_ids.length; j++){
-                let V_idx=V_ids[j]
-                if(V_idx>=0){
-                    Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], V_coefs[j]);
-                    vX[V_idx] = await addPoly(Fr, vX[V_idx], Lagrange_poly);
-                }
-            }
-            for(var j=0; j<W_ids.length; j++){
-                let W_idx=W_ids[j]
-                if(W_idx>=0){
-                    Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], W_coefs[j]);
-                    wX[W_idx] = await addPoly(Fr, wX[W_idx], Lagrange_poly);
-                }
-            }
-        }
-        uX_ki[k] = uX;
-        vX_ki[k] = vX;
-        wX_ki[k] = wX;
-    }
-
-    //let fY = Array.from(Array(1), () => new Array(s_max));
-    //const Fr_s_max_inv = Fr.inv(Fr.e(s_max));
-    //fY = await scalePoly(Fr, fY, Fr_s_max_inv);
-
-    let tX = Array.from(Array(n+1), () => new Array(1));
-    let tY = Array.from(Array(1), () => new Array(s_max+1));
-    tX = await scalePoly(Fr, tX, Fr.zero);
-    tY = await scalePoly(Fr, tY, Fr.zero);
-    tX[0][0] = Fr.negone;
-    tX[n][0] = Fr.one;
-    tY[0][0] = Fr.negone;
-    tY[0][s_max] = Fr.one;
-    const tXY = await mulPoly(Fr, tX, tY);
-    // t(X,Y) = (X^n-1) * (X^s_max-1) = PI(X-omega_x^i) for i=0,...,n * PI(Y-omega_y^j) for j =0,...,s_max
-    // P(X,Y) = (SUM c_i*u_i(X,Y))*(SUM c_i*v_i(X,Y)) - (SUM c_i*w_i(X,Y)) = 0 at X=omega_x^i, Y=omega_y^j
-    // <=> P(X,Y) has zeros at least the points omega_x^i and omega_y^j
-    // <=> there exists h(X,Y) such that p(X,Y) = t(X,Y) * h(X,Y)
-    // <=> finding h(X,Y) is the goal of Prove algorithm
-    return {uX_ki, vX_ki, wX_ki, tXY, tX, tY}
+   
+    return Lagrange_basis
     // uX_ki[k][i] = polynomial of the i-th wire in the k-th subcircuit.
 }
 
@@ -129,6 +163,8 @@ function _polyCheck(coefs){
 
 export async function evalPoly(Fr, coefs, x, y){
     const {N_X: N_X, N_Y: N_Y} = _polyCheck(coefs);
+
+    coefs = _autoTransFromObject(Fr, coefs)
     let sum = Fr.zero;
     for (var i=0; i<N_X; i++){
         for (var j=0; j<N_Y; j++){
@@ -147,6 +183,8 @@ export async function filterPoly(Fr, coefs1, vect, dir){
     if ( !((!dir) && (N1_X == vect.length) || (dir) && (N1_Y == vect.length)) ){
         throw new Error('filterPoly: the lengths of two coefficients are not equal')
     }
+
+    coefs1 = _autoTransFromObject(Fr, coefs1)
 
     let res = Array.from(Array(N1_X), () => new Array(N1_Y));
     for(var i=0; i<N1_X; i++){
@@ -171,6 +209,7 @@ export async function filterPoly(Fr, coefs1, vect, dir){
 export async function scalePoly(Fr, coefs, scaler){
     // Assume scaler is in Fr
     const {N_X: NSlots_X, N_Y: NSlots_Y} = _polyCheck(coefs);
+    coefs = _autoTransFromObject(Fr, coefs)
 
     let res = Array.from(Array(NSlots_X), () => new Array(NSlots_Y));
     for(var i=0; i<NSlots_X; i++){
@@ -183,12 +222,50 @@ export async function scalePoly(Fr, coefs, scaler){
             res[i][j] = Fr.mul(target, scaler); 
         }
     }
-    return res
+    return res;
+}
+
+export async function mulUniPolys(Fr, coefs1, vector){
+    // coefs1 is the coefficients(2-dim) of a X-variate polynomial, vector is the coefficients(1-dim) of a Y-variate polynomial
+    const {N_X: N_X, N_Y: N_Y} = _polyCheck(coefs1);
+    if ( N_Y != 1 ){
+        throw new Error(`mulUniPolys: coefs1 is not a X-variate polynomial`);
+    }
+    if ( !( Array.isArray(vector) && !Array.isArray(vector[0]) ) ){
+        throw new Error(`mulUniPolys: vector is a not 1-dim array`);
+    }
+    coefs1 = _autoTransFromObject(Fr, coefs1);
+    const N2_X = N_X;
+    const N2_Y = vector.length;
+    let res = Array.from(Array(N2_X), () => new Array(N2_Y));
+    for (var i=0; i<N2_X; i++){
+        let X_coef = coefs1[i][0];
+        for (var j=0; j<N2_Y; j++){
+            let Y_coef = vector[j];
+            res[i][j] = Fr.mul(X_coef, Y_coef);
+        }
+    }
+    return res;
+}
+export async function mulUniPolys2(Fr, coefsX, coefsY){
+    // coefsX is the coefficients(1-dim) of a X-variate polynomial, coefsY is the coefficients(1-dim) of a Y-variate polynomial
+    const N_Y = coefsY.length;
+    
+    const res = [];
+    for (var j=0; j<N_Y; j++){
+        let scaler = coefsY[j];
+        const temp = coefsX.map(x => Fr.mul(Fr.e(x), Fr.e(scaler)));
+        res.push(temp);
+    }
+    return res;
 }
 
 export async function addPoly(Fr, coefs1, coefs2, SUBFLAG){
     const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
     const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
+
+    coefs1 = _autoTransFromObject(Fr, coefs1)
+    coefs2 = _autoTransFromObject(Fr, coefs2)
 
     if (SUBFLAG !== undefined){
         if (SUBFLAG == 1){
@@ -222,10 +299,17 @@ export async function addPoly(Fr, coefs1, coefs2, SUBFLAG){
 }
 
 export async function mulPoly(Fr, coefs1, coefs2, object_flag){
+    
+    coefs1 = reduceDimPoly(Fr, coefs1);
+    coefs2 = reduceDimPoly(Fr, coefs2);
+
     const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
     const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
     const N3_X = N1_X+N2_X-1;
     const N3_Y = N1_Y+N2_Y-1;
+
+    coefs1 = _autoTransFromObject(Fr, coefs1)
+    coefs2 = _autoTransFromObject(Fr, coefs2)
 
     let res = Array.from(Array(N3_X), () => new Array(N3_Y));
     for (var i=0; i<N3_X; i++){
@@ -250,6 +334,12 @@ export async function mulPoly(Fr, coefs1, coefs2, object_flag){
 }
 
 export function _transToObject(Fr, coefs){
+    if ( (typeof coefs[0][0] == "bigint") || (coefs[0][0] === undefined) ){
+        return coefs
+    } else if(typeof coefs[0][0] != "object"){
+        throw new Error('transFromObject: unexpected input type')
+    }
+    
     let res = Array.from(Array(coefs.length), () => new Array(coefs[0].length))
     for (var i=0; i<coefs.length; i++){
         for (var j=0; j<coefs[0].length; j++){
@@ -259,7 +349,25 @@ export function _transToObject(Fr, coefs){
     return res
 }
 
+export function _autoTransFromObject(Fr, coefs){
+    if ( (typeof coefs[0][0] == "object") || (coefs[0][0] === undefined) ){
+        return coefs
+    } else if(typeof coefs[0][0] != "bigint"){
+        throw new Error('autoTransFromObject: unexpected input type')
+    }
+    
+    let res = Array.from(Array(coefs.length), () => new Array(coefs[0].length))
+    for (var i=0; i<coefs.length; i++){
+        for (var j=0; j<coefs[0].length; j++){
+            res[i][j] = Fr.fromObject(coefs[i][j]);
+        }
+    }
+    return res
+}
+
 export async function divPoly(Fr, coefs1, coefs2, object_flag){
+    coefs1 = _autoTransFromObject(Fr, coefs1);
+    coefs2 = _autoTransFromObject(Fr, coefs2);
     const denom = coefs2;
     const {xId: de_order_X, yId: de_order_Y, coef: de_high_coef} = _findOrder(Fr, denom);
     //console.log(`i: ${de_order_X}, j: ${de_order_Y}`)
@@ -310,7 +418,7 @@ export async function divPoly(Fr, coefs1, coefs2, object_flag){
         const energy = await mulPoly(Fr, quo, denom);
         //console.log(`x_o_dif: ${diff_order_X}, y_o_dif: ${diff_order_Y}`)
         //console.log(_transToObject(Fr, numer))
-        const rem = await addPoly(Fr, numer, energy, true);
+        const rem = reduceDimPoly(Fr, await addPoly(Fr, numer, energy, true));
 
         return {quo, rem}
     }
@@ -348,7 +456,89 @@ function _findOrder(Fr, coefs, dir){
 
 export function _orderPoly(Fr, coefs){
     /// highest orders of respective variables
+    coefs = _autoTransFromObject(Fr, coefs);
     const {xId: x_order} = _findOrder(Fr, coefs, 0);
     const {yId: y_order} = _findOrder(Fr, coefs, 1);
     return {x_order, y_order}
+}
+
+export function reduceDimPoly(Fr, coefs){
+    const {x_order: x_order, y_order: y_order} = _orderPoly(Fr,coefs);
+    const N_X = x_order+1;
+    const N_Y = y_order+1;
+    let res = Array.from(Array(N_X), () => new Array(N_Y));
+    for (var i=0; i<N_X; i++){
+        res[i] = coefs[i].slice(0, N_Y);
+    }
+
+    return res
+}
+
+export async function readQAP(QAPName, k, m_k, n, n8r){
+    
+    const {fd: fdQAP, sections: sectionsQAP}  = await binFileUtils.readBinFile(`resource/subcircuits/${QAPName}/subcircuit${k}.qap`, "qapp", 1, 1<<22, 1<<24);
+        
+    let uX_i = new Array(m_k);
+    let vX_i = new Array(m_k);
+    let wX_i = new Array(m_k);
+    await binFileUtils.startReadUniqueSection(fdQAP,sectionsQAP, 2);
+    for (var i=0; i<m_k; i++){
+        let data = Array.from(Array(n), () => new Array(1));
+        for (var xi=0; xi<n; xi++){
+            data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+        }
+        uX_i[i] = data;
+    }
+    for (var i=0; i<m_k; i++){
+        let data = Array.from(Array(n), () => new Array(1));
+        for (var xi=0; xi<n; xi++){
+            data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+        }
+        vX_i[i] = data;
+    }
+
+    for (var i=0; i<m_k; i++){
+        let data = Array.from(Array(n), () => new Array(1));
+        for (var xi=0; xi<n; xi++){
+            data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+        }
+        wX_i[i] = data;
+    }
+
+    await binFileUtils.endReadSection(fdQAP)
+    await fdQAP.close();
+
+    return {uX_i, vX_i, wX_i}
+}
+
+export async function readCircuitQAP_i(Fr, fdQAP, sectionsQAP, i, n, s_max, n8r){
+    
+    
+    await binFileUtils.startReadUniqueSection(fdQAP,sectionsQAP, 2+i);
+
+    let uXY_i = Array.from(Array(n), () => new Array(s_max));
+    let vXY_i = Array.from(Array(n), () => new Array(s_max));
+    let wXY_i = Array.from(Array(n), () => new Array(s_max));
+
+    for (var xi=0; xi<n; xi++){
+        for (var yi=0; yi<s_max; yi++){
+            uXY_i[xi][yi] = Fr.e(await binFileUtils.readBigInt(fdQAP, n8r));
+        }
+    }
+
+    for (var xi=0; xi<n; xi++){
+        for (var yi=0; yi<s_max; yi++){
+            vXY_i[xi][yi] = Fr.e(await binFileUtils.readBigInt(fdQAP, n8r));
+        }
+    }
+
+    for (var xi=0; xi<n; xi++){
+        for (var yi=0; yi<s_max; yi++){
+            wXY_i[xi][yi] = Fr.e(await binFileUtils.readBigInt(fdQAP, n8r));
+        }
+    }
+
+    await binFileUtils.endReadSection(fdQAP)
+
+    return {uXY_i, vXY_i, wXY_i}
 }
