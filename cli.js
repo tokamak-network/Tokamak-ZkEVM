@@ -20,13 +20,13 @@ const commands = [
         action: uniDerive
     },
     {
-        cmd: "prove [cRSName] [proofName] [QAPName] [circuitName] [entropy]",
+        cmd: "prove [cRSName] [proofName] [QAPName] [circuitName] [entropy] [instanceId]",
         description: "prove phase",
         alias: ["dr"],
         action: groth16Prove
     },
     {
-        cmd: "verify [proofName] [cRSName] [circuitName]",
+        cmd: "verify [proofName] [cRSName] [circuitName] [instanceId]",
         description: "verify phase",
         alias: ["dr"],
         action: groth16Verify
@@ -79,16 +79,29 @@ async function groth16Prove(params){
     const QAPName = params[2];
     const circuitName = params[3];
     const entropy = params[4];
+    let instanceId;
+    if (params[5] === undefined){
+        instanceId = '';
+    } else{
+        instanceId = params[5];
+    }
 
-    return zkey.groth16Prove(cRSName, proofName, QAPName, circuitName, entropy)
+    return zkey.groth16Prove(cRSName, proofName, QAPName, circuitName, entropy, instanceId)
 }
 
 async function groth16Verify(params){
     const proofName = params[0];
     const cRSName = params[1];
     const circuitName = params[2];
+    let instanceId;
+    if (params[3] === undefined){
+        instanceId = '';
+    } else{
+        instanceId = params[3];
+    }
 
-    return zkey.groth16Verify(proofName, cRSName, circuitName)
+
+    return zkey.groth16Verify(proofName, cRSName, circuitName, instanceId)
 }
 
 async function uniBuildQAP(params){

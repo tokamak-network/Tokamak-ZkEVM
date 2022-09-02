@@ -31,7 +31,7 @@ import { readFileSync} from 'fs'
 import hash from 'js-sha3'
 import * as timer from "./timer.js"
 
-export default async function groth16Verify(proofName, cRSName, circuitName) {
+export default async function groth16Verify(proofName, cRSName, circuitName, instanceId) {
     const startTime = timer.start();
     
     const TESTFLAG = false;
@@ -112,13 +112,13 @@ export default async function groth16Verify(proofName, cRSName, circuitName) {
     const hex_keccakInstance = [];
     let subInstance = new Array(OpList.length);
     await OpList.forEach((kPrime, index) => {
-		const inputs = JSON.parse(readFileSync(`${dirPath}/instance/Input_opcode${index}.json`, "utf8"))
-        const outputs = JSON.parse(readFileSync(`${dirPath}/instance/Output_opcode${index}.json`, "utf8"))
+		const inputs = JSON.parse(readFileSync(`${dirPath}/instance${instanceId}/Input_opcode${index}.json`, "utf8"))
+        const outputs = JSON.parse(readFileSync(`${dirPath}/instance${instanceId}/Output_opcode${index}.json`, "utf8"))
         const instance_k_hex = [];
         for(var i=0; i<NConstWires; i++){
             instance_k_hex.push('0x01');
         }
-        if (keccakList.indexOf(kPrime)>-1){
+        if (keccakList.indexOf(index)>-1){
             instance_k_hex.push('0x01');
         } else {
             instance_k_hex.push(...outputs.out);
@@ -127,7 +127,7 @@ export default async function groth16Verify(proofName, cRSName, circuitName) {
         if(instance_k_hex.length != ParamR1cs[kPrime].mPublic+NConstWires){
             throw new Error(`Error in loading subinstances: wrong instance size`)
         }
-        if (keccakList.indexOf(kPrime)>-1){
+        if (keccakList.indexOf(index)>-1){
             let keccakItems = [];
             keccakItems.push('0x01');
             keccakItems.push(...outputs.out);
@@ -146,7 +146,7 @@ export default async function groth16Verify(proofName, cRSName, circuitName) {
     for(var i=0; i<IdSetV.set.length; i++){
         const kPrime = WireList[IdSetV.set[i]][0];
         const iPrime = WireList[IdSetV.set[i]][1];
-        if(iPrime<NConstWires || iPrime>=NConstWires+ParamR1cs[kPrime].mPublic){
+        if(iPrime<NConstWires || iPrime>=NConstWires+ParamR1cs[OpList[kPrime]].mPublic){
             throw new Error(`Error in arranging circuit instance: containing a private wire`);
         }
         // if(iPrime<NConstWires || iPrime>=NConstWires+NOutputWires){
@@ -157,6 +157,8 @@ export default async function groth16Verify(proofName, cRSName, circuitName) {
     if (cInstance.length != mPublic){
         throw new Error('Error in arranging circuit instance: wrong instance size');
     }
+
+    console.log(cInstance)
    
     
     /// read proof

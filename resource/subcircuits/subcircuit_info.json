@@ -4,9 +4,9 @@
       "id": 0,
       "opcode": "fff",
       "name": "load",
-      "Nwires": 141,
-      "Out_idx": [1, 70],
-      "In_idx": [71, 70]
+      "Nwires": 33,
+      "Out_idx": [1, 16],
+      "In_idx": [17, 16]
     },
     {
       "id": 1,

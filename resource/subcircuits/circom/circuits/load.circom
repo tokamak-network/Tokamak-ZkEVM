@@ -1,10 +1,10 @@
 pragma circom 2.0.5;
 
 template Load () {
-    signal input in[70];
-    signal output out[70];
+    signal input in[16];
+    signal output out[16];
 
-    for (var i = 0; i < 70; i++){
+    for (var i = 0; i < 16; i++){
       out[i] <== in[i];
     }
 }

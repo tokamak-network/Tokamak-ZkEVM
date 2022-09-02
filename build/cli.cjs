@@ -1767,11 +1767,12 @@ function _autoTransFromObject(Fr, coefs){
     return res
 }
 
-async function divPoly(Fr, coefs1, coefs2, object_flag){
+async function divPolyByX(Fr, coefs1, coefs2, object_flag){
     coefs1 = _autoTransFromObject(Fr, coefs1);
     coefs2 = _autoTransFromObject(Fr, coefs2);
+    const dictOrder = 0;
     const denom = coefs2;
-    const {xId: de_order_X, yId: de_order_Y, coef: de_high_coef} = _findOrder(Fr, denom);
+    const {xId: de_order_X, yId: de_order_Y, coef: de_high_coef} = _findOrder(Fr, denom, dictOrder);
     //console.log(`i: ${de_order_X}, j: ${de_order_Y}`)
     
     let numer = coefs1;
@@ -1781,8 +1782,8 @@ async function divPoly(Fr, coefs1, coefs2, object_flag){
     let prev_order_Y;
   
     while (1){
-        let {xId: nu_order_X, yId: nu_order_Y, coef: nu_high_coef} = _findOrder(Fr, numer);
-        //console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
+        let {xId: nu_order_X, yId: nu_order_Y, coef: nu_high_coef} = _findOrder(Fr, numer, dictOrder);
+        console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`);
         if ((prev_order_X <= nu_order_X) && prev_order_Y <= nu_order_Y){
             throw new Error(`infinite loop`)
         }
@@ -1790,11 +1791,18 @@ async function divPoly(Fr, coefs1, coefs2, object_flag){
             break;
         }
         let diff_order_X = nu_order_X - de_order_X;
-        let diff_order_Y = nu_order_Y - de_order_Y;
-        let scaler = Fr.mul(nu_high_coef, await Fr.inv(de_high_coef));
-        let {quo: quoterm, rem: rem} = await _divOne(numer, denom, diff_order_X, diff_order_Y, scaler);
+        let quoXY = Array.from(Array(diff_order_X+1), () => new Array(nu_order_Y+1));
+        for (var j=0; j<nu_order_Y+1; j++){
+            for (var i=0; i<diff_order_X; i++){
+                quoXY[i][j]=Fr.zero;
+            }
+            quoXY[diff_order_X][j] = Fr.mul(numer[nu_order_X][j], await Fr.inv(de_high_coef));
+        }
 
-        res = await addPoly(Fr, res, quoterm);
+        const energy = await mulPoly(Fr, quoXY, denom);
+        const rem = reduceDimPoly(Fr, await addPoly(Fr, numer, energy, true));            
+
+        res = await addPoly(Fr, res, quoXY);
         numer = rem;
 
         prev_order_X = nu_order_X;
@@ -1807,24 +1815,58 @@ async function divPoly(Fr, coefs1, coefs2, object_flag){
         finalrem = _transToObject(Fr, finalrem);
     }
     return {res, finalrem}
-
-
-    async function _divOne(numer, denom, diff_order_X, diff_order_Y, scaler){
-        let quo = Array.from(Array(diff_order_X+1), () => new Array(diff_order_Y+1));
-        for (var i=0; i<diff_order_X+1; i++){
-            for (var j=0; j<diff_order_Y+1; j++){
-                quo[i][j] = Fr.zero;
-            }
-        }
-        quo[diff_order_X][diff_order_Y] = scaler;
-        const energy = await mulPoly(Fr, quo, denom);
-        //console.log(`x_o_dif: ${diff_order_X}, y_o_dif: ${diff_order_Y}`)
-        //console.log(_transToObject(Fr, numer))
-        const rem = reduceDimPoly(Fr, await addPoly(Fr, numer, energy, true));
-
-        return {quo, rem}
-    }
 }
+
+async function divPolyByY(Fr, coefs1, coefs2, object_flag){
+    coefs1 = _autoTransFromObject(Fr, coefs1);
+    coefs2 = _autoTransFromObject(Fr, coefs2);
+    const dictOrder = 1;
+    const denom = coefs2;
+    const {xId: de_order_X, yId: de_order_Y, coef: de_high_coef} = _findOrder(Fr, denom, dictOrder);
+    //console.log(`i: ${de_order_X}, j: ${de_order_Y}`)
+    
+    let numer = coefs1;
+    let res = [[Fr.zero]];
+
+    let prev_order_X;
+    let prev_order_Y;
+  
+    while (1){
+        let {xId: nu_order_X, yId: nu_order_Y, coef: nu_high_coef} = _findOrder(Fr, numer, dictOrder);
+        console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`);
+        if ((prev_order_X <= nu_order_X) && prev_order_Y <= nu_order_Y){
+            throw new Error(`infinite loop`)
+        }
+        if ( (!((nu_order_X>=de_order_X) && (nu_order_Y>=de_order_Y))) || Fr.eq(nu_high_coef, Fr.zero) ){
+            break;
+        }
+        let diff_order_Y = nu_order_Y - de_order_Y;
+        let quoXY = Array.from(Array(nu_order_X+1), () => new Array(diff_order_Y+1));
+        for (var i=0; i<nu_order_X+1; i++){
+            for (var j=0; j<diff_order_Y; j++){
+                quoXY[i][j]=Fr.zero;
+            }
+            quoXY[i][diff_order_Y] = Fr.mul(numer[i][nu_order_Y], await Fr.inv(de_high_coef));
+        }
+
+        const energy = await mulPoly(Fr, quoXY, denom);
+        const rem = reduceDimPoly(Fr, await addPoly(Fr, numer, energy, true));            
+
+        res = await addPoly(Fr, res, quoXY);
+        numer = rem;
+
+        prev_order_X = nu_order_X;
+        prev_order_Y = nu_order_Y;
+    }
+    let finalrem = numer;
+
+    if (!((object_flag === undefined) || (object_flag == false))){
+        res = _transToObject(Fr, res);
+        finalrem = _transToObject(Fr, finalrem);
+    }
+    return {res, finalrem}
+}
+
 function _findOrder(Fr, coefs, dir){
     /// output order is the highest order in dictionary order
     const {N_X: N_X, N_Y: N_Y} = _polyCheck(coefs);
@@ -2109,6 +2151,7 @@ async function uniDerive$1(RSName, cRSName, circuitName, QAPName) {
                 } else if(iPrime >= NZeroWires+mPublic_k){
                     arrayIdx = iPrime-mPublic_k;
                 } else {
+                    console.log(`i: ${i}, PreImgIdx: ${PreImgIdx}`);
                     throw new Error('invalid access to vk1_axy_kij')
                 }
 
@@ -2651,21 +2694,21 @@ function fnvHash(str) {
  * 
  * @param {resource/circuits/서킷명} circuitName 
  */
-async function generateWitness(circuitName){
+async function generateWitness(circuitName, instanceId){
 	// @TODO: __dirPath 를 사용해서 사용자가 어떤 dir에서 명령어를 실행해도 실행되도록 수정해야 함.
   const dirPath = `resource/circuits/${circuitName}`;
 	const fdOpL = await fastFile__namespace.readExisting(`${dirPath}/OpList.bin`, 1<<25, 1<<23);
   const opList = await readOpList(fdOpL);
 	await fdOpL.close();
 
-	fs.mkdir(path__default["default"].join(dirPath, 'witness'), (err) => {});
+	fs.mkdir(path__default["default"].join(dirPath, `witness${instanceId}`), (err) => {});
 
 	for (const index in opList) {
 		const buffer = fs.readFileSync(`resource/subcircuits/wasm/subcircuit${opList[index]}.wasm`);
-		const input = JSON.parse(fs.readFileSync(`${dirPath}/instance/Input_opcode${index}.json`, "utf8"));
+		const input = JSON.parse(fs.readFileSync(`${dirPath}/instance${instanceId}/Input_opcode${index}.json`, "utf8"));
 		const witnessCalculator = await builder(buffer);
 		const buff = await witnessCalculator.calculateWTNSBin(input, 0);
-		fs.writeFile(`${dirPath}/witness/witness${index}.wtns`, buff, function(err) {
+		fs.writeFile(`${dirPath}/witness${instanceId}/witness${index}.wtns`, buff, function(err) {
 			if (err) throw err
 		});
 	}
@@ -2690,7 +2733,7 @@ async function generateWitness(circuitName){
     along with snarkJS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-async function groth16Prove$1(cRSName, proofName, QAPName, circuitName, entropy) {
+async function groth16Prove$1(cRSName, proofName, QAPName, circuitName, entropy, instanceId) {
     const startTime = start();
     let interTime;
 
@@ -2776,10 +2819,10 @@ async function groth16Prove$1(cRSName, proofName, QAPName, circuitName, entropy)
 
     
     // generate witness for each subcircuit
-    await generateWitness(circuitName);
+    await generateWitness(circuitName, instanceId);
     const wtns = [];
     for(var k=0; k<OpList.length; k++ ){
-        const wtns_k = await read(`${dirPath}/witness/witness${k}.wtns`);
+        const wtns_k = await read(`${dirPath}/witness${instanceId}/witness${k}.wtns`);
         const kPrime = OpList[k];
         const m_k = ParamR1cs[kPrime].m;
         if (wtns_k.length != m_k) {
@@ -2798,9 +2841,12 @@ async function groth16Prove$1(cRSName, proofName, QAPName, circuitName, entropy)
         const kPrime = WireList[i][0];
         const idx = WireList[i][1];
         cWtns[i] = Fr.e(wtns[kPrime][idx]);
+        if (cWtns[i] === undefined){
+            throw new Error(`Undefined cWtns value at i=${i}`)
+        }
     }
     console.log(`checkpoint 2`);
-
+  
     let tX = Array.from(Array(n+1), () => new Array(1));
     let tY = Array.from(Array(1), () => new Array(s_max+1));
     tX = await scalePoly(Fr, tX, Fr.zero);
@@ -2817,7 +2863,18 @@ async function groth16Prove$1(cRSName, proofName, QAPName, circuitName, entropy)
 
 
     /// TEST CODE 1
-    var k; 
+    // if (TESTFLAG){
+    //     console.log('Running Test 1')
+    //     const EVAL_k = 2;
+    //     const eval_point = await Fr.exp(omega_y, EVAL_k);
+    //     for (var k=0; k<s_F; k++){
+    //         let flag = await polyUtils.evalPoly(Fr, fY_k[k], Fr.one, eval_point);
+    //         if ( !( (k == EVAL_k && Fr.eq(flag, Fr.one)) || (k != EVAL_k && Fr.eq(flag, Fr.zero)) ) ){
+    //             throw new Error('Error in fY_k');
+    //         }
+    //     }
+    //     console.log(`Test 1 finished`)
+    // }
     /// End of TEST CODE 1  
     console.log(`checkpoint 3`); 
     
@@ -2850,10 +2907,10 @@ async function groth16Prove$1(cRSName, proofName, QAPName, circuitName, entropy)
     
     /// compute H
     interTime = start();
-    const {res: h1XY, finalrem: rem1} =  await divPoly(Fr, pXY, tX);
+    const {res: h1XY, finalrem: rem1} =  await divPolyByX(Fr, pXY, tX);
     interTime = check(interTime);
     console.log(`checkpoint 4-1`);
-    const {res: h2XY, finalrem: rem2} =  await divPoly(Fr, rem1, tY);
+    const {res: h2XY, finalrem: rem2} =  await divPolyByY(Fr, rem1, tY);
     end(interTime);
 
     console.log(`checkpoint 5`);
@@ -2975,7 +3032,7 @@ async function groth16Prove$1(cRSName, proofName, QAPName, circuitName, entropy)
     along with snarkJS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-async function groth16Verify$1(proofName, cRSName, circuitName) {
+async function groth16Verify$1(proofName, cRSName, circuitName, instanceId) {
     const startTime = start();
     const ID_KECCAK = 5;
     
@@ -3052,13 +3109,13 @@ async function groth16Verify$1(proofName, cRSName, circuitName) {
     const hex_keccakInstance = [];
     let subInstance = new Array(OpList.length);
     await OpList.forEach((kPrime, index) => {
-		const inputs = JSON.parse(fs.readFileSync(`${dirPath}/instance/Input_opcode${index}.json`, "utf8"));
-        const outputs = JSON.parse(fs.readFileSync(`${dirPath}/instance/Output_opcode${index}.json`, "utf8"));
+		const inputs = JSON.parse(fs.readFileSync(`${dirPath}/instance${instanceId}/Input_opcode${index}.json`, "utf8"));
+        const outputs = JSON.parse(fs.readFileSync(`${dirPath}/instance${instanceId}/Output_opcode${index}.json`, "utf8"));
         const instance_k_hex = [];
         for(var i=0; i<NConstWires; i++){
             instance_k_hex.push('0x01');
         }
-        if (keccakList.indexOf(kPrime)>-1){
+        if (keccakList.indexOf(index)>-1){
             instance_k_hex.push('0x01');
         } else {
             instance_k_hex.push(...outputs.out);
@@ -3067,7 +3124,7 @@ async function groth16Verify$1(proofName, cRSName, circuitName) {
         if(instance_k_hex.length != ParamR1cs[kPrime].mPublic+NConstWires){
             throw new Error(`Error in loading subinstances: wrong instance size`)
         }
-        if (keccakList.indexOf(kPrime)>-1){
+        if (keccakList.indexOf(index)>-1){
             let keccakItems = [];
             keccakItems.push('0x01');
             keccakItems.push(...outputs.out);
@@ -3086,7 +3143,7 @@ async function groth16Verify$1(proofName, cRSName, circuitName) {
     for(var i=0; i<IdSetV.set.length; i++){
         const kPrime = WireList[IdSetV.set[i]][0];
         const iPrime = WireList[IdSetV.set[i]][1];
-        if(iPrime<NConstWires || iPrime>=NConstWires+ParamR1cs[kPrime].mPublic){
+        if(iPrime<NConstWires || iPrime>=NConstWires+ParamR1cs[OpList[kPrime]].mPublic){
             throw new Error(`Error in arranging circuit instance: containing a private wire`);
         }
         // if(iPrime<NConstWires || iPrime>=NConstWires+NOutputWires){
@@ -3097,6 +3154,8 @@ async function groth16Verify$1(proofName, cRSName, circuitName) {
     if (cInstance.length != mPublic){
         throw new Error('Error in arranging circuit instance: wrong instance size');
     }
+
+    console.log(cInstance);
    
     
     /// read proof
@@ -3436,13 +3495,13 @@ const commands = [
         action: uniDerive
     },
     {
-        cmd: "prove [cRSName] [proofName] [QAPName] [circuitName] [entropy]",
+        cmd: "prove [cRSName] [proofName] [QAPName] [circuitName] [entropy] [instanceId]",
         description: "prove phase",
         alias: ["dr"],
         action: groth16Prove
     },
     {
-        cmd: "verify [proofName] [cRSName] [circuitName]",
+        cmd: "verify [proofName] [cRSName] [circuitName] [instanceId]",
         description: "verify phase",
         alias: ["dr"],
         action: groth16Verify
@@ -3495,16 +3554,29 @@ async function groth16Prove(params){
     const QAPName = params[2];
     const circuitName = params[3];
     const entropy = params[4];
+    let instanceId;
+    if (params[5] === undefined){
+        instanceId = '';
+    } else {
+        instanceId = params[5];
+    }
 
-    return groth16Prove$1(cRSName, proofName, QAPName, circuitName, entropy)
+    return groth16Prove$1(cRSName, proofName, QAPName, circuitName, entropy, instanceId)
 }
 
 async function groth16Verify(params){
     const proofName = params[0];
     const cRSName = params[1];
     const circuitName = params[2];
+    let instanceId;
+    if (params[3] === undefined){
+        instanceId = '';
+    } else {
+        instanceId = params[3];
+    }
 
-    return groth16Verify$1(proofName, cRSName, circuitName)
+
+    return groth16Verify$1(proofName, cRSName, circuitName, instanceId)
 }
 
 async function uniBuildQAP(params){

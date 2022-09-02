@@ -30,7 +30,7 @@ const {stringifyBigInts} = utils;
 import * as misc from './misc.js'
 import * as timer from "./timer.js"
 
-export default async function groth16Prove(cRSName, proofName, QAPName, circuitName, entropy) {
+export default async function groth16Prove(cRSName, proofName, QAPName, circuitName, entropy, instanceId) {
     const startTime = timer.start();
     let interTime;
 
@@ -116,10 +116,10 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
 
     
     // generate witness for each subcircuit
-    await generateWitness(circuitName);
+    await generateWitness(circuitName, instanceId);
     const wtns = [];
     for(var k=0; k<OpList.length; k++ ){
-        const wtns_k = await wtnsUtils.read(`${dirPath}/witness/witness${k}.wtns`);
+        const wtns_k = await wtnsUtils.read(`${dirPath}/witness${instanceId}/witness${k}.wtns`);
         const kPrime = OpList[k];
         const m_k = ParamR1cs[kPrime].m;
         if (wtns_k.length != m_k) {
@@ -202,9 +202,12 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
         const kPrime = WireList[i][0];
         const idx = WireList[i][1];
         cWtns[i] = Fr.e(wtns[kPrime][idx]);
+        if (cWtns[i] === undefined){
+            throw new Error(`Undefined cWtns value at i=${i}`)
+        }
     }
     console.log(`checkpoint 2`)
-
+  
     let tX = Array.from(Array(n+1), () => new Array(1));
     let tY = Array.from(Array(1), () => new Array(s_max+1));
     tX = await polyUtils.scalePoly(Fr, tX, Fr.zero);
@@ -221,18 +224,18 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
 
 
     /// TEST CODE 1
-    if (TESTFLAG){
-        console.log('Running Test 1')
-        const EVAL_k = 2;
-        const eval_point = await Fr.exp(omega_y, EVAL_k);
-        for (var k=0; k<s_F; k++){
-            let flag = await polyUtils.evalPoly(Fr, fY_k[k], Fr.one, eval_point);
-            if ( !( (k == EVAL_k && Fr.eq(flag, Fr.one)) || (k != EVAL_k && Fr.eq(flag, Fr.zero)) ) ){
-                throw new Error('Error in fY_k');
-            }
-        }
-        console.log(`Test 1 finished`)
-    }
+    // if (TESTFLAG){
+    //     console.log('Running Test 1')
+    //     const EVAL_k = 2;
+    //     const eval_point = await Fr.exp(omega_y, EVAL_k);
+    //     for (var k=0; k<s_F; k++){
+    //         let flag = await polyUtils.evalPoly(Fr, fY_k[k], Fr.one, eval_point);
+    //         if ( !( (k == EVAL_k && Fr.eq(flag, Fr.one)) || (k != EVAL_k && Fr.eq(flag, Fr.zero)) ) ){
+    //             throw new Error('Error in fY_k');
+    //         }
+    //     }
+    //     console.log(`Test 1 finished`)
+    // }
     /// End of TEST CODE 1  
     console.log(`checkpoint 3`) 
     
@@ -265,13 +268,13 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
     
     /// compute H
     interTime = timer.start();
-    const {res: h1XY, finalrem: rem1} =  await polyUtils.divPoly(Fr, pXY, tX);
+    const {res: h1XY, finalrem: rem1} =  await polyUtils.divPolyByX(Fr, pXY, tX);
     interTime = timer.check(interTime);
     console.log(`checkpoint 4-1`)
-    const {res: h2XY, finalrem: rem2} =  await polyUtils.divPoly(Fr, rem1, tY);
+    const {res: h2XY, finalrem: rem2} =  await polyUtils.divPolyByY(Fr, rem1, tY);
     timer.end(interTime);
     if (TESTFLAG){
-        //console.log(`rem: ${rem2}`);
+        console.log(`rem: ${rem2}`);
     }
 
     console.log(`checkpoint 5`)

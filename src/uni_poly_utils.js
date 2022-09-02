@@ -380,7 +380,7 @@ export async function divPoly(Fr, coefs1, coefs2, object_flag){
   
     while (1){
         let {xId: nu_order_X, yId: nu_order_Y, coef: nu_high_coef} = _findOrder(Fr, numer);
-        //console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
+        console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
         if ((prev_order_X <= nu_order_X) && prev_order_Y <= nu_order_Y){
             throw new Error(`infinite loop`)
         }
@@ -406,7 +406,6 @@ export async function divPoly(Fr, coefs1, coefs2, object_flag){
     }
     return {res, finalrem}
 
-
     async function _divOne(numer, denom, diff_order_X, diff_order_Y, scaler){
         let quo = Array.from(Array(diff_order_X+1), () => new Array(diff_order_Y+1));
         for (var i=0; i<diff_order_X+1; i++){
@@ -423,6 +422,107 @@ export async function divPoly(Fr, coefs1, coefs2, object_flag){
         return {quo, rem}
     }
 }
+
+export async function divPolyByX(Fr, coefs1, coefs2, object_flag){
+    coefs1 = _autoTransFromObject(Fr, coefs1);
+    coefs2 = _autoTransFromObject(Fr, coefs2);
+    const dictOrder = 0;
+    const denom = coefs2;
+    const {xId: de_order_X, yId: de_order_Y, coef: de_high_coef} = _findOrder(Fr, denom, dictOrder);
+    //console.log(`i: ${de_order_X}, j: ${de_order_Y}`)
+    
+    let numer = coefs1;
+    let res = [[Fr.zero]];
+
+    let prev_order_X;
+    let prev_order_Y;
+  
+    while (1){
+        let {xId: nu_order_X, yId: nu_order_Y, coef: nu_high_coef} = _findOrder(Fr, numer, dictOrder);
+        console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
+        if ((prev_order_X <= nu_order_X) && prev_order_Y <= nu_order_Y){
+            throw new Error(`infinite loop`)
+        }
+        if ( (!((nu_order_X>=de_order_X) && (nu_order_Y>=de_order_Y))) || Fr.eq(nu_high_coef, Fr.zero) ){
+            break;
+        }
+        let diff_order_X = nu_order_X - de_order_X;
+        let quoXY = Array.from(Array(diff_order_X+1), () => new Array(nu_order_Y+1));
+        for (var j=0; j<nu_order_Y+1; j++){
+            for (var i=0; i<diff_order_X; i++){
+                quoXY[i][j]=Fr.zero;
+            }
+            quoXY[diff_order_X][j] = Fr.mul(numer[nu_order_X][j], await Fr.inv(de_high_coef));
+        }
+
+        const energy = await mulPoly(Fr, quoXY, denom);
+        const rem = reduceDimPoly(Fr, await addPoly(Fr, numer, energy, true));            
+
+        res = await addPoly(Fr, res, quoXY);
+        numer = rem;
+
+        prev_order_X = nu_order_X;
+        prev_order_Y = nu_order_Y
+    }
+    let finalrem = numer;
+
+    if (!((object_flag === undefined) || (object_flag == false))){
+        res = _transToObject(Fr, res);
+        finalrem = _transToObject(Fr, finalrem);
+    }
+    return {res, finalrem}
+}
+
+export async function divPolyByY(Fr, coefs1, coefs2, object_flag){
+    coefs1 = _autoTransFromObject(Fr, coefs1);
+    coefs2 = _autoTransFromObject(Fr, coefs2);
+    const dictOrder = 1;
+    const denom = coefs2;
+    const {xId: de_order_X, yId: de_order_Y, coef: de_high_coef} = _findOrder(Fr, denom, dictOrder);
+    //console.log(`i: ${de_order_X}, j: ${de_order_Y}`)
+    
+    let numer = coefs1;
+    let res = [[Fr.zero]];
+
+    let prev_order_X;
+    let prev_order_Y;
+  
+    while (1){
+        let {xId: nu_order_X, yId: nu_order_Y, coef: nu_high_coef} = _findOrder(Fr, numer, dictOrder);
+        console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
+        if ((prev_order_X <= nu_order_X) && prev_order_Y <= nu_order_Y){
+            throw new Error(`infinite loop`)
+        }
+        if ( (!((nu_order_X>=de_order_X) && (nu_order_Y>=de_order_Y))) || Fr.eq(nu_high_coef, Fr.zero) ){
+            break;
+        }
+        let diff_order_Y = nu_order_Y - de_order_Y;
+        let quoXY = Array.from(Array(nu_order_X+1), () => new Array(diff_order_Y+1));
+        for (var i=0; i<nu_order_X+1; i++){
+            for (var j=0; j<diff_order_Y; j++){
+                quoXY[i][j]=Fr.zero;
+            }
+            quoXY[i][diff_order_Y] = Fr.mul(numer[i][nu_order_Y], await Fr.inv(de_high_coef));
+        }
+
+        const energy = await mulPoly(Fr, quoXY, denom);
+        const rem = reduceDimPoly(Fr, await addPoly(Fr, numer, energy, true));            
+
+        res = await addPoly(Fr, res, quoXY);
+        numer = rem;
+
+        prev_order_X = nu_order_X;
+        prev_order_Y = nu_order_Y
+    }
+    let finalrem = numer;
+
+    if (!((object_flag === undefined) || (object_flag == false))){
+        res = _transToObject(Fr, res);
+        finalrem = _transToObject(Fr, finalrem);
+    }
+    return {res, finalrem}
+}
+
 function _findOrder(Fr, coefs, dir){
     /// output order is the highest order in dictionary order
     const {N_X: N_X, N_Y: N_Y} = _polyCheck(coefs);

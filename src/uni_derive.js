@@ -132,6 +132,7 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
                 } else if(iPrime >= NZeroWires+mPublic_k){
                     arrayIdx = iPrime-mPublic_k
                 } else{
+                    console.log(`i: ${i}, PreImgIdx: ${PreImgIdx}`)
                     throw new Error('invalid access to vk1_axy_kij')
                 }
 
