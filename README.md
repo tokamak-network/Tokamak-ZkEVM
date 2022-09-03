@@ -39,8 +39,9 @@ Prerequisites and preparation for use
   - [How to install Circom](https://docs.circom.io/getting-started/installation/)
 - Some of libraries by Iden3 are used.
   - How to install Iden3 libraries
-- Prepare resources
-  - 
+- Compatibility with EVM (in the current version)
+  - [compile](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
+  - [decode]
 
 How to use
 
@@ -62,7 +63,17 @@ All file names used in the following commands does not include the file name ext
  -verify
   - Enter the command "node build/cli.cjs verify \[input proof file name] \[input crs file name] \[circuit (EVM application) directory name] \[the index of circuit instance set]"
 
-Directories for the output files
-- 
+Directories storing the output files
+- compile
+  - EVM information: "./resource/subcircuits/wire_list.json"
+  - R1CS: "./resources/subcircuits/R1CS/subcircuit#.r1cs" for all indices # of instructions upto s_D-1.
+  - wasm: "./resources/subcircuits/wasm/subcircuit#.wasm" for all indices # of instructions upto s_D-1.
+- buildQAP
+  - QAP files: "./resource/subcircuits/QAP_\[s_D]\_\[s_max]/subcircuit#.qap" for all indices # of instructions upto s_D-1.
+  - QAP parameter: "./resource/subcircuits/param_\[s_D]\_\[s_max].dat"
+- setup
+  - universal reference string: "./resource/universal_rs/\[output rs file name].urs"
+- decode (will be applied)
+  - 
 
 
