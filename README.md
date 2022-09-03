@@ -46,7 +46,7 @@ How to use
 
 All file names used in the following commands does not include the file name extensions (e.g., for "refstr.rs", just type "refstr")
 - compile
-  - [How to run compile](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
+  - [How to run compile and about the compatibility with EVM](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
 - buildQAP
   - Enter the command "node build/cli.cjs QAP_all bn128 \[s_D, the number of arithmetic instructions in EVM] \[s_max]"
 - setup
