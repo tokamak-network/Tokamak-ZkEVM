@@ -46,13 +46,13 @@ How to use
 
 All file names used in the following commands does not include the file name extensions (e.g., for "refstr.rs", just type "refstr")
 - compile
-  - [How to run compile and about the compatibility with EVM](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
+  - [How to run compile and the compatibility with EVM in the current version](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
 - buildQAP
   - Enter the command "node build/cli.cjs QAP_all bn128 \[s_D, the number of arithmetic instructions in EVM] \[s_max]"
 - setup
   - Enter the command "node build/cli.cjs setup param\_\[s_D]\_\[s_max] \[output rs file name] \[any number for the seed of random generation]"
 - decode
-  - How to run decode
+  - [How to run decode and the compatibility with EVM in the current version]
 - derive
   - Enter the command "node build/cli.cjs derive \[input rs file name] \[output crs file name] \[circuit (EVM application) directory name] QAP\_\[s_D]\_\[s_max]"
 - generateWitness
