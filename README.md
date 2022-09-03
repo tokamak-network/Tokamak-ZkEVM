@@ -36,8 +36,8 @@ Explanation for the inputs and outputs
 Prerequisites and preparation for use
 
 - Implementing circoms and generating R1CSs and wasms needs to install Circom package by Iden3.
-  - How to install Circom
-- Some libraries by Iden3 are used.
+  - [How to install Circom](https://docs.circom.io/getting-started/installation/)
+- Some of libraries by Iden3 are used.
   - How to install Iden3 libraries
 - Prepare resources
   - 
@@ -46,7 +46,7 @@ How to use
 
 All file names used in the following commands does not include the file name extensions (e.g., for "refstr.rs", just type "refstr")
 - compile
-  - How to run compile
+  - [How to run compile](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
 - buildQAP
   - Enter the command "node build/cli.cjs QAP_all bn128 \[s_D, the number of arithmetic instructions in EVM] \[s_max]"
 - setup
