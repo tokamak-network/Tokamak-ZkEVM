@@ -26,6 +26,7 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
 * EVM parameter s_max: The maximum number of arithmetic opcodes that can be contained in an EVM application.
 
 Explanation for the inputs and outputs
+
 - EVM instructions: Arithmetic opcodes including keccak256 in EVM from 0x01 to 0x20
 - Circom implementation: A circom script of executing an opcode
 - R1CS: A set of wires and constraints forming the (sub)circuit of a circom implementation (called subcircuit)
@@ -33,6 +34,7 @@ Explanation for the inputs and outputs
 - 
 
 Prerequisites and preparation for use
+
 - Implementing circoms and generating R1CSs and wasms needs to install Circom package by Iden3.
   - How to install Circom
 - Some libraries by Iden3 are used.
@@ -41,6 +43,7 @@ Prerequisites and preparation for use
   - 
 
 How to use
+
 All file names used in the following commands does not include the file name extensions (e.g., for "refstr.rs", just type "refstr")
 - compile
   - How to run compile
