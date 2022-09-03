@@ -81,3 +81,12 @@ All file names used in the following commands does not include the file name ext
   - Enter the command "node build/cli.cjs verify \[input proof file name] \[input crs file name] \[circuit (EVM application) directory name] \[the index of circuit instance set]"
   - Check the verification results from terminal.
 
+Paper
+- will be uploaded.
+
+Contacts
+- [jake.j@onther.io](jake.j@onther.io)
+
+Licence
+- will be updated.
+
