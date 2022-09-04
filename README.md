@@ -42,7 +42,7 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
   - [How to install Iden3 libraries]
 - Compatibility with EVM (in the current version)
   - [compile](https://github.com/Onther-Tech/circom-ethereum-opcodes/blob/main/README.md)
-  - [decode]
+  - [decode](https://github.com/Onther-Tech/UniGro16js/edit/master/Decode/readme.md)
 
 ### How to use
 
@@ -63,7 +63,7 @@ All file names used in the following commands does not include the file name ext
   - Enter the command "node build/cli.cjs setup param\_\[s_D]\_\[s_max] \[output rs file name] \[any number for the seed of random generation]"
   - Find the output universal reference string in "./resource/universal_rs/\[output rs file name].urs"
 - **decode**
-  - [How to run decode and the compatibility with EVM in the current version]
+  - [How to run decode and the compatibility with EVM in the current version](https://github.com/Onther-Tech/UniGro16js/edit/master/Decode/readme.md)
   - Copy and paste the output circuit information into "./resource/circuits/\[circuit (EVM application) directory name]/{OpList.bin, Set_I_P.bin, Set_I_V.bin, WireList.bin}.
   - Copy and paste the output instances into "./resource/circuits/\[circuit (EVM application) directory name]/instance\[the index of circuit instance set]/{input_opcode#.json, output_opcode#.json} for for all indices # of opcodes used in an EVM application less than s_max.
 - **derive**
