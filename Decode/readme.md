@@ -8,4 +8,6 @@ Decode parses a p-code (bytecode) of an EVM application to obtain the arithmetic
 
 To express the wire connections, we mathmatically define a *wire map* $\rho: (k, i)\mapsto (k', i')$ for nonnegative integers $k, i, k', i'$, where $\rho(k,i) = (k',i')$ if the $i$-th (input) wire of the $k$-th arithmetic opcode takes its value from the $i'$-th (output) wire of the $k'$-th arithmetic opcode, or if $\rho(k,i) = (k,i)$ if $i$-th wire of the $k$-th arithmetic opcode takes its value from nowhere. It is useful that the wires indexed by the pre-image set $\rho^{-1}\[k',i']$ always share the same value, which will be used in *derive algorithm* of [universal Groth16 for EVM](https://github.com/Onther-Tech/UniGro16js/blob/master/README.md).
 
+Decode finally outputs the lists of arithmetic opcodes, 
+
 
