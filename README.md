@@ -16,7 +16,7 @@ Based on the same application, UGro16 might be a bit slower than Gro16 at the co
 
 UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode, setup, derive, prove, and verify.
 - compile takes circom implementations of all EVM instructions as inputs and outputs respective R1CSs in \*.r1cs files, respective wasms in \*.wasm files, and an EVM information in wire_list.json file.
-- buildQAP takes R1CS files and an EVM parameter s_max* as inputs and outputs respective QAP polynomials in \*.qap files
+- buildQAP takes R1CS files and an *EVM parameter s_max** as inputs and outputs respective QAP polynomials in \*.qap files
 - decode(MATLAB) takes a p-code(bytecode) of an EVM application, initial storage data, and a wire_list.json as inputs and outputs instances for all instructions used in a p-code and a wire map (information of the circuit for an EVM application). The instances are divided and stored in Input_opcode#.json and Output_opcode#.json for indices # of all the instructions. The wire map is divided and stored in OpList.bin, Set_I_P.bin, Set_I_V.bin, and WireList.bin.
 - setup takes R1CS files and EVM parameters as inputs and outputs a universal reference string in a \*.urs file.
 - derive takes a universal reference string file and wire map filesas inputs and outputs a circuit-specific reference string in \*.crs file.
