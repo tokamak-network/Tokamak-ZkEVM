@@ -39,7 +39,11 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
 - Implementing circoms and generating R1CSs and wasms needs to install Circom package by Iden3.
   - [How to install Circom](https://docs.circom.io/getting-started/installation/)
 - Some of libraries by Iden3 are used.
-  - [How to install Iden3 libraries]
+  ```# How to install Iden3 libraries
+  $ git clone https://github.com/Onther-Tech/UniGro16js.git
+  $ cd UniGro16js
+  $ npm install
+  ```
 - Compatibility with EVM (in the current version)
   - [compile](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
   - [decode]
