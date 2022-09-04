@@ -40,11 +40,11 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
   - [How to install Circom](https://docs.circom.io/getting-started/installation/)
 - Some of libraries by Iden3 are used.
   - How to install Iden3 libraries
-  ```
-  $ git clone https://github.com/Onther-Tech/UniGro16js.git
-  $ cd UniGro16js
-  $ npm install
-  ```
+     ```
+     $ git clone https://github.com/Onther-Tech/UniGro16js.git
+     $ cd UniGro16js
+     $ npm install
+     ```
 - Compatibility with EVM (in the current version)
   - [compile](https://github.com/Onther-Tech/circom-ethereum-opcodes/blob/main/README.md)
   - [decode](https://github.com/Onther-Tech/UniGro16js/edit/master/Decode/readme.md)
