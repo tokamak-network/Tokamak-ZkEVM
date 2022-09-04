@@ -48,7 +48,7 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
 
 All file names used in the following commands does not include the file name extensions (e.g., for "refstr.rs", just type "refstr")
 - compile
-  - Be sure that the input circom scripts are in "./resource/subcircuits/circom/\[instruction name]\_test.circom".
+  - Be sure that the input [circom scripts](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md) are in "./resource/subcircuits/circom/\[instruction name]\_test.circom".
   - [How to run compile and the compatibility with EVM in the current version](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
   - Find the output EVM information from "./resource/subcircuits/wire_list.json", where the indices of instructions are numbered.
   - Find the output R1CSs from "./resources/subcircuits/R1CS/subcircuit#.r1cs" for all indices # of instructions upto s_D-1.
