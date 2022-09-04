@@ -8,7 +8,7 @@ Universal Groth16 (UGro16) for EVM is a zk-SNARK that inherits the succinctness 
 
 The key idea of UGro16 is Derive algorithm, which linearly combines the proving and verifying keys in a universal reference string according to the combination of instructions forming an EVM application. As the result, Derive outputs a circuit-specific reference string, which is specialized to an EVM application. The execution of Derive does not need a trust, so anyone can be an executor. Derive needs to be executed when an EVM-application is newly developed or updated. The structure of a circuit-specific reference string is almost equivalent with a common reference string of original Groth16's setup except only that UGro16 uses bivarate QAP polynomials instead of univarte ones. This enables us to use prove and verify algorithms of the original Groth16, which is the fastest among all zk-SNARKs.
 
-Based on the same application, UGro16 might be a bit slower than Gro16 at the cost of universality. This is because we add redundant constraints to the circuits of EVM instructions to make room for combining.
+Based on the same application, UGro16 might be a bit slower than the original Groth16 at the cost of universality. This is because we add redundant constraints to the circuits of EVM instructions to make room for combining.
 
 ## Demo. version implementations
 
