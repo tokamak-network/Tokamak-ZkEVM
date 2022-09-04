@@ -9,5 +9,5 @@ for (( i = 0 ; i < ${#names[@]} ; i++ )) ; do
   mv wasm/${names[$i]}_test_js/${names[$i]}_test.wasm wasm/subcircuit$i.wasm && \
   rm -rf wasm/${names[$i]}_test_js
 done
-# node parse.js
-# rm temp.txt
+node parse.js
+rm temp.txt
