@@ -29,7 +29,7 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
 ### Explanation for the inputs and outputs
 
 - EVM instructions: Arithmetic opcodes including keccak256 in EVM from 0x01 to 0x20
-- Circom implementation: A circom script of executing an opcode
+- Circom implementation: A circom script to execute an opcode and build its (sub)circuit.
 - R1CS: A set of wires and constraints forming the (sub)circuit of a circom implementation (called subcircuit)
 - wasm: A script of executing an opcode ported in wasm
 - 
@@ -40,7 +40,7 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
   - [How to install Circom](https://docs.circom.io/getting-started/installation/)
 - Some of libraries by Iden3 are used.
   - How to install Iden3 libraries
-     ```
+      ```
      $ git clone https://github.com/Onther-Tech/UniGro16js.git
      $ cd UniGro16js
      $ npm install
