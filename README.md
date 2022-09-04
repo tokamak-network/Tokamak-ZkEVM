@@ -24,7 +24,7 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
 - prove takes a circuit-specific reference string file, witness files, QAP files and wire map files as inputs and outputs a proof in \*.proof file.
 - verify takes a proof file, a circuit-specific reference string file, instance files, and wire map files as inputs and prints out whether the proof is valid or not.
 
-    *\* EVM parameter s_max: The maximum number of arithmetic opcodes that can be contained in an EVM application.*
+    *\* s_max: The maximum number of arithmetic opcodes that can be contained in an EVM application.*
 
 ### Explanation for the inputs and outputs
 
