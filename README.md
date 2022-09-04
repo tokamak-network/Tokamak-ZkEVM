@@ -41,15 +41,15 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
 - Some of libraries by Iden3 are used.
   - [How to install Iden3 libraries]
 - Compatibility with EVM (in the current version)
-  - [compile](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
+  - [compile](https://github.com/Onther-Tech/circom-ethereum-opcodes/blob/main/README.md)
   - [decode]
 
 ### How to use
 
 All file names used in the following commands does not include the file name extensions (e.g., for "refstr.rs", just type "refstr")
 - **compile**
-  - Be sure that the input [circom scripts](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md) are in "./resource/subcircuits/circom/\[instruction name]\_test.circom".
-  - [How to run compile and the compatibility with EVM in the current version](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
+  - Be sure that the input [circom scripts](https://github.com/Onther-Tech/circom-ethereum-opcodes/blob/main/README.md) are in "./resource/subcircuits/circom/\[instruction name]\_test.circom".
+  - [How to run compile](https://github.com/Onther-Tech/circom-ethereum-opcodes/blob/main/test/TEST.md) and [the compatibility with EVM in the current version](https://github.com/Onther-Tech/circom-ethereum-opcodes/blob/main/README.md)
   - Find the output EVM information in "./resource/subcircuits/wire_list.json", where the indices of instructions are numbered.
   - Find the output R1CSs in "./resources/subcircuits/R1CS/subcircuit#.r1cs" for all indices # of instructions upto s_D-1.
   - Find the output wasms "./resources/subcircuits/wasm/subcircuit#.wasm" for all indices # of instructions upto s_D-1.
