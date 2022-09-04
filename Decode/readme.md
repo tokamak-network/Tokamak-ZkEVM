@@ -31,6 +31,6 @@ The current version of implementation does not provide a user interface, which w
   - Opcode JUMPI makes a fork in EVM. In the current version, decode reads only the arithmetic opcodes in the chosen fork given input values. In other words, if inputs change, the resulting $s$ can change. In the future, decode will be updated to read the unchosen fork as well so that the resulting $s$ can be consistent regardless of input values.
 - In the current version, the outputs of decode does not contain the calculation of gas consumption. This can be updated soon.
 
-### Compatibility with circom [implementations](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
+### Compatibility with [Circom implementations](https://github.com/pleiadex/circom-ethereum-opcodes/blob/main/README.md)
 - When the instances have values greater than Circom's modulus (about 253-bit long), decode displays warnings.
 - Support all circom implementations of EVM instructions.
