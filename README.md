@@ -77,10 +77,10 @@ All file names used in the following commands does not include the file name ext
   - Be sure that all the outputs of the above algorithms are in the proper directories.
   - Enter the command "node build/cli.cjs prove \[input crs file name] \[output proof file name] QAP\_\[s_D]\_\[s_max] \[circuit (EVM application) directory name] \[any number for the seed of random generation] \[the index of circuit instance set]"
   - Find the output proof from "./resource/circuits/\[circuit directory name]/\[output proof file name].proof"
- - **verify**
-  - Be sure that all the outputs of the above algorithms are in the proper directories.
-  - Enter the command "node build/cli.cjs verify \[input proof file name] \[input crs file name] \[circuit (EVM application) directory name] \[the index of circuit instance set]"
-  - Check the verification results from terminal.
+- **verify**
+   - Be sure that all the outputs of the above algorithms are in the proper directories.
+   - Enter the command "node build/cli.cjs verify \[input proof file name] \[input crs file name] \[circuit (EVM application) directory name] \[the index of circuit instance set]"
+   - Check the verification results from terminal.
 
 ## Paper
 - will be uploaded.
