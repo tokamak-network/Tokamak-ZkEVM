@@ -109,10 +109,9 @@ All file names used in the following commands does not include the file name ext
   - Both applications use less than 18 arithmetic instructions (i.e., s_max = 18).
 - As **decode** has no build currently, we provide the outputs of **decode** that have been created in advance.
 - Test run commands
-  0. To build, enter ```npm run buildcli```.
-  1. Go to the directory ```./resource/subcircuits```.
-  2. Enter ```./compile.sh``` to run **compile**.
-  3. Enter ```node build/cli.cjs QAP_all bn128 26 18``` to run **buildQAP**.
+  1. To build, go to the main directory and enter ```npm run buildcli```.
+  1. To **compile**, go to the directory ```./resource/subcircuits``` and enter ```./compile.sh``` .
+  3. Go back to the main directory and enter ```node build/cli.cjs QAP_all bn128 26 18``` to run **buildQAP**.
   4. Enter ```node build/cli.cjs setup param_26_18 rsSchnorr 1``` to run **setup**.
   5. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_prove schnorr_prove QAP_26_18``` to run **derive** for the application-1.
   6. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_verify schnorr_verify QAP_26_18``` to run **derive** for the application-2.
