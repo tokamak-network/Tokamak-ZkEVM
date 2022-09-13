@@ -94,6 +94,22 @@ All file names used in the following commands does not include the file name ext
    - Enter the command "node build/cli.cjs verify \[prfName] \[crsName] \[circuitName] \[instanceId]".
    - Check the verification results in terminal.
 
+### Example of the user input parameters for test run
+- We provide an EVM system and example applications for test run.
+- 
+
+- Input parameters
+|Parameters |Example 1  |Example 2  |Example 3|
+|:---------:|:---------:|:---------:|:-------:|
+|s_D        |12         |**Same with Ex1** |**Same with Ex1** |
+|s_max      |18         |**Same with Ex1** |**Same with Ex1** |
+|rsName     |**Any Name** |**Same with Ex1** |**Same with Ex1** |
+|crsName    |**Any Name** |**Same with Ex1** |**Any Name** |
+|circuitname|"schnorr_prove"|"schnorr_prove"|"schnorr_verify"|
+|instanceId|    1|    2|    1|
+|prfName|**Any Name** |**Any Name** |**Any Name** |
+|anyNumber|**Any Number** |**Any Number** |**Any Number** |
+
 ## Paper
 - will be uploaded.
 
