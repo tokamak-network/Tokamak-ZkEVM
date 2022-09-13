@@ -48,6 +48,9 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
 - Compatibility with EVM (in the current version)
   - [compile](https://github.com/Onther-Tech/circom-ethereum-opcodes/blob/main/README.md)
   - [decode](https://github.com/Onther-Tech/UniGro16js/edit/master/Decode/readme.md)
+- User parameters
+  - $s_D$: The number of instructions defined in an EVM.
+  - $s_max$: The number of opcodes used in a p-code.
 
 ### How to use
 
