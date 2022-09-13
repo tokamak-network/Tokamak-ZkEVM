@@ -83,7 +83,7 @@ All file names used in the following commands does not include the file name ext
   - Enter the command "node build/cli.cjs derive \[input rs file name] \[crsName] \[circuitName] QAP\_s_D\_s_max".
   - Find the output circuit-specific reference string in "./resource/circuits/\[circuitName]/\[crsName].crs".
 - **generateWitness**
-  - In the current version, generatedWitness is called during executing prove (will be updated to be separately executed).
+  - In the current version, generatedWitness is called during the run of prove (will be updated to be separately executed).
   - Find the output witnesses in "./resource/circuits/\[circuitName]/witness\[instanceId]/witness#.wtns" for all indices # of opcodes used in an EVM application less than s_max.
 - **prove**
   - Be sure that all the outputs of the above algorithms are in the proper directories.
