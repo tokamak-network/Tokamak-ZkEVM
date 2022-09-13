@@ -93,7 +93,7 @@ All file names used in the following commands does not include the file name ext
 - **verify**
    - Be sure that all the outputs of the above algorithms are placed in the proper directories.
    - Enter the command ```node build/cli.cjs verify [prfName] [crsName] [circuitName] [instanceId]```.
-   - Check the verification results in terminal.
+   - Check the verification results displayed in terminal.
 
 ### Test run example
 - An example EVM system
