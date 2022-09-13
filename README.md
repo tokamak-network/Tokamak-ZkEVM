@@ -45,7 +45,7 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
      ```
 - Compatibility with EVM (in the current version)
   - [compile](https://github.com/Onther-Tech/circom-ethereum-opcodes/blob/main/README.md)
-  - [decode](https://github.com/Onther-Tech/UniGro16js/edit/master/Decode/readme.md)
+  - [decode](https://github.com/Onther-Tech/UniGroth16_Decode/blob/master/Decode/readme.md)
 - User input parameters
   - \[s_D]: The number of instructions defined in an EVM.
   - \[s_max]: The maximum number of arithmetic opcodes (might be defined by an EVM system) that can be contained in an EVM application (p-code).
@@ -76,7 +76,7 @@ All file names used in the following commands does not include the file name ext
   - Enter the command ```node build/cli.cjs setup param_[s_D]_[s_max] [rsName] [anyNumber]```.
   - Find the output universal reference string in ```./resource/universal_rs/[rsName].urs```.
 - **decode**
-  - [How to run decode](https://github.com/Onther-Tech/UniGro16js/edit/master/Decode/readme.md)
+  - [How to run decode](https://github.com/Onther-Tech/UniGroth16_Decode/blob/master/Decode/readme.md)
   - Copy and paste the output circuit information into ```./resource/circuits/[circuitName]/{OpList.bin, Set_I_P.bin, Set_I_V.bin, WireList.bin}```.
   - Copy and paste the output instances into ```./resource/circuits/[circuitName]/instance[instanceId]/{input_opcode#.json, output_opcode#.json}``` for all indices # of opcodes used in an EVM application less than s_max.
 - **derive**
