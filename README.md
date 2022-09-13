@@ -61,7 +61,8 @@ UGro16 consists of eight algorithms: compile, buildQAP, generateWitness, decode,
 All file names used in the following commands does not include the file name extensions (e.g., for "refstr.rs", just type "refstr")
 - **compile**
   - Be sure that the input [circom scripts](https://github.com/Onther-Tech/circom-ethereum-opcodes/blob/main/README.md) are placed in "./resource/subcircuits/circom/\[instruction name]\_test.circom".
-  - [How to run compile](https://github.com/Onther-Tech/circom-ethereum-opcodes/blob/main/test/TEST.md)
+  - Go to the directory "./resource/subcircuits".
+  - Enter the command "./compile.sh".
   - Find the output EVM information in "./resource/subcircuits/wire_list.json", where the index for each instruction is numbered.
   - Find the output R1CSs in "./resources/subcircuits/R1CS/subcircuit#.r1cs" for all indices # of instructions upto s_D-1.
   - Find the output wasms "./resources/subcircuits/wasm/subcircuit#.wasm" for all indices # of instructions upto s_D-1.
@@ -94,21 +95,45 @@ All file names used in the following commands does not include the file name ext
    - Enter the command "node build/cli.cjs verify \[prfName] \[crsName] \[circuitName] \[instanceId]".
    - Check the verification results in terminal.
 
-### Example of the user input parameters for test run
-- We provide an EVM system and example applications for test run.
-- 
+### Test run example
+- An example EVM system
+  - [Circom scripts](https://github.com/Onther-Tech/UniGro16js/tree/master/resource/subcircuits/circom) of [26 instructions](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/subcircuits/subcircuit_info.json).
+  - This system supports applications with instances of length 16 (this number can be modified in [here](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/subcircuits/circom/circuits/load.circom)).
+- Two EVM application examples
+  - Application-1: [A prove implementation of Schnorr protocol](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/circuits/schnorr_prove/readme.md)
+    - [p-code](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/circuits/schnorr_prove/bytes_schnorr_prove.txt)
+    - Two instance sets are prepared: [instance-1-1](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/circuits/schnorr_prove/instance1/scenario.txt), [instance-1-2](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/circuits/schnorr_prove/instance2/scenario.txt)
+  - Application-2: [A verify implementation of Schnorr protocol](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/circuits/schnorr_verify/readme.md)
+    - [p-code](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/circuits/schnorr_verify/bytes_schnorr_verify.txt)
+    - [Instance-2-1](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/circuits/schnorr_verify/instance1/scenario.txt)
+  - Both applications use less than 18 arithmetic instructions (i.e., s_max = 18).
+- As **decode** has no build currently, we provide the outputs of **decode** that have been created in advance.
+- Test run commands
+  1. Go to the directory "./resource/subcircuits".
+  2. Enter ```./compile.sh``` to run **compile**.
+  3. Enter ```node build/cli.cjs QAP_all bn128 26 18``` to run **buildQAP**.
+  4. Enter ```node build/cli.cjs setup param_26_18 rsSchnorr 1``` to run **setup**.
+  5. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_prove schnorr_prove QAP_26_18``` to run **derive** for the application-1.
+  6. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_verify schnorr_verify QAP_26_18``` to run **derive** for the application-2.
+  7. Enter ```node build/cli.cjs prove crsSchnorr_prove proof1 QAP_26_18 schnorr_prove 1 1``` to run **prove** for the instance-1-1 of the application-1.
+  8. Enter ```node build/cli.cjs prove crsSchnorr_prove proof2 QAP_26_18 schnorr_prove 2 1``` to run **prove** for the instance-1-2 of the application-1.
+  9. Enter ```node build/cli.cjs prove crsSchnorr_verify proof QAP_26_18 schnorr_verify 1 1``` to run **prove** for the instance-2-1 of the application-2.
+  10. Enter ```node build/cli.cjs verify proof1 crsSchnorr_prove schnorr_prove 1``` to run **verify** for the instance-1-1 of the application-1.
+  11. Enter ```node build/cli.cjs verify proof2 crsSchnorr_prove schnorr_prove 2``` to run **verify** for the instance-1-2 of the application-1.
+  12. Enter ```node build/cli.cjs verify proof crsSchnorr_verify schnorr_verify 1``` to run for the instance-2-1 of the application-2.
 
-- Input parameters
-|Parameters |Example 1  |Example 2  |Example 3|
+- Summary of input parameters used for the test run
+
+|Parameters |Application-1 with instance-1-1  |Application-1 with instance-1-2  |Application-2 with instance-2-1|
 |:---------:|:---------:|:---------:|:-------:|
-|s_D        |12         |**Same with Ex1** |**Same with Ex1** |
-|s_max      |18         |**Same with Ex1** |**Same with Ex1** |
-|rsName     |**Any Name** |**Same with Ex1** |**Same with Ex1** |
-|crsName    |**Any Name** |**Same with Ex1** |**Any Name** |
+|s_D        |26|26|26|
+|s_max      |18|18|18|
+|rsName     |"rs_18"|"rs_18"|"rs_18"|
+|crsName    |"crsSchnorr_prove"|"crsSchnorr_prove"|"crsSchnorr_verify"|
 |circuitname|"schnorr_prove"|"schnorr_prove"|"schnorr_verify"|
 |instanceId|    1|    2|    1|
-|prfName|**Any Name** |**Any Name** |**Any Name** |
-|anyNumber|**Any Number** |**Any Number** |**Any Number** |
+|prfName|"proof1"|"proof2"|"proof"|
+|anyNumber|1|1|1|
 
 ## Paper
 - will be uploaded.
