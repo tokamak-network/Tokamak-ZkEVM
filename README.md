@@ -112,7 +112,7 @@ All file names used in the following commands does not include the file name ext
   1. To build sources, go to the main directory and enter ```npm run buildcli```.
   1. To **compile**, go to the directory ```./resource/subcircuits``` and enter ```./compile.sh``` .
   3. Go back to the main directory and enter ```node build/cli.cjs QAP_all bn128 26 18``` to run **buildQAP**.
-  4. Enter ```node build/cli.cjs setup param_26_18 rsSchnorr 1``` to run **setup**.
+  4. Enter ```node build/cli.cjs setup param_26_18 rs_18 1``` to run **setup**.
   5. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_prove schnorr_prove QAP_26_18``` to run **derive** for the application-1.
   6. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_verify schnorr_verify QAP_26_18``` to run **derive** for the application-2.
   7. Enter ```node build/cli.cjs prove crsSchnorr_prove proof1 QAP_26_18 schnorr_prove 1 1``` to run **prove** for the instance-1-1 of the application-1.
