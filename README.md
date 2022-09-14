@@ -130,7 +130,7 @@ All file names used in the following commands does not include the file name ext
 |s_max      |18|18|18|
 |rsName     |"rs_18"|"rs_18"|"rs_18"|
 |crsName    |"crsSchnorr_prove"|"crsSchnorr_prove"|"crsSchnorr_verify"|
-|circuitname|"schnorr_prove"|"schnorr_prove"|"schnorr_verify"|
+|circuitName|"schnorr_prove"|"schnorr_prove"|"schnorr_verify"|
 |instanceId|    1|    2|    1|
 |prfName|"proof1"|"proof2"|"proof"|
 |anyNumber|1|1|1|
