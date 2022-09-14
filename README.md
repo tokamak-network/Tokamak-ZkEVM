@@ -97,7 +97,7 @@ All file names used in the following commands does not include the file name ext
 
 ### Test run example
 - An example EVM system
-  - [Circom scripts](https://github.com/Onther-Tech/UniGro16js/tree/master/resource/subcircuits/circom) of [26 instructions](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/subcircuits/subcircuit_info.json).
+  - [Circom scripts](https://github.com/Onther-Tech/UniGro16js/tree/master/resource/subcircuits/circom) of [12 instructions](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/subcircuits/subcircuit_info.json).
   - This system supports applications with instances of length 16 (this number can be modified in [here](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/subcircuits/circom/circuits/load.circom)).
 - Two EVM application examples
   - Application-1: [A prove implementation of Schnorr protocol](https://github.com/Onther-Tech/UniGro16js/blob/master/resource/circuits/schnorr_prove/readme.md)
@@ -111,13 +111,13 @@ All file names used in the following commands does not include the file name ext
 - Test run commands
   1. To build sources, go to the main directory and enter ```npm run buildcli```.
   1. To **compile**, go to the directory ```./resource/subcircuits``` and enter ```./compile.sh``` .
-  3. Go back to the main directory and enter ```node build/cli.cjs QAP_all bn128 26 18``` to run **buildQAP**.
-  4. Enter ```node build/cli.cjs setup param_26_18 rsSchnorr 1``` to run **setup**.
-  5. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_prove schnorr_prove QAP_26_18``` to run **derive** for the application-1.
-  6. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_verify schnorr_verify QAP_26_18``` to run **derive** for the application-2.
-  7. Enter ```node build/cli.cjs prove crsSchnorr_prove proof1 QAP_26_18 schnorr_prove 1 1``` to run **prove** for the instance-1-1 of the application-1.
-  8. Enter ```node build/cli.cjs prove crsSchnorr_prove proof2 QAP_26_18 schnorr_prove 2 1``` to run **prove** for the instance-1-2 of the application-1.
-  9. Enter ```node build/cli.cjs prove crsSchnorr_verify proof QAP_26_18 schnorr_verify 1 1``` to run **prove** for the instance-2-1 of the application-2.
+  3. Go back to the main directory and enter ```node build/cli.cjs QAP_all bn128 12 18``` to run **buildQAP**.
+  4. Enter ```node build/cli.cjs setup param_12_18 rs_18 1``` to run **setup**.
+  5. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_prove schnorr_prove QAP_12_18``` to run **derive** for the application-1.
+  6. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_verify schnorr_verify QAP_12_18``` to run **derive** for the application-2.
+  7. Enter ```node build/cli.cjs prove crsSchnorr_prove proof1 QAP_12_18 schnorr_prove 1 1``` to run **prove** for the instance-1-1 of the application-1.
+  8. Enter ```node build/cli.cjs prove crsSchnorr_prove proof2 QAP_12_18 schnorr_prove 2 1``` to run **prove** for the instance-1-2 of the application-1.
+  9. Enter ```node build/cli.cjs prove crsSchnorr_verify proof QAP_12_18 schnorr_verify 1 1``` to run **prove** for the instance-2-1 of the application-2.
   10. Enter ```node build/cli.cjs verify proof1 crsSchnorr_prove schnorr_prove 1``` to run **verify** for the instance-1-1 of the application-1.
   11. Enter ```node build/cli.cjs verify proof2 crsSchnorr_prove schnorr_prove 2``` to run **verify** for the instance-1-2 of the application-1.
   12. Enter ```node build/cli.cjs verify proof crsSchnorr_verify schnorr_verify 1``` to run **verify** for the instance-2-1 of the application-2.
@@ -126,11 +126,11 @@ All file names used in the following commands does not include the file name ext
 
 |Parameters |Application-1 with instance-1-1  |Application-1 with instance-1-2  |Application-2 with instance-2-1|
 |:---------:|:---------:|:---------:|:-------:|
-|s_D        |26|26|26|
+|s_D        |12|12|12|
 |s_max      |18|18|18|
 |rsName     |"rs_18"|"rs_18"|"rs_18"|
 |crsName    |"crsSchnorr_prove"|"crsSchnorr_prove"|"crsSchnorr_verify"|
-|circuitname|"schnorr_prove"|"schnorr_prove"|"schnorr_verify"|
+|circuitName|"schnorr_prove"|"schnorr_prove"|"schnorr_verify"|
 |instanceId|    1|    2|    1|
 |prfName|"proof1"|"proof2"|"proof"|
 |anyNumber|1|1|1|
