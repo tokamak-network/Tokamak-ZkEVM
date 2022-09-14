@@ -157,8 +157,6 @@ export default async function groth16Verify(proofName, cRSName, circuitName, ins
     if (cInstance.length != mPublic){
         throw new Error('Error in arranging circuit instance: wrong instance size');
     }
-
-    console.log(cInstance)
    
     
     /// read proof
