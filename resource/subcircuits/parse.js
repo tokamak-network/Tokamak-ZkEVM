@@ -27,21 +27,21 @@ fs.readFile('./temp.txt', 'utf8', function(err, data) {
     const opcode = opcodeDictionary[name]
 
     // num_wires 
-    const numWires = output[i + 8].match(/\d+/)[0]
+    const numWires = Number(output[i + 8].match(/\d+/)[0])
 
     // public output
-    const numOutput = output[i + 5].match(/\d+/)[0]
+    const numOutput = Number(output[i + 5].match(/\d+/)[0])
 
     // public input
-    const numInput = output[i + 4].match(/\d+/)[0]
+    const numInput = Number(output[i + 4].match(/\d+/)[0])
 
     const subcircuit = {
       id: id,
       opcode: opcode,
       name: name,
       Nwires: numWires,
-      Out_idx: ['1', numOutput],
-      In_idx: [`${Number(numOutput) + 1}`, numInput]
+      Out_idx: [1, numOutput],
+      In_idx: [numOutput + 1, numInput]
     }
     subcircuitJson['wire-list'].push(subcircuit)
   }
@@ -54,9 +54,3 @@ fs.readFile('./temp.txt', 'utf8', function(err, data) {
     }
   })
 })
-
-
-
-
-
-

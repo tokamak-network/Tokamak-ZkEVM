@@ -7,6 +7,10 @@ for (( i = 0 ; i < ${#names[@]} ; i++ )) ; do
 
   circom circom/${names[$i]}_test.circom --wasm -o wasm && \
   mv wasm/${names[$i]}_test_js/${names[$i]}_test.wasm wasm/subcircuit$i.wasm && \
+  if [ $i -eq 0 ]
+  then
+    cp wasm/${names[$i]}_test_js/witness_calculator.js ../../src/witness_calculator.cjs
+  fi
   rm -rf wasm/${names[$i]}_test_js
 done
 node parse.js
