@@ -19,7 +19,10 @@ import * as timer from "./timer.js"
 
 export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
     const startTime = timer.start();
-    let interTime
+    let partTime;
+    let EncTimeStart;
+    let EncTimeAccum = 0;
+
     const TESTFLAG = false;
     const dirPath = `resource/circuits/${circuitName}`
     
@@ -27,7 +30,12 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
     const {fd: fdRS, sections: sectionsRS} = await binFileUtils.readBinFile('resource/universal_rs/'+RSName+'.urs', "zkey", 2, 1<<25, 1<<23);
     const urs = {}
     urs.param = await zkeyUtils.readRSParams(fdRS, sectionsRS)
+    
+    console.log(`Loading urs...`)
+    partTime = timer.start();
     urs.content = await zkeyUtils.readRS(fdRS, sectionsRS, urs.param, URS)
+    const ursLoadTime = timer.end(partTime);
+    console.log(`Loading urs...Done`)
 
     const fdIdV = await fastFile.readExisting(`${dirPath}/Set_I_V.bin`, 1<<25, 1<<23);
     const fdIdP = await fastFile.readExisting(`${dirPath}/Set_I_P.bin`, 1<<25, 1<<23);
@@ -58,8 +66,6 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
     const s_F = OpList.length;
     const omega_y = await Fr.e(urs.param.omega_y)
 
-    console.log('smax: ', s_max)
-
     const mPublic = IdSetV.set.length // length of input instance + the total number of subcircuit outputs
     const mPrivate = IdSetP.set.length 
     const m = mPublic + mPrivate
@@ -75,8 +81,6 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
     let s_kPrime
     let iPrime
 
-        
-    console.log('checkpoint0')
     let OmegaFactors = new Array(s_max);
     OmegaFactors[0] = Fr.one;
     const omega_y_inv = Fr.inv(omega_y);
@@ -88,11 +92,12 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
         throw new Error('An opcode in the target EVM bytecode has no subcircuit');
     }
 
+    
     let vk1_zxy = new Array(mPublic)
     for(var i=0; i<mPublic; i++){
         PreImgSet = IdSetV.PreImgs[i]
         PreImgSize = IdSetV.PreImgs[i].length
-        vk1_zxy[i] = await G1.timesFr(buffG1, Fr.zero)
+        vk1_zxy[i] = await G1_timesFr(buffG1, Fr.zero)
         for(var j=0; j<s_max; j++){
             for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
                 kPrime = PreImgSet[PreImgIdx][0]
@@ -106,20 +111,18 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
                 arrayIdx = iPrime-NZeroWires
                 vk1_term = urs.content.theta_G.vk1_zxy_kij[s_kPrime][arrayIdx][j]
                 //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
-                //vk1_term = await G1.timesFr(vk1_term, OmegaFactor)
-                vk1_term = await G1.timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
+                //vk1_term = await G1_timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1_timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
                 vk1_zxy[i] = await G1.add(vk1_zxy[i], vk1_term)
             }
         }
     }
 
-    console.log('checkpoint1')
-
     let vk1_axy = new Array(mPrivate)
     for(var i=0; i<mPrivate; i++){
         PreImgSet = IdSetP.PreImgs[i]
         PreImgSize = IdSetP.PreImgs[i].length
-        vk1_axy[i] = await G1.timesFr(buffG1, Fr.zero)
+        vk1_axy[i] = await G1_timesFr(buffG1, Fr.zero)
         for(var j=0; j<s_max; j++){
             for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
                 kPrime = PreImgSet[PreImgIdx][0]
@@ -138,14 +141,12 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
 
                 vk1_term = urs.content.theta_G.vk1_axy_kij[s_kPrime][arrayIdx][j]
                 //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
-                //vk1_term = await G1.timesFr(vk1_term, OmegaFactor)
-                vk1_term = await G1.timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
+                //vk1_term = await G1_timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1_timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
                 vk1_axy[i] = await G1.add(vk1_axy[i], vk1_term)
             }
         }
     }
-
-    console.log('checkpoint2')
 
     let vk1_uxy = new Array(m)
     for(var i=0; i<m; i++){
@@ -157,7 +158,7 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
             PreImgSet = IdSetP.PreImgs[arrayIdx]
         }
         PreImgSize = PreImgSet.length
-        vk1_uxy[i] = await G1.timesFr(buffG1, Fr.zero)
+        vk1_uxy[i] = await G1_timesFr(buffG1, Fr.zero)
         for(var j=0; j<s_max; j++){
             for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
                 kPrime = PreImgSet[PreImgIdx][0]
@@ -165,14 +166,12 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
                 iPrime = PreImgSet[PreImgIdx][1]
                 vk1_term = urs.content.theta_G.vk1_uxy_kij[s_kPrime][iPrime][j]
                 //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
-                //vk1_term = await G1.timesFr(vk1_term, OmegaFactor)
-                vk1_term = await G1.timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
+                //vk1_term = await G1_timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1_timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
                 vk1_uxy[i] = await G1.add(vk1_uxy[i], vk1_term)
             }
         }
     }
-
-    console.log('checkpoint3')
 
     let vk1_vxy = new Array(m)
     for(var i=0; i<m; i++){
@@ -184,7 +183,7 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
             PreImgSet = IdSetP.PreImgs[arrayIdx]
         }
         PreImgSize = PreImgSet.length
-        vk1_vxy[i] = await G1.timesFr(buffG1, Fr.zero)
+        vk1_vxy[i] = await G1_timesFr(buffG1, Fr.zero)
         for(var j=0; j<s_max; j++){
             for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
                 kPrime = PreImgSet[PreImgIdx][0]
@@ -193,14 +192,12 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
 
                 vk1_term = urs.content.theta_G.vk1_vxy_kij[s_kPrime][iPrime][j]
                 //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
-                //vk1_term = await G1.timesFr(vk1_term, OmegaFactor)
-                vk1_term = await G1.timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
+                //vk1_term = await G1_timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1_timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
                 vk1_vxy[i] = await G1.add(vk1_vxy[i], vk1_term)
             }
         }
     }
-
-    console.log('checkpoint4')
 
     let vk2_vxy = new Array(m)
     for(var i=0; i<m; i++){
@@ -212,7 +209,7 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
             PreImgSet = IdSetP.PreImgs[arrayIdx]
         }
         PreImgSize = PreImgSet.length
-        vk2_vxy[i] = await G2.timesFr(buffG2, Fr.zero)
+        vk2_vxy[i] = await G2_timesFr(buffG2, Fr.zero)
         for(var j=0; j<s_max; j++){
             for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
                 kPrime = PreImgSet[PreImgIdx][0]
@@ -221,14 +218,12 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
 
                 vk2_term = urs.content.theta_G.vk2_vxy_kij[s_kPrime][iPrime][j]
                 //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
-                //vk2_term = await G2.timesFr(vk2_term, OmegaFactor)
-                vk2_term = await G2.timesFr(vk2_term, OmegaFactors[(kPrime*j)%s_max]);
+                //vk2_term = await G2_timesFr(vk2_term, OmegaFactor)
+                vk2_term = await G2_timesFr(vk2_term, OmegaFactors[(kPrime*j)%s_max]);
                 vk2_vxy[i] = await G2.add(vk2_vxy[i], vk2_term)
             }
         }
     }
-
-    console.log('checkpoint5')
 
     await binFileUtils.copySection(fdRS, sectionsRS, fdcRS, 1)
     await binFileUtils.copySection(fdRS, sectionsRS, fdcRS, 2)
@@ -262,24 +257,23 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
 
     await fdcRS.close()
 
-
+    console.log(`Loading sub-QAPs...`)
+    partTime = timer.start();
     let uX_ki = new Array(s_D);
     let vX_ki = new Array(s_D);
     let wX_ki = new Array(s_D);
-    interTime = timer.start();
     for (var i=0; i<s_F; i++){
         let k = OpList[i];
         if ( (uX_ki[k] === undefined) ){
             let m_k = ParamR1cs[k].m;
-
             let {uX_i: uX_i, vX_i: vX_i, wX_i: wX_i} = await polyUtils.readQAP(QAPName, k, m_k, n, n8r);
             uX_ki[k] = uX_i;
             vX_ki[k] = vX_i;
             wX_ki[k] = wX_i;
         }
     }
-    console.log(`Reading QAP is completed`)
-    timer.end(interTime)
+    console.log(`Loading ${uX_ki.length} sub-QAPs...Done`)
+    const qapLoadTime = timer.end(partTime);
 
     const fdQAP = await createBinFile(`${dirPath}/circuitQAP.qap`, "qapp", 1, 1+m, 1<<22, 1<<24);
 
@@ -287,7 +281,7 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
     await fdQAP.writeULE32(1); // Groth
     await endWriteSection(fdQAP);
 
-    interTime = timer.start();
+    partTime = timer.start();
     let fY_k = new Array(s_F);
     const fY = Array.from(Array(1), () => new Array(s_max));
     const Fr_s_max_inv = Fr.inv(Fr.e(s_max));
@@ -301,7 +295,7 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
         fY_k[k] = await polyUtils.scalePoly(Fr, LagY, Fr_s_max_inv);
     }
     console.log(`Generating fY_k is completed`)
-    timer.end(interTime);
+    timer.end(partTime);
 
     let InitPoly = Array.from(Array(n), () => new Array(s_max));
     InitPoly = await polyUtils.scalePoly(Fr, InitPoly, Fr.zero);
@@ -321,7 +315,7 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
         let uXY_i = InitPoly;
         let vXY_i = InitPoly;
         let wXY_i = InitPoly;
-        interTime = timer.start();
+        partTime = timer.start();
         for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
             let kPrime = PreImgSet[PreImgIdx][0];
             let iPrime = PreImgSet[PreImgIdx][1];
@@ -337,13 +331,13 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
             wXY_i = await polyUtils.addPoly(Fr, wXY_i, w_term);
         }
         
-        interTime = timer.check(interTime);
+        partTime = timer.check(partTime);
         for (var xi=0; xi<n; xi++){8
             for (var yi=0; yi<s_max; yi++){
                 await writeBigInt(fdQAP, Fr.toObject(uXY_i[xi][yi]), n8r);
             }
         }
-        timer.end(interTime);
+        timer.end(partTime);
 
         for (var xi=0; xi<n; xi++){
             for (var yi=0; yi<s_max; yi++){
@@ -361,5 +355,21 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
     }
     await fdQAP.close();
 
-    timer.end(startTime);
+    const totalTime = timer.end(startTime);
+    ursLoadTime
+    qapLoadTime
+    EncTimeAccum
+
+    async function G1_timesFr(point, fieldval){
+        EncTimeStart = timer.start();
+        const out = await G1.timesFr(point, fieldval);
+        EncTimeAccum += timer.end(EncTimeStart);
+        return out;
+    }
+    async function G2_timesFr(point, fieldval){
+        EncTimeStart = timer.start();
+        const out = await G2.timesFr(point, fieldval);
+        EncTimeAccum += timer.end(EncTimeStart);
+        return out;
+    }
 }

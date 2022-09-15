@@ -22,11 +22,18 @@ import fs from "fs"
 import * as fastFile from "fastfile"
 import { O_TRUNC, O_CREAT, O_RDWR, O_RDONLY} from "constants";
 import * as timer from "./timer.js"
+import * as polyUtils from "./uni_poly_utils.js";
 
 
 
-export default async function uni_Setup(paramName, RSName, entropy) {
+export default async function uni_Setup(paramName, RSName, QAPName, entropy) {
     const startTime = timer.start();
+    let partTime;
+    let EncTimeAccum1 = 0;
+    let EncTimeAccum2 = 0;
+    let EncTimeStart;
+    let qapTimeStart;
+    let qapTimeAccum = 0;
     
     const TESTFLAG = false;
     console.log(`TESTMODE = ${TESTFLAG}`)
@@ -41,16 +48,6 @@ export default async function uni_Setup(paramName, RSName, entropy) {
     
     await fdParam.close();
 
-    const r1cs = new Array();
-    const sR1cs = new Array();
-    for(var i=0; i<s_D; i++){
-        let r1csIdx = String(i);
-        const {fd: fdR1cs, sections: sectionsR1cs} = await readBinFile('resource/subcircuits/r1cs/subcircuit'+r1csIdx+".r1cs", "r1cs", 1, 1<<22, 1<<24);
-        r1cs.push(await readR1csHeader(fdR1cs, sectionsR1cs, false));
-        sR1cs.push(await readSection(fdR1cs, sectionsR1cs, 2));
-        await fdR1cs.close();
-    }
-
     const curve = param.curve;
     // const sG1 = curve.G1.F.n8*2              // unused
     // const sG2 = curve.G2.F.n8*2              // unused
@@ -59,22 +56,23 @@ export default async function uni_Setup(paramName, RSName, entropy) {
     const Fr = curve.Fr;
     const G1 = curve.G1;
     const G2 = curve.G2;
+    const n8r = param.n8r;
     const NConstWires = 1;
 
     const n = param.n;
     const s_max = param.s_max;
-    const omega_x = param.omega_x;
-    const omega_y = param.omega_y;
+
+    const r1cs = param.r1cs;
 
     const m = new Array()          // the numbers of wires
     const mPublic = new Array()    // the numbers of public wires (not including constant wire at zero index)
     const mPrivate = new Array()
     const nConstraints = new Array()
     for(var i=0; i<s_D; i++){
-        m.push(r1cs[i].nVars);
-        nConstraints.push(r1cs[i].nConstraints)
-        mPublic.push(r1cs[i].nOutputs + r1cs[i].nPubInputs + r1cs[i].nPrvInputs) 
-        mPrivate.push(m[i] - mPublic[i])
+        m.push(r1cs[i].m);
+        nConstraints.push(r1cs[i].nConstraints);
+        mPublic.push(r1cs[i].mPublic);
+        mPrivate.push(r1cs[i].mPrivate);
     }
     //console.log(Fr.toObject(omega_x))
     //console.log(Fr.toObject(await Fr.exp(omega_x, n)))
@@ -86,18 +84,21 @@ export default async function uni_Setup(paramName, RSName, entropy) {
         rng[i] = await misc.getRandomRng(entropy + i)
     }    
     const tau = createTauKey(Fr, rng)
-    console.log(`checkpoint2`)
-
     
     // Write the sigma_G section
     ///////////
+    partTime = timer.start();
+    console.log(`Generating sigma_G...`);
     await startWriteSection(fdRS, 3);
     let vk1_alpha_u;
-    vk1_alpha_u = await G1.timesFr( buffG1, tau.alpha_u );
     let vk1_alpha_v;
-    vk1_alpha_v = await G1.timesFr( buffG1, tau.alpha_v );
     let vk1_gamma_a;
+
+    EncTimeStart = timer.start();
+    vk1_alpha_u = await G1.timesFr( buffG1, tau.alpha_u );
+    vk1_alpha_v = await G1.timesFr( buffG1, tau.alpha_v );
     vk1_gamma_a = await G1.timesFr( buffG1, tau.gamma_a );
+    EncTimeAccum1 += timer.end(EncTimeStart);
 
     await zkeyUtils.writeG1(fdRS, curve, vk1_alpha_u);
     await zkeyUtils.writeG1(fdRS, curve, vk1_alpha_v);
@@ -125,7 +126,9 @@ export default async function uni_Setup(paramName, RSName, entropy) {
 
     for(var i = 0; i < n; i++) {
         for(var j = 0; j < s_max; j++){
+            EncTimeStart = timer.start();
             vk1_xy_pows[i][j] = await G1.timesFr(buffG1, xy_pows[i][j]);
+            EncTimeAccum1 += timer.end(EncTimeStart);
             await zkeyUtils.writeG1(fdRS, curve, vk1_xy_pows[i][j]);
             // [x^0*y^0], [x^0*y^1], ..., [x^0*y^(s_max-1)], [x^1*y^0], ...
         }
@@ -139,7 +142,9 @@ export default async function uni_Setup(paramName, RSName, entropy) {
     for(var i = 0; i < n-1; i++) {
         for(var j=0; j<2*s_max-1; j++){
             xy_pows_t1g= await Fr.mul(xy_pows[i][j], t1_x_g);
+            EncTimeStart = timer.start();
             vk1_xy_pows_t1g[i][j]= await G1.timesFr( buffG1, xy_pows_t1g );
+            EncTimeAccum1 += timer.end(EncTimeStart);
             await zkeyUtils.writeG1( fdRS, curve, vk1_xy_pows_t1g[i][j] );
             // [x^0*y^0*t*g], [x^0*y^1*t*g], ..., [x^0*y^(s_max-1)*t*g], [x^1*y^0*t*g], ...
         }
@@ -152,25 +157,31 @@ export default async function uni_Setup(paramName, RSName, entropy) {
     for(var i = 0; i < n; i++) {
         for(var j=0; j<s_max-1; j++){
             xy_pows_t2g= await Fr.mul(xy_pows[i][j], t2_y_g);
+            EncTimeStart = timer.start();
             vk1_xy_pows_t2g[i][j]= await G1.timesFr( buffG1, xy_pows_t2g );
+            EncTimeAccum1 += timer.end(EncTimeStart);
             await zkeyUtils.writeG1( fdRS, curve, vk1_xy_pows_t2g[i][j] );
             // [x^0*y^0*t*g], [x^0*y^1*t*g], ..., [x^0*y^(s_max-1)*t*g], [x^1*y^0*t*g], ...
         }
     }
     
     await endWriteSection(fdRS);
+    console.log(`Generating sigma_G...Done`);
     // End of the sigma_G section
     ///////////
 
      // Write the sigma_H section
     ///////////
+    console.log(`Generating sigma_H...`);
     await startWriteSection(fdRS, 4);
     let vk2_alpha_u;
-    vk2_alpha_u = await G2.timesFr( buffG2, tau.alpha_u );
     let vk2_gamma_z;
-    vk2_gamma_z = await G2.timesFr( buffG2, tau.gamma_z );
     let vk2_gamma_a;
+    EncTimeStart = timer.start();
+    vk2_alpha_u = await G2.timesFr( buffG2, tau.alpha_u );
+    vk2_gamma_z = await G2.timesFr( buffG2, tau.gamma_z );
     vk2_gamma_a = await G2.timesFr( buffG2, tau.gamma_a );
+    EncTimeAccum1 += timer.end(EncTimeStart);
     await zkeyUtils.writeG2(fdRS, curve, vk2_alpha_u);
     await zkeyUtils.writeG2(fdRS, curve, vk2_gamma_z);
     await zkeyUtils.writeG2(fdRS, curve, vk2_gamma_a);
@@ -178,125 +189,32 @@ export default async function uni_Setup(paramName, RSName, entropy) {
     let vk2_xy_pows
     for(var i = 0; i < n; i++) {
         for(var j=0; j<s_max; j++){
+            EncTimeStart = timer.start();
             vk2_xy_pows= await G2.timesFr( buffG2, xy_pows[i][j] );
+            EncTimeAccum1 += timer.end(EncTimeStart);
             await zkeyUtils.writeG2(fdRS, curve, vk2_xy_pows );
             // [x^0*y^0], [x^0*y^1], ..., [x^0*y^(s_max-1)], [x^1*y^0], ...
         }
     }
     await endWriteSection(fdRS);
+    console.log(`Generating sigma_H...Done`);
+    const sigmaTime = timer.end(partTime);
     // End of the sigma_H section
     ///////////
 
-    // Test code 3// --> DONE
-    // To test [x^i*y^j*t(x,y)/gamma_a]_G in sigma_G
-    // with e(A,B) == e(C,D), where
-    // A = [x^i*y^j]_G in sigma_G,
-    // B = t(x,y)*H
-    // C is the target,
-    // D = [gamma_a]_H in sigma_H
-    if(false){
-        console.log(`Running Test 3`)
-        let vk2_t_xy =  await G2.timesFr(buffG2, t_xy)
-        for (let i = 0; i < n - 1; i++) {
-			for (let j = 0; j < s_max - 1; j++) {
-                let res = await curve.pairingEq(
-                    vk1_xy_pows[i][j],
-                    vk2_t_xy, 
-                    vk1_xy_pows_tg[i][j],
-                     await G2.neg(vk2_gamma_a))
-				assert(res)
-			}
-		}
-        console.log(`Test 3 finished`)
-    }
-    // End of the test code 3//
-
-    // Write the theta_G[i] sections for i in [0, 1, ..., s_D] (alpha*u(X)+beta*v(X)+w(X))/gamma
     ///////////
-    let Lagrange_basis = new Array(n);
-    let term
-    let acc
-    let multiplier
-    for(var i=0; i<n; i++){
-        term=Fr.one;
-        acc=Fr.one;
-        multiplier=Fr.mul(await Fr.exp(Fr.inv(omega_x),i),x);
-        for(var j=1; j<n; j++){
-            term=Fr.mul(term,multiplier);
-            acc=Fr.add(acc,term);
-        }
-        Lagrange_basis[i]=Fr.mul(Fr.inv(Fr.e(n)),acc);
-    }
-    // let temp = new Array(n)
-    // for(var i=0; i<n; i++){
-    //     temp[i] = Fr.toObject(Lagrange_basis[i])
-    // }
-    // console.log('Lags ', temp)
-    console.log(`checkpoint6`)
-
-    for(var k = 0; k < s_D; k++){
-        console.log(`k: ${k}`)
-        let processResults_k
-        processResults_k = await zkeyUtils.processConstraints(curve, nConstraints[k], sR1cs[k]); // to fill U, V, W
-        let U = processResults_k.U
-        let Uid = processResults_k.Uid
-        let V = processResults_k.V
-        let Vid = processResults_k.Vid
-        let W = processResults_k.W
-        let Wid = processResults_k.Wid
-        console.log(`checkpoint7`)
-    
+    // Write the theta_G[k] sections for k in [0, 1, ..., s_D]
+    partTime = timer.start();
+    for (var k=0; k<s_D; k++){
+        console.log(`Generating theta_G...${k+1}/${s_D}`)
+        console.log(`  Loading ${3*m[k]} sub-QAP polynomials...`)
+        qapTimeStart = timer.start();
+        const {uX_i: uX_i, vX_i: vX_i, wX_i: wX_i} = await polyUtils.readQAP(QAPName, k, m[k], n, n8r);
+        qapTimeAccum += timer.end(qapTimeStart);
+        
         let ux = new Array(m[k]);
         let vx = new Array(m[k]);
         let wx = new Array(m[k]);
-        for(var i=0; i<m[k]; i++){
-            ux[i]=Fr.e(0);
-            vx[i]=Fr.e(0);
-            wx[i]=Fr.e(0);
-        }
-   
-        let U_ids
-        let U_coefs
-        let V_ids
-        let V_coefs
-        let W_ids
-        let W_coefs
-        let Lagrange_term
-        let U_idx
-        let V_idx
-        let W_idx
-    
-        for(var i=0; i<r1cs[k].nConstraints; i++){
-            U_ids=Uid[i];
-            U_coefs=U[i];
-            V_ids=Vid[i];
-            V_coefs=V[i];
-            W_ids=Wid[i];
-            W_coefs=W[i];
-            for(var j=0; j<U_ids.length; j++){
-                U_idx=U_ids[j]
-                if(U_idx>=0){
-                    Lagrange_term=Fr.mul(U_coefs[j],Lagrange_basis[i]);
-                    ux[U_idx]=Fr.add(ux[U_idx],Lagrange_term);
-                }
-            }
-            for(var j=0; j<V_ids.length; j++){
-                V_idx=V_ids[j]
-                if(V_idx>=0){
-                    Lagrange_term=Fr.mul(V_coefs[j],Lagrange_basis[i]);
-                    vx[V_idx]=Fr.add(vx[V_idx],Lagrange_term);
-                }
-            }
-            for(var j=0; j<W_ids.length; j++){
-                W_idx=W_ids[j]
-                if(W_idx>=0){
-                    Lagrange_term=Fr.mul(W_coefs[j],Lagrange_basis[i]);
-                    wx[W_idx]=Fr.add(wx[W_idx],Lagrange_term);
-                }
-            }
-        }
-        console.log(`checkpoint8`)
-    
         let vk1_ux = new Array(m[k])
         let vk1_vx = new Array(m[k])
         let vk2_vx = new Array(m[k])
@@ -305,27 +223,31 @@ export default async function uni_Setup(paramName, RSName, entropy) {
         let combined_i
         let zx_i
         let ax_i
-        
-        for(var i=0; i<m[k]; i++){
+        console.log(`  Evaluating and combining the sub-QAP polynomials...`)
+        for (var i=0; i<m[k]; i++){
+            ux[i] = await polyUtils.evalPoly(Fr, uX_i[i], x, 0);
+            vx[i] = await polyUtils.evalPoly(Fr, vX_i[i], x, 0);
+            wx[i] = await polyUtils.evalPoly(Fr, wX_i[i], x, 0);
+            EncTimeStart = timer.start();
             vk1_ux[i] = await G1.timesFr(buffG1, ux[i])
             vk1_vx[i] = await G1.timesFr(buffG1, vx[i])
             vk2_vx[i] = await G2.timesFr(buffG2, vx[i])
+            EncTimeAccum2 += timer.end(EncTimeStart);
             combined_i = Fr.add(Fr.add(Fr.mul(tau.alpha_u, ux[i]), Fr.mul(tau.alpha_v, vx[i])), wx[i]);
             if(i>=NConstWires && i<NConstWires+mPublic[k]){
                 zx_i=Fr.mul(combined_i, Fr.inv(tau.gamma_z));
+                EncTimeStart = timer.start();
                 vk1_zx.push(await G1.timesFr(buffG1, zx_i))
+                EncTimeAccum2 += timer.end(EncTimeStart);
             }
             else{
                 ax_i=Fr.mul(combined_i, Fr.inv(tau.gamma_a));
+                EncTimeStart = timer.start();
                 vk1_ax.push(await G1.timesFr(buffG1, ax_i))
+                EncTimeAccum2 += timer.end(EncTimeStart);
             }
         }
-
-        //console.log('temp test')
-        //console.log('ux: ', ux)
-        //console.log('vx: ', vx)
-        //console.log('wx: ', wx)
-        //console.log('temp test pass')
+      
         // Test code 4//
         // To test [z^(k)_i(x)]_G and [a^(k)_i(x)]_G in sigma_G
         if(TESTFLAG){
@@ -365,67 +287,86 @@ export default async function uni_Setup(paramName, RSName, entropy) {
         // End of the test code 4//
 
         await startWriteSection(fdRS, 5+k);
-        console.log(`checkpoint9`)
         let multiplier
         let vk1_uxy_ij
         let vk1_vxy_ij
         let vk2_vxy_ij
         let vk1_zxy_ij
         let vk1_axy_ij
+        console.log(`  Encrypting and file writing ${4*m[k]} QAP keys...`)
         for(var i=0; i < m[k]; i++){
             multiplier=Fr.inv(Fr.e(s_max))
+            EncTimeStart = timer.start();
             vk1_uxy_ij= await G1.timesFr(vk1_ux[i], multiplier)
+            EncTimeAccum2 += timer.end(EncTimeStart);
             await zkeyUtils.writeG1(fdRS, curve, vk1_uxy_ij)
             for(var j=1; j < s_max; j++){
                 multiplier=Fr.mul(multiplier, y)
+                EncTimeStart = timer.start();
                 vk1_uxy_ij= await G1.timesFr(vk1_ux[i], multiplier)
+                EncTimeAccum2 += timer.end(EncTimeStart);
                 await zkeyUtils.writeG1(fdRS, curve, vk1_uxy_ij)
             }
         }
         for(var i=0; i < m[k]; i++){
             multiplier=Fr.inv(Fr.e(s_max))
+            EncTimeStart = timer.start();
             vk1_vxy_ij= await G1.timesFr(vk1_vx[i], multiplier)
+            EncTimeAccum2 += timer.end(EncTimeStart);
             await zkeyUtils.writeG1(fdRS, curve, vk1_vxy_ij)
             for(var j=1; j < s_max; j++){
                 multiplier=Fr.mul(multiplier, y)
+                EncTimeStart = timer.start();
                 vk1_vxy_ij= await G1.timesFr(vk1_vx[i], multiplier)
+                EncTimeAccum2 += timer.end(EncTimeStart);
                 await zkeyUtils.writeG1(fdRS, curve, vk1_vxy_ij)
             }
         }
         for(var i=0; i < m[k]; i++){
             multiplier=Fr.inv(Fr.e(s_max))
+            EncTimeStart = timer.start();
             vk2_vxy_ij= await G2.timesFr(vk2_vx[i], multiplier)
+            EncTimeAccum2 += timer.end(EncTimeStart);
             await zkeyUtils.writeG2(fdRS, curve, vk2_vxy_ij)
             for(var j=1; j < s_max; j++){
                 multiplier=Fr.mul(multiplier, y)
+                EncTimeStart = timer.start();
                 vk2_vxy_ij= await G2.timesFr(vk2_vx[i], multiplier)
+                EncTimeAccum2 += timer.end(EncTimeStart);
                 await zkeyUtils.writeG2(fdRS, curve, vk2_vxy_ij)
             }
         }
-        console.log(`checkpoint10`)
         for(var i=0; i < mPublic[k]; i++){
             multiplier=Fr.inv(Fr.e(s_max))
+            EncTimeStart = timer.start();
             vk1_zxy_ij= await G1.timesFr(vk1_zx[i], multiplier)
+            EncTimeAccum2 += timer.end(EncTimeStart);
             await zkeyUtils.writeG1(fdRS, curve, vk1_zxy_ij)
             for(var j=1; j < s_max; j++){
                 multiplier=Fr.mul(multiplier, y)
+                EncTimeStart = timer.start();
                 vk1_zxy_ij= await G1.timesFr(vk1_zx[i], multiplier)
+                EncTimeAccum2 += timer.end(EncTimeStart);
                 await zkeyUtils.writeG1(fdRS, curve, vk1_zxy_ij)
             }
         }
         for(var i=0; i < mPrivate[k]; i++){
             multiplier=Fr.inv(Fr.e(s_max))
+            EncTimeStart = timer.start();
             vk1_axy_ij= await G1.timesFr(vk1_ax[i], multiplier)
+            EncTimeAccum2 += timer.end(EncTimeStart);
             await zkeyUtils.writeG1(fdRS, curve, vk1_axy_ij)
             for(var j=1; j < s_max; j++){
                 multiplier=Fr.mul(multiplier, y)
+                EncTimeStart = timer.start();
                 vk1_axy_ij= await G1.timesFr(vk1_ax[i], multiplier)
+                EncTimeAccum2 += timer.end(EncTimeStart);
                 await zkeyUtils.writeG1(fdRS, curve, vk1_axy_ij)
             }
         }
         await endWriteSection(fdRS)
-        console.log(`checkpoint11`)
     }
+    const thetaTime = timer.end(partTime);
         // Test code 5//
     
     if(TESTFLAG) // k==6 --> MOD subcircuit, c2 mod c3 = c1 <==> c4*c3+c1 = c2 <==> c4*c3 = -c1+c2
@@ -444,63 +385,22 @@ export default async function uni_Setup(paramName, RSName, entropy) {
         console.log(`Test 5 finished`)
     }
     // End of the test code 5//
-    
-
-    await fdRS.close()
-    console.log(`checkpoint12`)
-
-    timer.end(startTime);
 
     // End of the theta_G section
     ///////////
-/* 
-    // TEST CODE 6
-    if (TESTFLAG == true){
-        console.log(`Running Test 1`)
-        
-        const sR1cs = new Array(); 
-        for(var i=0; i<s_D; i++){
-            let r1csIdx = String(i);
-            const {fd: fdR1cs, sections: sectionsR1cs} = await readBinFile('resource/subcircuits/r1cs/subcircuit'+r1csIdx+'.r1cs', "r1cs", 1, 1<<22, 1<<24);
-            sR1cs.push(await readSection(fdR1cs, sectionsR1cs, 2));
-            await fdR1cs.close();
-        }
+    await fdRS.close()
 
-        const {uX_ki: uX_ki, vX_ki: vX_ki, wX_ki: wX_ki, tXY: tXY} = await polyUtils.buildR1csPolys(urs.param, sR1cs);
-        let fY = Array.from(Array(1), () => new Array(s_max));
-        const Fr_s_max_inv = Fr.inv(Fr.e(s_max));
-        fY = await polyUtils.scalePoly(Fr, fY, Fr_s_max_inv);
-
-        
-        let XY_pows = Array.from(Array(n-1), () => new Array(s_max-1));
-        XY_pows = await polyUtils.scalePoly(Fr, XY_pows, Fr.one);
-        const XY_pows_tXY = await polyUtils.mulPoly(Fr, tXY, XY_pows);
-
-        const test_xy_pows_t = await polyUtils.evalPoly(Fr, XY_pows_tXY, x, y);
-
-
-        
-
-
-
-        
-
-
-
-        console.log(U_ids[0])
-        const test_ux = await polyUtils.evalPoly(Fr, uX_ki[k][U_ids[0]], x, Fr.one);
-        console.log(`test: ${Fr.toObject(test_ux)}`)
-        console.log(`target: ${Fr.toObject(ux[U_ids[0]])}`)
-        if (!Fr.eq(test_ux, ux[U_ids[0]])){
-            throw new Error(`Polynomial evaluation failed`)
-        }
-        
-        console.log(`Test 1 finished`)
-    }
-    // END OF TEST CODE 6
- */
-    
-
+    const totalTime = timer.end(startTime);
+    console.log(`-----Time Analyzer-----`)
+    console.log(`###Total ellapsed time: ${totalTime} [ms]`)
+    console.log(` ##Time for generating two sigmas with n=${n}, s_max=${s_max}: ${sigmaTime} [ms] (${(sigmaTime)/totalTime*100} %)`)
+    console.log(`  #Encryption time: ${EncTimeAccum1} [ms] (${EncTimeAccum1/totalTime*100} %)`)
+    console.log(`  #File writing time: ${sigmaTime - EncTimeAccum1} [ms] (${(sigmaTime - EncTimeAccum1)/totalTime*100} %)`)
+    console.log(` ##Time for generating theta_G for ${s_D} sub-QAPs with totally ${m.reduce((accu,curr) => accu + curr)} wires and s_max=${s_max} opcode slots: ${thetaTime} [ms] (${(thetaTime)/totalTime*100} %)`)
+    console.log(`  #Sub-QAPs loading time: ${qapTimeAccum} [ms] (${qapTimeAccum/totalTime*100} %)`)
+    console.log(`  #Encryption time: ${EncTimeAccum2} [ms] (${(EncTimeAccum2)/totalTime*100} %)`)
+    console.log(`  #file writing time: ${thetaTime - qapTimeAccum - EncTimeAccum2} [ms] (${(thetaTime - qapTimeAccum - EncTimeAccum2)/totalTime*100} %)`)
+ 
 
     function createTauKey(Field, rng) {
         if (rng.length != 6){

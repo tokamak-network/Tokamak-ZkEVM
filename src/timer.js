@@ -11,8 +11,9 @@ export function end(startTime) {
   //timeDiff /= 1000;
 
   // get seconds 
-  var seconds = Math.round(timeDiff);
-  console.log(`Elapsed time: ${seconds} [ms]`);
+  //var seconds = Math.round(timeDiff);
+  //console.log(`Elapsed time: ${seconds} [ms]`);
+  return timeDiff;
 }
 
 export function check(startTime) {
