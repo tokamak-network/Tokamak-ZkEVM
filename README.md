@@ -88,7 +88,7 @@ All file names used in the following commands does not include the file name ext
   - Find the output witnesses in ```./resource/circuits/[circuitName]/witness[instanceId]/witness#.wtns``` for all indices # of opcodes used in an EVM application less than s_max.
 - **prove**
   - Be sure that all the outputs of the above algorithms are placed in the proper directories.
-  - Enter the command ```node build/cli.cjs prove [crsName] [prfName] QAP\_s_D\_s_max [circuitName] [anyNumber] [instanceId]```.
+  - Enter the command ```node build/cli.cjs prove [crsName] [prfName] [circuitName] [instanceId] [anyNumber]```.
   - Find the output proof in ```./resource/circuits/[circuitName]/[prfName].proof```.
 - **verify**
    - Be sure that all the outputs of the above algorithms are placed in the proper directories.
@@ -115,9 +115,9 @@ All file names used in the following commands does not include the file name ext
   4. Enter ```node build/cli.cjs setup param_12_18 rs_18 QAP_12_18 1``` to run **setup**.
   5. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_prove schnorr_prove QAP_12_18``` to run **derive** for the application-1.
   6. Enter ```node build/cli.cjs derive rs_18 crsSchnorr_verify schnorr_verify QAP_12_18``` to run **derive** for the application-2.
-  7. Enter ```node build/cli.cjs prove crsSchnorr_prove proof1 QAP_12_18 schnorr_prove 1 1``` to run **prove** for the instance-1-1 of the application-1.
-  8. Enter ```node build/cli.cjs prove crsSchnorr_prove proof2 QAP_12_18 schnorr_prove 2 1``` to run **prove** for the instance-1-2 of the application-1.
-  9. Enter ```node build/cli.cjs prove crsSchnorr_verify proof QAP_12_18 schnorr_verify 1 1``` to run **prove** for the instance-2-1 of the application-2.
+  7. Enter ```node build/cli.cjs prove crsSchnorr_prove proof1 schnorr_prove 1 1``` to run **prove** for the instance-1-1 of the application-1.
+  8. Enter ```node build/cli.cjs prove crsSchnorr_prove proof2 schnorr_prove 2 1``` to run **prove** for the instance-1-2 of the application-1.
+  9. Enter ```node build/cli.cjs prove crsSchnorr_verify proof schnorr_verify 1 1``` to run **prove** for the instance-2-1 of the application-2.
   10. Enter ```node build/cli.cjs verify proof1 crsSchnorr_prove schnorr_prove 1``` to run **verify** for the instance-1-1 of the application-1.
   11. Enter ```node build/cli.cjs verify proof2 crsSchnorr_prove schnorr_prove 2``` to run **verify** for the instance-1-2 of the application-1.
   12. Enter ```node build/cli.cjs verify proof crsSchnorr_verify schnorr_verify 1``` to run **verify** for the instance-2-1 of the application-2.
