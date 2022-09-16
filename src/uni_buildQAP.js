@@ -157,13 +157,13 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
     partTime = timer.start();
     
     console.log(`Generating Lagrange bases for X with ${n} evaluation points...`)
-    const Lagrange_basis = await polyUtils.buildCommonPolys(rs, true);
+    const Lagrange_basis = await polyUtils.buildCommonPolys(rs);
     console.log(`Generating Lagrange bases for X with ${n} evaluation points...Done`)
     
     let FSTimeAccum = 0;
     for (var k=0; k<s_D; k++){
         console.log(`Interpolating ${3*m[k]} QAP polynomials...${k+1}/${s_D}`)
-        let {uX_i: uX_i, vX_i: vX_i, wX_i: wX_i} = await polyUtils.buildR1csPolys(curve, Lagrange_basis, r1cs[k], sR1cs[k], true)
+        let {uX_i: uX_i, vX_i: vX_i, wX_i: wX_i} = await polyUtils.buildR1csPolys(curve, Lagrange_basis, r1cs[k], sR1cs[k])
         
         console.log(`File writing the polynomials...`)
         let FSTime = timer.start();
@@ -177,25 +177,28 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
         for (var i=0; i<m[k]; i++){
             for (var xi=0; xi<n; xi++){
                 if (typeof uX_i[i][xi][0] != "bigint"){
-                    throw new Error(`Error in coefficient type of uX_i at k: ${k}, i: ${i}`);
+                    await fdQAP.write(uX_i[i][xi][0]);    
+                } else{
+                    await writeBigInt(fdQAP, uX_i[i][xi][0], n8r);    
                 }
-                await writeBigInt(fdQAP, uX_i[i][xi][0], n8r);
             }
         }
         for (var i=0; i<m[k]; i++){
             for (var xi=0; xi<n; xi++){
                 if (typeof vX_i[i][xi][0] != "bigint"){
-                    throw new Error(`Error in coefficient type of vX_i at k: ${k}, i: ${i}`);
+                    await fdQAP.write(vX_i[i][xi][0]);    
+                } else{
+                    await writeBigInt(fdQAP, vX_i[i][xi][0], n8r);    
                 }
-                await writeBigInt(fdQAP, vX_i[i][xi][0], n8r);
             }
         }
         for (var i=0; i<m[k]; i++){
             for (var xi=0; xi<n; xi++){
                 if (typeof wX_i[i][xi][0] != "bigint"){
-                    throw new Error(`Error in coefficient type of wX_i at k: ${k}, i: ${i}`);
+                    await fdQAP.write(wX_i[i][xi][0]);   
+                } else{
+                    await writeBigInt(fdQAP, wX_i[i][xi][0], n8r);    
                 }
-                await writeBigInt(fdQAP, wX_i[i][xi][0], n8r);
             }
         }
         await endWriteSection(fdQAP)
@@ -204,7 +207,10 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
     }
     const qapTime = timer.end(partTime);
     const totalTime = timer.end(startTime);
-    console.log(`-----Time Analyzer-----`)
+
+
+    console.log(` `)
+    console.log(`-----Build QAP Time Analyzer-----`)
     console.log(`###Total ellapsed time: ${totalTime} [ms]`)
     console.log(` ##R1CS loading time: ${r1csTime} [ms] (${r1csTime/totalTime*100} %)`)
     console.log(` ##Total QAP time for ${m.reduce((accu,curr) => accu + curr)} wires: ${qapTime} [ms] (${qapTime/totalTime*100} %)`)

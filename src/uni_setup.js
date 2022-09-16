@@ -391,7 +391,8 @@ export default async function uni_Setup(paramName, RSName, QAPName, entropy) {
     await fdRS.close()
 
     const totalTime = timer.end(startTime);
-    console.log(`-----Time Analyzer-----`)
+    console.log(` `)
+    console.log(`-----Setup Time Analyzer-----`)
     console.log(`###Total ellapsed time: ${totalTime} [ms]`)
     console.log(` ##Time for generating two sigmas with n=${n}, s_max=${s_max}: ${sigmaTime} [ms] (${(sigmaTime)/totalTime*100} %)`)
     console.log(`  #Encryption time: ${EncTimeAccum1} [ms] (${EncTimeAccum1/totalTime*100} %)`)

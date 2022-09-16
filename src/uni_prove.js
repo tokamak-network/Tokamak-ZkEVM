@@ -30,9 +30,12 @@ const {stringifyBigInts} = utils;
 import * as misc from './misc.js'
 import * as timer from "./timer.js"
 
-export default async function groth16Prove(cRSName, proofName, QAPName, circuitName, entropy, instanceId) {
+export default async function groth16Prove(cRSName, proofName, circuitName, instanceId, entropy) {
     const startTime = timer.start();
-    let interTime;
+    let EncTimeStart;
+    let EncTimeAccum = 0;
+    let qapLoadTimeStart;
+    let qapLoadTimeAccum = 0;
 
     const dirPath = `resource/circuits/${circuitName}`
     const TESTFLAG = false;
@@ -91,31 +94,16 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
     const mPrivate = crs.param.mPrivate;
     const m = mPublic + mPrivate;
 
-    console.log(`n = ${n}`)
-    console.log(`s_max = ${s_max}`)
-     
-
     if(!((mPublic == IdSetV.set.length) && (mPrivate == IdSetP.set.length)))
     {
         throw new Error(`Error in crs file: invalid crs parameters. mPublic: ${mPublic}, IdSetV: ${IdSetV.set.length}, mPrivate: ${mPrivate}, IdSetP: ${IdSetP.set.length},`)
     }
-    console.log(`checkpoint 1`)
-
-    /// load subcircuit polynomials
-    // const sR1cs = new Array(); 
-    // for(var i=0; i<s_D; i++){
-    //     let r1csIdx = String(i);
-    //     const {fd: fdR1cs, sections: sectionsR1cs} = await binFileUtils.readBinFile('resource/subcircuits/r1cs/subcircuit'+r1csIdx+'.r1cs', "r1cs", 1, 1<<22, 1<<24);
-    //     sR1cs.push(await binFileUtils.readSection(fdR1cs, sectionsR1cs, 2));
-    //     await fdR1cs.close();
-    // }
-    // console.log(`checkpoint 0`)
-    
-    // const {uX_ki: uX_ki, vX_ki: vX_ki, wX_ki: wX_ki, tX: tX, tY: tY} = await polyUtils.buildR1csPolys(urs.param, sR1cs, true);
-    // console.log(`checkpoint 1`)  
 
     
     // generate witness for each subcircuit
+    console.log(`Solving QAP...`)
+    let qapSolveTime = timer.start();
+    console.log(`  Generating circuit witness...`)
     await generateWitness(circuitName, instanceId);
     const wtns = [];
     for(var k=0; k<OpList.length; k++ ){
@@ -206,7 +194,6 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
             throw new Error(`Undefined cWtns value at i=${i}`)
         }
     }
-    console.log(`checkpoint 2`)
   
     let tX = Array.from(Array(n+1), () => new Array(1));
     let tY = Array.from(Array(1), () => new Array(s_max+1));
@@ -221,63 +208,46 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
     // <=> P(X,Y) has zeros at least the points omega_x^i and omega_y^j
     // <=> there exists h(X,Y) such that p(X,Y) = t(X,Y) * h(X,Y)
     // <=> finding h(X,Y) is the goal of Prove algorithm
-
-
-    /// TEST CODE 1
-    // if (TESTFLAG){
-    //     console.log('Running Test 1')
-    //     const EVAL_k = 2;
-    //     const eval_point = await Fr.exp(omega_y, EVAL_k);
-    //     for (var k=0; k<s_F; k++){
-    //         let flag = await polyUtils.evalPoly(Fr, fY_k[k], Fr.one, eval_point);
-    //         if ( !( (k == EVAL_k && Fr.eq(flag, Fr.one)) || (k != EVAL_k && Fr.eq(flag, Fr.zero)) ) ){
-    //             throw new Error('Error in fY_k');
-    //         }
-    //     }
-    //     console.log(`Test 1 finished`)
-    // }
-    /// End of TEST CODE 1  
-    console.log(`checkpoint 3`) 
     
     /// compute p(X,Y)
+    console.log(`  Computing p(X,Y)...`)
     const {fd: fdQAP, sections: sectionsQAP}  = await binFileUtils.readBinFile(`resource/circuits/${circuitName}/circuitQAP.qap`, "qapp", 1, 1<<22, 1<<24);
+    let pxyTime = timer.start();
     let InitPoly = Array.from(Array(n), () => new Array(s_max));
     InitPoly = await polyUtils.scalePoly(Fr, InitPoly, Fr.zero);
     let p1XY = InitPoly;
     let p2XY = InitPoly;
     let p3XY = InitPoly;
     for(var i=0; i<m; i++){
-        let interTime = timer.start();
+        qapLoadTimeStart = timer.start();
         const {uXY_i, vXY_i, wXY_i} = await polyUtils.readCircuitQAP_i(Fr, fdQAP, sectionsQAP, i, n, s_max, n8r);
-        interTime = timer.check(interTime);
+        qapLoadTimeAccum += timer.end(qapLoadTimeStart);
         let term1 = await polyUtils.scalePoly(Fr, uXY_i, cWtns[i]);
-        interTime = timer.check(interTime);
         p1XY = await polyUtils.addPoly(Fr, p1XY, term1);
-        timer.end(interTime);
         let term2 = await polyUtils.scalePoly(Fr, vXY_i, cWtns[i]);
         p2XY = await polyUtils.addPoly(Fr, p2XY, term2);
         let term3 = await polyUtils.scalePoly(Fr, wXY_i, cWtns[i]);
         p3XY = await polyUtils.addPoly(Fr, p3XY, term3);
-        console.log(`checkpoint 3-${i} of ${m}`)
     }
     await fdQAP.close();
 
     const temp = await polyUtils.mulPoly(Fr, p1XY, p2XY);
     const pXY = await polyUtils.addPoly(Fr, temp, p3XY, true);
-    console.log(`checkpoint 4`)
+    pxyTime = timer.end(pxyTime);
     
     /// compute H
-    interTime = timer.start();
+    console.log(`  Finding h1(X,Y)...`)
+    let PolDivTime = timer.start();
     const {res: h1XY, finalrem: rem1} =  await polyUtils.divPolyByX(Fr, pXY, tX);
-    interTime = timer.check(interTime);
-    console.log(`checkpoint 4-1`)
+    console.log(`  Finding h2(X,Y)...`)
     const {res: h2XY, finalrem: rem2} =  await polyUtils.divPolyByY(Fr, rem1, tY);
-    timer.end(interTime);
+    PolDivTime = timer.end(PolDivTime);
+    qapSolveTime = timer.end(qapSolveTime);
+    console.log(`Solving QAP...Done`)
     if (TESTFLAG){
         console.log(`rem: ${rem2}`);
     }
 
-    console.log(`checkpoint 5`)
     if(TESTFLAG){
         //console.log(`rem2: ${polyUtils._transToObject(Fr, rem2)}`)
         const {x_order: h1_x_order, y_order: h1_y_order} = polyUtils._orderPoly(Fr, h1XY);
@@ -301,8 +271,8 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
                 }
             }
             let res = pXY;
-            let temp1 = await polyUtils.mulPoly(Fr, h1XY, tX);
-            let temp2 = await polyUtils.mulPoly(Fr, h2XY, tY);
+            let temp1 = await polyUtils_mulPoly(Fr, h1XY, tX);
+            let temp2 = await polyUtils_mulPoly(Fr, h2XY, tY);
             res= await polyUtils.addPoly(Fr, res, temp1, true);
             res= await polyUtils.addPoly(Fr, res, temp2, true);
             if (!Fr.eq(await polyUtils.evalPoly(Fr, res, Fr.one, Fr.one), Fr.zero)){
@@ -319,66 +289,71 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
     const r = Fr.fromRng(rawr);
     const s = Fr.fromRng(raws);
     
+    console.log(`Generating Proofs...`)
+    let provingTime = timer.start();
+    console.log(`  Generating Proof A...`)
     // Compute proof A
     const vk1_A_p1 = urs.sigma_G.vk1_alpha_v;
-    const vk1_A_p3 = await G1.timesFr(urs.sigma_G.vk1_gamma_a, r);
-    let vk1_A_p2 = await G1.timesFr(buffG1, Fr.e(0));
+    const vk1_A_p3 = await G1_timesFr(urs.sigma_G.vk1_gamma_a, r);
+    let vk1_A_p2 = await G1_timesFr(buffG1, Fr.e(0));
     for(var i=0; i<m; i++){
-        let term = await G1.timesFr(crs.vk1_uxy_i[i], cWtns[i]);
+        let term = await G1_timesFr(crs.vk1_uxy_i[i], cWtns[i]);
         vk1_A_p2 = await G1.add(vk1_A_p2, term);
     }
     const vk1_A = await G1.add(await G1.add(vk1_A_p1, vk1_A_p2), vk1_A_p3);
     
-    // Compute proof B_G
-    const vk1_B_p1 = urs.sigma_G.vk1_alpha_u;
-    const vk1_B_p3 = await G1.timesFr(urs.sigma_G.vk1_gamma_a, s);
-    let vk1_B_p2 = await G1.timesFr(buffG1, Fr.e(0));
-    for(var i=0; i<m; i++){
-        let term = await G1.timesFr(crs.vk1_vxy_i[i], cWtns[i]);
-        vk1_B_p2 = await G1.add(vk1_B_p2, term);
-    }
-    const vk1_B = await G1.add(await G1.add(vk1_B_p1, vk1_B_p2), vk1_B_p3);
-    
+    console.log(`  Generating Proof B...`)
     // Compute proof B_H
     const vk2_B_p1 = urs.sigma_H.vk2_alpha_u;
-    const vk2_B_p3 = await G2.timesFr(urs.sigma_H.vk2_gamma_a, s);
-    let vk2_B_p2 = await G2.timesFr(buffG2, Fr.e(0));
+    const vk2_B_p3 = await G2_timesFr(urs.sigma_H.vk2_gamma_a, s);
+    let vk2_B_p2 = await G2_timesFr(buffG2, Fr.e(0));
     for(var i=0; i<m; i++){
-        let term = await G2.timesFr(crs.vk2_vxy_i[i], cWtns[i]);
+        let term = await G2_timesFr(crs.vk2_vxy_i[i], cWtns[i]);
         vk2_B_p2 = await G2.add(vk2_B_p2, term);
     }
     const vk2_B = await G2.add(await G2.add(vk2_B_p1, vk2_B_p2), vk2_B_p3);
 
+    console.log(`  Generating Proof C...`)
+    // Compute proof B_G
+    const vk1_B_p1 = urs.sigma_G.vk1_alpha_u;
+    const vk1_B_p3 = await G1_timesFr(urs.sigma_G.vk1_gamma_a, s);
+    let vk1_B_p2 = await G1_timesFr(buffG1, Fr.e(0));
+    for(var i=0; i<m; i++){
+        let term = await G1_timesFr(crs.vk1_vxy_i[i], cWtns[i]);
+        vk1_B_p2 = await G1.add(vk1_B_p2, term);
+    }
+    const vk1_B = await G1.add(await G1.add(vk1_B_p1, vk1_B_p2), vk1_B_p3);
+
     // Compute proof C_G
     let vk1_C_p = new Array(6)
-    vk1_C_p[0] = await G1.timesFr(buffG1, Fr.e(0));
+    vk1_C_p[0] = await G1_timesFr(buffG1, Fr.e(0));
     for(var i=0; i<mPrivate; i++){
-        let term = await G1.timesFr(crs.vk1_axy_i[i], cWtns[IdSetP.set[i]]);
+        let term = await G1_timesFr(crs.vk1_axy_i[i], cWtns[IdSetP.set[i]]);
         vk1_C_p[0] = await G1.add(vk1_C_p[0], term);
     }
-    vk1_C_p[1] = await G1.timesFr(buffG1, Fr.e(0));
+    vk1_C_p[1] = await G1_timesFr(buffG1, Fr.e(0));
     for(var i=0; i<n-1; i++){
         for(var j=0; j<2*s_max-1; j++){
-            let term = G1.timesFr(urs.sigma_G.vk1_xy_pows_t1g[i][j], h1XY[i][j]);
-            vk1_C_p[1] = G1.add(vk1_C_p[1], term);
+            let term = await G1_timesFr(urs.sigma_G.vk1_xy_pows_t1g[i][j], h1XY[i][j]);
+            vk1_C_p[1] = await G1.add(vk1_C_p[1], term);
         }
     }
-    vk1_C_p[2] = await G1.timesFr(buffG1, Fr.e(0));
+    vk1_C_p[2] = await G1_timesFr(buffG1, Fr.e(0));
     for(var i=0; i<n; i++){
         for(var j=0; j<s_max-1; j++){
-            let term = G1.timesFr(urs.sigma_G.vk1_xy_pows_t2g[i][j], h2XY[i][j]);
-            vk1_C_p[2] = G1.add(vk1_C_p[2], term);
+            let term = await G1_timesFr(urs.sigma_G.vk1_xy_pows_t2g[i][j], h2XY[i][j]);
+            vk1_C_p[2] = await G1.add(vk1_C_p[2], term);
         }
     }
-    vk1_C_p[3] = await G1.timesFr(vk1_A, s);
-    vk1_C_p[4] = await G1.timesFr(vk1_B, r);
-    vk1_C_p[5] = await G1.timesFr(urs.sigma_G.vk1_gamma_a, Fr.neg(Fr.mul(r,s)));
+    vk1_C_p[3] = await G1_timesFr(vk1_A, s);
+    vk1_C_p[4] = await G1_timesFr(vk1_B, r);
+    vk1_C_p[5] = await G1_timesFr(urs.sigma_G.vk1_gamma_a, Fr.neg(Fr.mul(r,s)));
     let vk1_C = vk1_C_p[0];
     for(var i=1; i<6; i++){
         vk1_C = await G1.add(vk1_C, vk1_C_p[i]);
     }
-
-    console.log(`checkpoint 6`)
+    provingTime = timer.end(provingTime);
+    console.log(`Generating Proofs...Done`)
 
     /// TEST CODE 4
     if (TESTFLAG){
@@ -388,16 +363,16 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
         let res = [];
 
         res.push(await curve.pairingEq(urs.sigma_G.vk1_xy_pows[1][0], urs.sigma_H.vk2_xy_pows[0][1],
-            await G1.timesFr(buffG1, Fr.mul(x,y)), await G2.neg(buffG2))
+            await G1_timesFr(buffG1, Fr.mul(x,y)), await G2.neg(buffG2))
         );
 
         const p1xy = await polyUtils.evalPoly(Fr, p1XY, x, y);
         const p2xy = await polyUtils.evalPoly(Fr, p2XY, x, y);
         const p3xy = await polyUtils.evalPoly(Fr, p3XY, x, y);
-        const test_vk1_U = await G1.timesFr(buffG1, p1xy);
-        const test_vk1_V = await G1.timesFr(buffG1, p2xy);
-        const test_vk2_V = await G2.timesFr(buffG2, p2xy);
-        const test_vk1_W = await G1.timesFr(buffG1, p3xy);
+        const test_vk1_U = await G1_timesFr(buffG1, p1xy);
+        const test_vk1_V = await G1_timesFr(buffG1, p2xy);
+        const test_vk2_V = await G2_timesFr(buffG2, p2xy);
+        const test_vk1_W = await G1_timesFr(buffG1, p3xy);
 
         res.push(await curve.pairingEq(await G1.neg(test_vk1_U), test_vk2_V,
             vk1_A_p2, vk2_B_p2
@@ -405,9 +380,9 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
         );
 
         let vk1_D
-        vk1_D = await G1.timesFr(buffG1, Fr.e(0));
+        vk1_D = await G1_timesFr(buffG1, Fr.e(0));
         for(var i=0; i<mPublic; i++){
-            let term = await G1.timesFr(crs.vk1_zxy_i[i], cWtns[IdSetV.set[i]]);
+            let term = await G1_timesFr(crs.vk1_zxy_i[i], cWtns[IdSetV.set[i]]);
             vk1_D = await G1.add(vk1_D, term);
         }
 
@@ -425,10 +400,10 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
         const h1xy = await polyUtils.evalPoly(Fr, h1XY, x, y);
         const h2xy = await polyUtils.evalPoly(Fr, h2XY, x, y);
         const h1txh2ty = await Fr.add(Fr.mul(tx,h1xy), Fr.mul(ty,h2xy));
-        const test_vk1_h1txh2ty = await G1.timesFr(buffG1, h1txh2ty);
+        const test_vk1_h1txh2ty = await G1_timesFr(buffG1, h1txh2ty);
 
         res.push(await curve.pairingEq(urs.sigma_G.vk1_xy_pows_t1g[1][1], urs.sigma_H.vk2_gamma_a,
-            await G1.timesFr(buffG1, Fr.mul(x,y)), await G2.neg(await G2.timesFr(buffG2, tx))
+            await G1_timesFr(buffG1, Fr.mul(x,y)), await G2.neg(await G2_timesFr(buffG2, tx))
             )
         );
 
@@ -457,9 +432,9 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
     if (TESTFLAG){
         console.log('Running Test 5')
         let vk1_D
-        vk1_D = await G1.timesFr(buffG1, Fr.e(0));
+        vk1_D = await G1_timesFr(buffG1, Fr.e(0));
         for(var i=0; i<mPublic; i++){
-            let term = await G1.timesFr(crs.vk1_zxy_i[i], cWtns[IdSetV.set[i]]);
+            let term = await G1_timesFr(crs.vk1_zxy_i[i], cWtns[IdSetV.set[i]]);
             vk1_D = await G1.add(vk1_D, term);
         }
 
@@ -491,5 +466,27 @@ export default async function groth16Prove(cRSName, proofName, QAPName, circuitN
 
     await fdPrf.close();
 
-    timer.end(startTime);
+    const totalTime = timer.end(startTime);
+    console.log(` `)
+    console.log(`-----Prove Time Analyzer-----`)
+    console.log(`###Total ellapsed time: ${totalTime} [ms]`)
+    console.log(` ##Time for solving QAP of degree (${n},${s_max}) with ${m} wires: ${qapSolveTime} [ms] (${qapSolveTime/totalTime*100} %)`)
+    console.log(`  #Loading QAP time: ${qapLoadTimeAccum} [ms] (${qapLoadTimeAccum/totalTime*100} %)`)
+    console.log(`  #Computing p(X,Y) time (including single multiplication): ${pxyTime-qapLoadTimeAccum} [ms] (${(pxyTime-qapLoadTimeAccum)/totalTime*100} %)`)
+    console.log(`  #Finding h1(X,Y) and h2(X,Y) time (two divisions): ${PolDivTime} [ms] (${PolDivTime/totalTime*100} %)`)
+    console.log(` ##Time for generating proofs with m=${m}, n=${n}, s_max=${s_max}: ${provingTime} [ms] (${provingTime/totalTime*100} %)`)
+    console.log(`  #Encryption time: ${EncTimeAccum} [ms] (${EncTimeAccum/totalTime*100} %)`)
+    
+    async function G1_timesFr(point, fieldval){
+        EncTimeStart = timer.start();
+        const out = await G1.timesFr(point, fieldval);
+        EncTimeAccum += timer.end(EncTimeStart);
+        return out;
+    }
+    async function G2_timesFr(point, fieldval){
+        EncTimeStart = timer.start();
+        const out = await G2.timesFr(point, fieldval);
+        EncTimeAccum += timer.end(EncTimeStart);
+        return out;
+    }
 }

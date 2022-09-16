@@ -1,13 +1,9 @@
 import {processConstraints} from "./uni_zkey_utils.js";
 import * as binFileUtils from "@iden3/binfileutils";
 
-export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, flagMemorySave){
+export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k){
     const Fr = curve.Fr;
     const ParamR1cs = r1cs_k;
-    let flag_memory = true;
-    if ( (flagMemorySave === undefined) || (flagMemorySave == false) ){
-        flag_memory = false;
-    }
 
     let U;
     let Uid;
@@ -35,7 +31,6 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, fla
     let uX_i = new Array(m_k);
     let vX_i = new Array(m_k);
     let wX_i = new Array(m_k);
-    console.log(`checkpoint 0-0`)
     
     constraints_k = await processConstraints(curve, n_k, sR1cs_k);
     U = constraints_k.U
@@ -45,17 +40,10 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, fla
     W = constraints_k.W
     Wid = constraints_k.Wid
 
-    console.log(`checkpoint 0-1`)
-
     for(var i=0; i<m_k; i++){
         uX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
         vX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
         wX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-        if (flag_memory){
-            uX_i[i] = _transToObject(Fr, uX_i[i]);
-            vX_i[i] = _transToObject(Fr, vX_i[i]);
-            wX_i[i] = _transToObject(Fr, wX_i[i]);
-        }
     }
     let item_i;
     for(var i=0; i<ParamR1cs.nConstraints; i++){
@@ -70,9 +58,6 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, fla
             if(U_idx>=0){
                 Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], U_coefs[j]);
                 item_i = await addPoly(Fr, uX_i[U_idx], Lagrange_poly);
-                if (flag_memory){
-                    item_i = _transToObject(Fr, item_i);
-                }
                 uX_i[U_idx] = item_i;
             }
         }
@@ -81,9 +66,6 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, fla
             if(V_idx>=0){
                 Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], V_coefs[j]);
                 item_i = await addPoly(Fr, vX_i[V_idx], Lagrange_poly);
-                if (flag_memory){
-                    item_i = _transToObject(Fr, item_i);
-                }
                 vX_i[V_idx] = item_i;
             }
         }
@@ -92,32 +74,22 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, fla
             if(W_idx>=0){
                 Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], W_coefs[j]);
                 item_i = await addPoly(Fr, wX_i[W_idx], Lagrange_poly);
-                if (flag_memory){
-                    item_i = _transToObject(Fr, item_i);
-                }
                 wX_i[W_idx] = item_i;
             }
         }
     }
 
-    console.log(`checkpoint 0-2`)
-
     return {uX_i, vX_i, wX_i}
     // uX_ki[k][i] = polynomial of the i-th wire in the k-th subcircuit.
 }
 
-export async function buildCommonPolys(rs, flagMemorySave){
+export async function buildCommonPolys(rs){
     const curve = rs.curve;
     const Fr = curve.Fr;
     const n = rs.n;
     const s_max = rs.s_max;
     const omega_x = await Fr.e(rs.omega_x);
-    let flag_memory = true;
-    if ( (flagMemorySave === undefined) || (flagMemorySave == false) ){
-        flag_memory = false;
-    }
 
-    console.log(`checkpoint 0-0`)
     let Lagrange_basis = new Array(n);
     let item_i;
     for(var i=0; i<n; i++){
@@ -128,13 +100,8 @@ export async function buildCommonPolys(rs, flagMemorySave){
             terms[j][0]=await Fr.mul(terms[j-1][0], multiplier);
         }
         item_i = await scalePoly(Fr, terms, Fr.inv(Fr.e(n)));
-        if (flag_memory){
-            item_i = _transToObject(Fr, item_i);
-        }
         Lagrange_basis[i] = item_i;
     }
-    console.log(`checkpoint 0-1`)
-
    
     return Lagrange_basis
     // uX_ki[k][i] = polynomial of the i-th wire in the k-th subcircuit.
@@ -439,7 +406,7 @@ export async function divPolyByX(Fr, coefs1, coefs2, object_flag){
   
     while (1){
         let {xId: nu_order_X, yId: nu_order_Y, coef: nu_high_coef} = _findOrder(Fr, numer, dictOrder);
-        console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
+        //console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
         if ((prev_order_X <= nu_order_X) && prev_order_Y <= nu_order_Y){
             throw new Error(`infinite loop`)
         }
@@ -489,7 +456,7 @@ export async function divPolyByY(Fr, coefs1, coefs2, object_flag){
   
     while (1){
         let {xId: nu_order_X, yId: nu_order_Y, coef: nu_high_coef} = _findOrder(Fr, numer, dictOrder);
-        console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
+        //console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
         if ((prev_order_X <= nu_order_X) && prev_order_Y <= nu_order_Y){
             throw new Error(`infinite loop`)
         }
@@ -585,14 +552,16 @@ export async function readQAP(QAPName, k, m_k, n, n8r){
     for (var i=0; i<m_k; i++){
         let data = Array.from(Array(n), () => new Array(1));
         for (var xi=0; xi<n; xi++){
-            data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+            //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+            data[xi][0] = await fdQAP.read(n8r);
         }
         uX_i[i] = data;
     }
     for (var i=0; i<m_k; i++){
         let data = Array.from(Array(n), () => new Array(1));
         for (var xi=0; xi<n; xi++){
-            data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+            //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+            data[xi][0] = await fdQAP.read(n8r);
         }
         vX_i[i] = data;
     }
@@ -600,7 +569,8 @@ export async function readQAP(QAPName, k, m_k, n, n8r){
     for (var i=0; i<m_k; i++){
         let data = Array.from(Array(n), () => new Array(1));
         for (var xi=0; xi<n; xi++){
-            data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+            //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+            data[xi][0] = await fdQAP.read(n8r);
         }
         wX_i[i] = data;
     }
@@ -622,19 +592,19 @@ export async function readCircuitQAP_i(Fr, fdQAP, sectionsQAP, i, n, s_max, n8r)
 
     for (var xi=0; xi<n; xi++){
         for (var yi=0; yi<s_max; yi++){
-            uXY_i[xi][yi] = Fr.e(await binFileUtils.readBigInt(fdQAP, n8r));
+            uXY_i[xi][yi] = await fdQAP.read(n8r);
         }
     }
 
     for (var xi=0; xi<n; xi++){
         for (var yi=0; yi<s_max; yi++){
-            vXY_i[xi][yi] = Fr.e(await binFileUtils.readBigInt(fdQAP, n8r));
+            vXY_i[xi][yi] = await fdQAP.read(n8r);
         }
     }
 
     for (var xi=0; xi<n; xi++){
         for (var yi=0; yi<s_max; yi++){
-            wXY_i[xi][yi] = Fr.e(await binFileUtils.readBigInt(fdQAP, n8r));
+            wXY_i[xi][yi] = await fdQAP.read(n8r);
         }
     }
 
