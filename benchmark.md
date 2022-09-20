@@ -76,7 +76,8 @@ contract transferContract {
 
 # 2. Benchmarks
 ## 2.1. Schnorr protocol proving algorithm
-- The number of arithmetic instructions: 18
+- Setup EVM instructions: 0-11
+- The number of arithmetic instructions in circuit: 18
 - The number of circuit wires: 130
 - The degree of QAP (bivariate) polynomials: (64, 32)
 - Test results:
@@ -91,7 +92,8 @@ contract transferContract {
 |Time for pairing and hashing|-|-|-|-|0||
 
 ## 2.2. Ether transfer smart contract
-- The number of arithmetic instructions: 21
+- Setup EVM instructions: 0-25
+- The number of arithmetic instructions in circuit: 21
 - The number of circuit wires: 2615
 - The degree of QAP (bivariate) polynomials: (1024, 32)
 - Test results:
