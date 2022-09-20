@@ -7,12 +7,12 @@ This document records the time spent for running the whole UniGro16 protocol.
 - OS: Windows
 
 ## EVM system
-- Circom subcircuits for 26 instructions
-- Subcircuit information of each instruction is as follow
+- 26 Circom subcircuits for 24 EVM instructions are implemented.
+- The subcircuit information of each instruction is as follows,
 
-|Index|Instruction|Opcode|NWires|NOutput|NInput|Note|
-|:---:||:---:||:---:||:---:||:---:|
-|0|Data load|-|33|16|16|A virtual subcircuit managing data exchange in EVM stack with EVM memory and world storage.|
+|Index|Instruction|Opcode|NWires|NOutputs|NInputs|Note|
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+|0|Data load|0xfff|33|16|16|A virtual subcircuit managing data exchange in EVM stack with EVM memory and world storage.|
 |1|ADD|0x01|5|1|2||
 |2|MUL|0x02|4|1|2||
 |3|SUB|0x03|5|1|2||
@@ -26,4 +26,16 @@ This document records the time spent for running the whole UniGro16 protocol.
 |11|EXP|0x0a|32|1|2||
 |12|LT|0x10|255|1|2||
 |13|GT|0x11|255|1|2||
+|14|SLT|0x12|290|1|2||
+|15|SGT|0x13|290|1|2||
+|16|EQ|0x14|5|1|2||
+|17|ISZERO|0x15|4|1|2||
+|18|AND|0x16|760|1|2||
+|19|OR|0x17|760|1|2||
+|20|XOR|0x18|760|1|2||
+|21|NOT|0x19|255|1|1||
+|22|SHL|0x1b|18|1|2||
+|23|SHR-L|0x1c1|19|1|2|A subcircuit of SHR for input value smaller than circom's modulo|
+|24|SHR-H|0x1c2|19|1|2|A subcircuit of SHR for input value greater than circom's modulo|
+|25|SAR|0x1d|286|1|2||
 
