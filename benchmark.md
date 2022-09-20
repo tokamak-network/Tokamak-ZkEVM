@@ -7,7 +7,23 @@ This document records the time spent for running the whole UniGro16 protocol.
 - OS: Windows
 
 ## EVM system
-- 26 instructions
-- Subcircuit information of each instruction
-|Index|Instruction|Opcode|NWires|NInput|NOutput|
+- Circom subcircuits for 26 instructions
+- Subcircuit information of each instruction is as follow
+
+|Index|Instruction|Opcode|NWires|NOutput|NInput|Note|
 |:---:||:---:||:---:||:---:||:---:|
+|0|Data load|-|33|16|16|A virtual subcircuit managing data exchange in EVM stack with EVM memory and world storage.|
+|1|ADD|0x01|5|1|2||
+|2|MUL|0x02|4|1|2||
+|3|SUB|0x03|5|1|2||
+|4|DIV|0x04|5|1|2||
+|5|SHA3|0x20|4|1|2|A virtual subcircuit doing nothing.|
+|6|SDIV|0x05|41|1|2||
+|7|MOD|0x06|5|1|2||
+|8|SMOD|0x07|41|1|2||
+|9|ADDMOD|0x08|7|1|2||
+|10|MULMOD|0x09|8|1|3||
+|11|EXP|0x0a|32|1|2||
+|12|LT|0x10|255|1|2||
+|13|GT|0x11|255|1|2||
+
