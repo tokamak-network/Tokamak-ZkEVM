@@ -107,5 +107,26 @@ contract transferContract {
 |Time for storage access|0.45|1.07|6.76|4.31|0||
 |Time for pairing and hashing|-|-|-|-|0||
 
-# 3. Concluding remark
+# 3. Input Node.js commands to reproduce the benchmark results
+- How to use UniGro16js can be found [here](https://github.com/Onther-Tech/UniGro16js/edit/master/README.md)
+- Input commands for the results (Find the values to put in the parameters in square brackets from the table below)
+  1. To build source codes, go to the main directory and enter ```npm run buildcli```.
+  1. To **compile**, go to the directory ```./resource/subcircuits``` and enter ```./compile.sh``` .
+  3. Go back to the main directory and enter ```node build/cli.cjs QAP_all bn128 [s_D] [s_max]``` to run **buildQAP**.
+  4. Enter ```node build/cli.cjs setup param_[s_D]_[s_max] rs_[s_max] QAP_[s_D]_[s_max] 1``` to run **setup**.
+  5. Enter ```node build/cli.cjs derive rs_[s_D] [crsName] [circuitName] QAP_[s_D]_[s_max]``` to run **derive** for the application-1.
+  7. Enter ```node build/cli.cjs prove [crsName] proof [circuitName] 1 1``` to run **prove** for the instance-1-1 of the application-1.
+  10. Enter ```node build/cli.cjs verify proof [crsName] [circuitName] 1``` to run **verify** for the instance-1-1 of the application-1.
+
+- Parameters
+
+|Parameters |Schnorr protocol proving algorithm |Ether transfer|
+|:---------:|:---------:|:---------:|
+|s_D        |12|26|
+|s_max      |18|21|
+|rsName     |"rs_18"|"rs_21"|
+|crsName    |"crsSchnorr_prove"|"crsEtherTransfer"|
+|circuitName|"schnorr_prove"|"test_transfer"|
+
+# 4. Concluding remark
 Proving Ether transfer is unrealistically time consuming for now, since FFT is not applied in polynomial multiplications and divisions. Since the prove algorithm of our protocol is ALMOST identical with the original Groth16's with the only difference in circuit parameters, we expect that the proving speed will be improved as fast as the original one, when FFT and the optimization on accessing files are applied.
