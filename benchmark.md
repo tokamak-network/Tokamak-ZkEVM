@@ -105,5 +105,5 @@ contract transferContract {
 |Time for storage access|0.45|1.07|6.76|4.31|0||
 |Time for pairing and hashing|-|-|-|-|0||
 
-# 3. Conclusion
+# 3. Concluding remark
 Proving Ether transfer is unrealistically time consuming for now, since FFT is not applied in polynomial multiplications and divisions. Since the prove algorithm of our protocol is ALMOST identical with the original Groth16's with the only difference in circuit parameters, we expect that the proving speed will be improved as fast as the original one, when the FFT and the file access optimization are applied.
