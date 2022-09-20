@@ -1,12 +1,12 @@
-# Introduction
+# 1. Introduction
 This document records the time spent for running the whole UniGro16 protocol.
-## Operating hardware
+## 1.1. Operating hardware
 - CPU: Intel the 12-th Generation i3-12100F @3.3GHz
 - Memory: 16GB @3200MHz
 - Storage: WD Blue SN570
 - OS: Windows
 
-## EVM system
+## 1.2. EVM system
 - 26 Circom subcircuits for 24 EVM instructions are implemented.
 - The subcircuit information of each instruction is as follows,
 
@@ -39,8 +39,8 @@ This document records the time spent for running the whole UniGro16 protocol.
 |24|SHR-H|0x1c2|19|1|2|A subcircuit of SHR for input value greater than circom's modulo|
 |25|SAR|0x1d|286|1|2||
 
-## Test EVM Applications
-### Schnorr protocol proving algorithm
+## 1.3. Test EVM Applications
+### 1.3.1. Schnorr protocol proving algorithm
 - Pseudocode
 
 ```
@@ -57,7 +57,7 @@ Storage outputs: t, r
 0x6000546000540a6003549006806000526002540a60035490066004556001546002540a60035490066000540260016003540303600160035403900660016003540360005106016001600354039006806005556020526040602060006040522060605260206060f3
 ```
 
-### Schnorr protocol verifying algorithm
+### 1.3.2. Schnorr protocol verifying algorithm
 - Pseudocode
 
 ```
@@ -75,7 +75,7 @@ Output: b
 0x6002546000546001540a066000540a6004546001540a0260025490066002540360035401600254900660005260206000f3
 ```
 
-### Ether transfer
+### 1.3.3. Ether transfer
 - Solidity
 ```
 pragma solidity >=0.7.0 <0.9.0;
@@ -92,5 +92,11 @@ contract transferContract {
 0x608060405234801561001057600080fd5b506101fd806100206000396000f3fe6080604052600436106100295760003560e01c806373ffd5b71461002e578063a3dcb4d21461004a575b600080fd5b6100486004803603810190610043919061013e565b610075565b005b34801561005657600080fd5b5061005f6100df565b60405161006c91906101ac565b60405180910390f35b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff166108fc829081150290604051600060405180830381858888f193505050501580156100db573d6000803e3d6000fd5b5050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b600080fd5b6000819050919050565b61011b81610108565b811461012657600080fd5b50565b60008135905061013881610112565b92915050565b60006020828403121561015457610153610103565b5b600061016284828501610129565b91505092915050565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b60006101968261016b565b9050919050565b6101a68161018b565b82525050565b60006020820190506101c1600083018461019d565b9291505056fea2646970667358221220df1b58bcf19df6fd94743afea0ef7e17e624092b40c348f910dd780370b911c564736f6c634300080f0033
 ```
 
-# Benchmarks
+# 2. Benchmarks
+## 2.1. Schnorr protocol proving algorithm
+- The number of arithmetic instructions: 18
+- The number of circuit wires: 130
+- The degree of QAP (bivariate) polynomials: (64, 32)
+- Test results:
 
+|
