@@ -74,7 +74,7 @@ contract transferContract {
 0x608060405260043610601c5760003560e01c806373ffd5b7146021575b600080fd5b60376004803603810190603391906095565b6039565b005b3373ffffffffffffffffffffffffffffffffffffffff166108fc829081150290604051600060405180830381858888f19350505050158015607e573d6000803e3d6000fd5b5050565b600081359050608f8160cc565b92915050565b60006020828403121560a85760a760c7565b5b600060b4848285016082565b91505092915050565b6000819050919050565b600080fd5b60d38160bd565b811460dd57600080fd5b5056fea2646970667358221220636baf301ef7dcfbad4a06503059606cddffb049b12f23eef7f26f8899149d7d64736f6c63430008070033
 ```
 
-# 2. Benchmarks
+# 2. Performance
 ## 2.1. Schnorr protocol proving algorithm
 - Setup EVM instructions: 0-11
 - The number of arithmetic instructions in circuit: 18
@@ -107,9 +107,9 @@ contract transferContract {
 |Time for storage access|0.45|1.07|6.76|4.31|0||
 |Time for pairing and hashing|-|-|-|-|0||
 
-# 3. Input Node.js commands to reproduce the benchmark results
+# 3. Input Node.js commands to reproduce the results
 - How to use UniGro16js can be found [here](https://github.com/Onther-Tech/UniGro16js/edit/master/README.md)
-- Input commands for the results (Find the values to put in the parameters in square brackets from the table below)
+- Input commands (Find the values to put in the parameters in square brackets from the table below)
   1. To build source codes, go to the main directory and enter ```npm run buildcli```.
   1. To **compile**, go to the directory ```./resource/subcircuits``` and enter ```./compile.sh``` .
   3. Go back to the main directory and enter ```node build/cli.cjs QAP_all bn128 [s_D] [s_max]``` to run **buildQAP**.
