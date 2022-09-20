@@ -135,6 +135,9 @@ All file names used in the following commands does not include the file name ext
 |prfName|"proof1"|"proof2"|"proof"|
 |anyNumber|1|1|1|
 
+## Performance benchmark
+- [A report on performance benchmark](https://github.com/Onther-Tech/UniGro16js/edit/master/benchmark.md)
+
 ## Paper
 - will be uploaded.
 
