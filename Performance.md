@@ -100,11 +100,11 @@ contract transferContract {
 
 |Results (in mins)|BuildQAP|Setup|Derive|Prove|Verify|Note|
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
-|Overall time|1.17|6.03|17.59|5.94 hours|1.7 secs||
-|Time for EC exponentiations|-|4.73|1.94|0.44|0||
-|Time for polynomial arithmetics w/o division|0.71|-|5.84|14.19|-||
-|Time for polynomial division|-|-|-|5.62 hours|-|FFT is not applied for now|
-|Time for storage access|0.45|1.07|6.76|4.31|0||
+|Overall time|47 secs|5.61|8.12|5.04 hours|0.9 secs||
+|Time for EC exponentiations|-|4.67|1.92|25.20 secs|0||
+|Time for polynomial arithmetics w/o division|24.5 secs|-|2.15|10.78|-||
+|Time for polynomial division|-|-|-|4.80 hours|-|FFT is not applied for now|
+|Time for storage access|22.05 secs|46.59 secs|3.90|3.02|0||
 |Time for pairing and hashing|-|-|-|-|0||
 
 # 3. Input Node.js commands to reproduce the results
