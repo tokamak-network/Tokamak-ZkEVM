@@ -1,4 +1,4 @@
-import builder from './witness_calculator.cjs'
+import builder from './witness_calculator.js'
 import * as fastFile from 'fastfile'
 import { readOpList } from './uni_zkey_utils.js'
 import { readFileSync, writeFile, mkdir } from 'fs'

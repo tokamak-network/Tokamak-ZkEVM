@@ -14,32 +14,49 @@ import {
     startWriteSection,
     endWriteSection,
     startReadUniqueSection,
-    endReadSection
+    endReadSection,
+    copySection
 } from "@iden3/binfileutils";
 import { Scalar, F1Field, getCurveFromR} from "ffjavascript";
 import fs from "fs"
 import * as fastFile from "fastfile"
 import { O_TRUNC, O_CREAT, O_RDWR, O_RDONLY} from "constants";
+import * as timer from "./timer.js"
 
 
 
-export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSName, entropy) {
+export default async function uni_Setup(paramName, RSName, entropy) {
+    const startTime = timer.start();
+    let partTime;
+    
     const TESTFLAG = false;
+    console.log(`TESTMODE = ${TESTFLAG}`)
+    
+    const {fd: fdParam, sections: sectionsParam} = await readBinFile(`resource/subcircuits/${paramName}.dat`, "zkey", 2, 1<<25, 1<<23);
+    const param = await zkeyUtils.readRSParams(fdParam, sectionsParam);
+    const s_D = param.s_D;
+    
+    const fdRS = await createBinFile('resource/universal_rs/'+RSName+".urs", "zkey", 1, 4+s_D, 1<<22, 1<<24);
+    await copySection(fdParam, sectionsParam, fdRS, 1);
+    await copySection(fdParam, sectionsParam, fdRS, 2);
+    
+    await fdParam.close();
+
+    partTime = timer.start();
     const r1cs = new Array();
     const sR1cs = new Array();
-     
     for(var i=0; i<s_D; i++){
+        console.log(`Loading R1CSs...${i+1}/${s_D}`)
         let r1csIdx = String(i);
-        const {fd: fdR1cs, sections: sectionsR1cs} = await readBinFile('resource/subcircuits/r1cs/'+r1csName+r1csIdx+".r1cs", "r1cs", 1, 1<<22, 1<<24);
+        const {fd: fdR1cs, sections: sectionsR1cs} = await readBinFile('resource/subcircuits/r1cs/subcircuit'+r1csIdx+".r1cs", "r1cs", 1, 1<<22, 1<<24);
         r1cs.push(await readR1csHeader(fdR1cs, sectionsR1cs, false));
         sR1cs.push(await readSection(fdR1cs, sectionsR1cs, 2));
         await fdR1cs.close();
     }
-    const fdRS = await createBinFile('resource/universal_rs/'+RSName+".urs", "zkey", 1, 4+s_D, 1<<22, 1<<24);
-        
-    console.log('checkpoint0')
- 
-    const curve = await curves.getCurveFromName(curveName);
+    console.log(`Loading R1CSs...Done`)
+    const r1csTime = timer.end(partTime);
+
+    const curve = param.curve;
     // const sG1 = curve.G1.F.n8*2              // unused
     // const sG2 = curve.G2.F.n8*2              // unused
     const buffG1 = curve.G1.oneAffine;
@@ -49,146 +66,11 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
     const G2 = curve.G2;
     const NConstWires = 1;
 
-    /// polynomial arithmetic test
-/*     
-    if (TESTFLAG){
-        // A = B * Q
-        // A = [[8,0,2,0], [4,0,1,0], [0,4,0,1], [0,6,0,0], [0,3,0,0], [0,0,3,0]]; // bivariate polynomial 1;
+    const n = param.n;
+    const s_max = param.s_max;
+    const omega_x = param.omega_x;
+    const omega_y = param.omega_y;
 
-        // B = 3(x^3)(y) + (y^2) + 4
-        const B = [[4,0,1], [0,0,0], [0,0,0], [0,3,0]]; // bivariate polynomial 2;
-
-        // Q = (x^2)(y) + (x) + 2
-        const Q = [[2,0], [1,0], [0,1]];
-
-        let BFr = Array.from(Array(4), () => new Array(3));
-        for (var i=0; i<4; i++){
-            for (var j=0; j<3; j++){
-                BFr[i][j] = Fr.e(B[i][j]);
-            }
-        }
-        let QFr = Array.from(Array(3), () => new Array(2));
-        for (var i=0; i<3; i++){
-            for (var j=0; j<2; j++){
-                QFr[i][j] = Fr.e(Q[i][j]);
-            }
-        }
-        const test1_A = await polyUtils.mulPoly(Fr, BFr, QFr, true);
-        //console.log(test1_A)
-    }
-    if (TESTFLAG){
-        // A = B * Q
-        // A = [[20, 10, 5, 10],[4, 2, 1, 2],[28, 14, 7, 14],[8, 4, 2, 4],[12, 6, 3, 6]]; // bivariate polynomial 1;
-
-        // B = 3x^4+2x^3+7x^2+x^1+5;
-        const B = [[5],[1],[7],[2],[3]]; // bivariate polynomial 2;
-
-        // Q = 2y^3+y^2+2y^1+4
-        const Q = [[4, 2, 1, 2]];
-
-        let BFr = Array.from(Array(5), () => new Array(1));
-        for (var i=0; i<5; i++){
-            for (var j=0; j<1; j++){
-                BFr[i][j] = Fr.e(B[i][j]);
-            }
-        }
-        let QFr = Array.from(Array(1), () => new Array(4));
-        for (var i=0; i<1; i++){
-            for (var j=0; j<4; j++){
-                QFr[i][j] = Fr.e(Q[i][j]);
-            }
-        }
-        const test1_A = await polyUtils.mulPoly(Fr, BFr, QFr, true);
-        //console.log(test1_A)
-    }
-    if (TESTFLAG){
-        // A = B * Q
-        const A = [[20, 10, 5, 10],[4, 2, 1, 2],[28, 14, 7, 14],[8, 4, 2, 4],[12, 6, 3, 6]]; // bivariate polynomial 1;
-
-        // B = 3x^4+2x^3+7x^2+x^1+5;
-        const B = [[5],[1],[7],[2],[3]]; // bivariate polynomial 2;
-
-        // Q = 2y^3+y^2+2y^1+4
-        const Q = [[4, 2, 1, 2]];
-
-        let AFr = Array.from(Array(5), () => new Array(4));
-        for (var i=0; i<5; i++){
-            for (var j=0; j<4; j++){
-                AFr[i][j] = Fr.e(A[i][j]);
-            }
-        }
-
-        let BFr = Array.from(Array(5), () => new Array(1));
-        for (var i=0; i<5; i++){
-            for (var j=0; j<1; j++){
-                BFr[i][j] = Fr.e(B[i][j]);
-            }
-        }
-        let QFr = Array.from(Array(1), () => new Array(4));
-        for (var i=0; i<1; i++){
-            for (var j=0; j<4; j++){
-                QFr[i][j] = Fr.e(Q[i][j]);
-            }
-        }
-        const {res: test1_Q, finalrem: test1_Q_r} = await polyUtils.divPoly(Fr, AFr, BFr, true);
-        console.log(test1_Q)
-        console.log(test1_Q_r)
-        const {res: test1_B, finalrem: test1_B_r} = await polyUtils.divPoly(Fr, AFr, QFr, true);
-
-        console.log(test1_B)
-        console.log(test1_B_r)
-    }
-*/
-    
-    if (r1cs[0].prime != curve.r) {
-        console.log('checkpoint1');
-        console.log("r1cs_prime: ", r1cs[0].prime);
-        console.log("curve_r: ", curve.r);
-        throw new Error("r1cs curve does not match powers of tau ceremony curve")
-        //return -1
-    }
-
-    // const cirPower = log2(r1cs.nConstraints + r1cs.nPubInputs + r1cs.nOutputs +1 -1) +1
-    // const domainSize = 2 ** cirPower;
-
-
-    // Generate tau
-    var num_keys = 6 // the number of keys in tau
-    let rng = new Array(num_keys)
-    for(var i = 0; i < num_keys; i++) {
-        rng[i] = await misc.getRandomRng(entropy + i)
-    }    
-    const tau = createTauKey(Fr, rng)
-    console.log(`checkpoint2`)
-
-    // Write Header
-    ///////////
-    await startWriteSection(fdRS, 1);
-    await fdRS.writeULE32(1); // Groth
-    await endWriteSection(fdRS);
-    // End of the Header
-    console.log(`checkpoint3`)
-
-    // Write parameters section
-    ///////////
-    await startWriteSection(fdRS, 2);
-    const primeQ = curve.q;
-    const n8q = (Math.floor( (Scalar.bitLength(primeQ) - 1) / 64) +1)*8;
-    console.log(`checkpoint4`)
-
-    // Group parameters
-    const primeR = curve.r;
-    const n8r = (Math.floor( (Scalar.bitLength(primeR) - 1) / 64) +1)*8;
-    const Rr = Scalar.mod(Scalar.shl(1, n8r*8), primeR);
-    const R2r = curve.Fr.e(Scalar.mod(Scalar.mul(Rr,Rr), primeR));
-
-    await fdRS.writeULE32(n8q);                   // byte length of primeQ
-    await writeBigInt(fdRS, primeQ, n8q);
-    await fdRS.writeULE32(n8r);                   // byte length of primeR
-    await writeBigInt(fdRS, primeR, n8r);
-
-    // Instruction set constants
-    await fdRS.writeULE32(s_D)
     const m = new Array()          // the numbers of wires
     const mPublic = new Array()    // the numbers of public wires (not including constant wire at zero index)
     const mPrivate = new Array()
@@ -198,65 +80,18 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
         nConstraints.push(r1cs[i].nConstraints)
         mPublic.push(r1cs[i].nOutputs + r1cs[i].nPubInputs + r1cs[i].nPrvInputs) 
         mPrivate.push(m[i] - mPublic[i])
-        await fdRS.writeULE32(m[i])
-        await fdRS.writeULE32(mPublic[i])
-        await fdRS.writeULE32(nConstraints[i])
     }
-
-    // QAP constants
-    const sum_mPublic = mPublic.reduce((accu,curr) => accu + curr)
-    const sum_mPrivate = mPrivate.reduce((accu,curr) => accu + curr)
-    const NEqs = Math.max(sum_mPublic, sum_mPrivate)
-    let n = Math.ceil(NEqs/3);
-    
-    const expon = Math.ceil(Math.log2(n));
-    n = 2**expon;
-    const omega_x = await Fr.exp(Fr.w[Fr.s], Scalar.exp(2, Fr.s-expon));
     //console.log(Fr.toObject(omega_x))
     //console.log(Fr.toObject(await Fr.exp(omega_x, n)))
+       
+    // Generate tau
+    var num_keys = 6 // the number of keys in tau
+    let rng = new Array(num_keys)
+    for(var i = 0; i < num_keys; i++) {
+        rng[i] = await misc.getRandomRng(entropy + i)
+    }    
+    const tau = createTauKey(Fr, rng)
     
-    let expos = Math.ceil(Math.log2(min_s_max));
-    const s_max = 2**expos;
-    const omega_y = await Fr.exp(Fr.w[Fr.s], Scalar.exp(2, Fr.s-expos));
-    //console.log(Fr.toObject(omega_y))
-    //console.log(Fr.toObject(await Fr.exp(omega_y, s_max)))
-
-    const rs = {};
-    rs.curve = curve;
-    rs.s_D = s_D;
-    rs.r1cs = r1cs;
-    rs.n = n;
-    rs.s_max = s_max;
-    rs.omega_x = omega_x;
-    rs.omega_y = omega_y;
-
-    // Test code 1 // --> DONE
-    if(TESTFLAG){
-        console.log(`Running Test 1`)
-        assert(Fr.eq(await Fr.exp(Fr.e(n), primeR), Fr.e(n)))
-        assert(Fr.eq(await Fr.exp(Fr.e(omega_x), n), Fr.one))
-        assert(Fr.eq(await Fr.exp(Fr.e(omega_y), s_max), Fr.one))
-        console.log(`Test 1 finished`)
-    }
-    // End of test code 1 //
-
-    await fdRS.writeULE32(n);                       // the maximum number of gates in each subcircuit: n>=NEqs/3 and n|(r-1)
-    await fdRS.writeULE32(s_max);                  // the maximum number of subcircuits in a p-code: s_max>min_s_max and s_max|(r-1)
-    await writeBigInt(fdRS, Fr.toObject(omega_x), n8r);                    // Generator for evaluation points on X
-    await writeBigInt(fdRS, Fr.toObject(omega_y), n8r);             // Generator for evaluation points on Y
-    console.log(`checkpoint5`)
-
-    // Test code 2 //
-    if(TESTFLAG){
-        console.log(`Running Test 2`)
-        assert(Fr.eq(omega_x, Fr.e(Fr.toObject(omega_x))))
-        console.log(`Test 2 finished`)
-    }
-    // End of test code 2 //
-
-    await endWriteSection(fdRS);
-    // End of the parameters section
-
     // Write the sigma_G section
     ///////////
     await startWriteSection(fdRS, 3);
@@ -400,10 +235,9 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
     //     temp[i] = Fr.toObject(Lagrange_basis[i])
     // }
     // console.log('Lags ', temp)
-    console.log(`checkpoint6`)
 
     for(var k = 0; k < s_D; k++){
-               
+        console.log(`k: ${k}`)
         let processResults_k
         processResults_k = await zkeyUtils.processConstraints(curve, nConstraints[k], sR1cs[k]); // to fill U, V, W
         let U = processResults_k.U
@@ -616,6 +450,9 @@ export default async function uni_Setup(curveName, s_D, min_s_max, r1csName, RSN
 
     await fdRS.close()
     console.log(`checkpoint12`)
+
+    const totalTime = timer.end(startTime);
+    console.log(`###Total ellapsed time: ${totalTime} [ms]`)
 
     // End of the theta_G section
     ///////////

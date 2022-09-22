@@ -28,6 +28,7 @@ import * as timer from "./timer.js"
 
 export default async function uni_buildQAP(curveName, s_D, min_s_max) {
     const startTime = timer.start();
+    let partTime;
 
     const TESTFLAG = false;
     const r1cs = new Array();
@@ -36,22 +37,24 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
     mkdir(path.join(`resource/subcircuits`, `QAP_${s_D}_${min_s_max}`), (err) => {});
     const dirPath = `resource/subcircuits/QAP_${s_D}_${min_s_max}`
 
+    partTime = timer.start();
     for(var i=0; i<s_D; i++){
+        console.log(`Loading R1CSs...${i+1}/${s_D}`)
         let r1csIdx = String(i);
         const {fd: fdR1cs, sections: sectionsR1cs} = await readBinFile('resource/subcircuits/r1cs/subcircuit'+r1csIdx+'.r1cs', "r1cs", 2, 1<<22, 1<<24);
         r1cs.push(await readR1csHeader(fdR1cs, sectionsR1cs, false));
         sR1cs.push(await readSection(fdR1cs, sectionsR1cs, 2));
         await fdR1cs.close();
     }
+    console.log(`Loading R1CSs...Done`)
+    const r1csTime = timer.end(partTime);
+    
     const fdRS = await createBinFile(`resource/subcircuits/param_${s_D}_${min_s_max}.dat`, "zkey", 1, 2, 1<<22, 1<<24);
-        
-    console.log('checkpoint0')
- 
+    
     const curve = await curves.getCurveFromName(curveName);
     const Fr = curve.Fr;
     
     if (r1cs[0].prime != curve.r) {
-        console.log('checkpoint1');
         console.log("r1cs_prime: ", r1cs[0].prime);
         console.log("curve_r: ", curve.r);
         throw new Error("r1cs curve does not match powers of tau ceremony curve")
@@ -64,14 +67,12 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
     await fdRS.writeULE32(1); // Groth
     await endWriteSection(fdRS);
     // End of the Header
-    console.log(`checkpoint3`)
 
     // Write parameters section
     ///////////
     await startWriteSection(fdRS, 2);
     const primeQ = curve.q;
     const n8q = (Math.floor( (Scalar.bitLength(primeQ) - 1) / 64) +1)*8;
-    console.log(`checkpoint4`)
 
     // Group parameters
     const primeR = curve.r;
@@ -104,7 +105,6 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
     const NEqs = Math.max(sum_mPublic, sum_mPrivate)
     //let n = Math.max(Math.ceil(NEqs/3), Math.max(...nConstraints));
     let n = Math.max(...nConstraints);
-    console.log(`n_min: ${n}`)
     
     const expon = Math.ceil(Math.log2(n));
     n = 2**expon;
@@ -115,7 +115,6 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
     
     let expos = Math.ceil(Math.log2(min_s_max));
     const s_max = 2**expos;
-    console.log(`n: ${n}, s_max: ${s_max}`)
     const omega_y = await Fr.exp(Fr.w[Fr.s], Scalar.exp(2, Fr.s-expos));
     //console.log(Fr.toObject(omega_y))
     //console.log(Fr.toObject(await Fr.exp(omega_y, s_max)))
@@ -134,7 +133,6 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
     await fdRS.writeULE32(s_max);                  // the maximum number of subcircuits in a p-code: s_max>min_s_max and s_max|(r-1)
     await writeBigInt(fdRS, Fr.toObject(omega_x), n8r);                    // Generator for evaluation points on X
     await writeBigInt(fdRS, Fr.toObject(omega_y), n8r);             // Generator for evaluation points on Y
-    console.log(`checkpoint5`)
 
     // Test code 2 //
     if(TESTFLAG){
@@ -155,11 +153,20 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
     rs.s_max = s_max;
     rs.omega_x = omega_x;
     rs.omega_y = omega_y;
-    const Lagrange_basis = await polyUtils.buildCommonPolys(rs, true);
-
+    
+    partTime = timer.start();
+    
+    console.log(`Generating Lagrange bases for X with ${n} evaluation points...`)
+    const Lagrange_basis = await polyUtils.buildCommonPolys(rs);
+    console.log(`Generating Lagrange bases for X with ${n} evaluation points...Done`)
+    
+    let FSTimeAccum = 0;
     for (var k=0; k<s_D; k++){
-        console.log(`k: ${k}`)
-        let {uX_i: uX_i, vX_i: vX_i, wX_i: wX_i} = await polyUtils.buildR1csPolys(curve, Lagrange_basis, r1cs[k], sR1cs[k], true)
+        console.log(`Interpolating ${3*m[k]} QAP polynomials...${k+1}/${s_D}`)
+        let {uX_i: uX_i, vX_i: vX_i, wX_i: wX_i} = await polyUtils.buildR1csPolys(curve, Lagrange_basis, r1cs[k], sR1cs[k])
+        
+        console.log(`File writing the polynomials...`)
+        let FSTime = timer.start();
         let fdQAP = await createBinFile(`${dirPath}/subcircuit${k}.qap`, "qapp", 1, 2, 1<<22, 1<<24);
         
         await startWriteSection(fdQAP, 1);
@@ -168,34 +175,53 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
 
         await startWriteSection(fdQAP, 2);
         for (var i=0; i<m[k]; i++){
-            for (var xi=0; xi<n; xi++){
+            let degree = uX_i[i].length;
+            await fdQAP.writeULE32(degree);
+            for (var xi=0; xi<degree; xi++){
                 if (typeof uX_i[i][xi][0] != "bigint"){
-                    throw new Error(`Error in coefficient type of uX_i at k: ${k}, i: ${i}`);
+                    await fdQAP.write(uX_i[i][xi][0]);    
+                } else{
+                    await writeBigInt(fdQAP, uX_i[i][xi][0], n8r);    
                 }
-                await writeBigInt(fdQAP, uX_i[i][xi][0], n8r);
             }
         }
         for (var i=0; i<m[k]; i++){
-            for (var xi=0; xi<n; xi++){
+            let degree = vX_i[i].length;
+            await fdQAP.writeULE32(degree);
+            for (var xi=0; xi<degree; xi++){
                 if (typeof vX_i[i][xi][0] != "bigint"){
-                    throw new Error(`Error in coefficient type of vX_i at k: ${k}, i: ${i}`);
+                    await fdQAP.write(vX_i[i][xi][0]);    
+                } else{
+                    await writeBigInt(fdQAP, vX_i[i][xi][0], n8r);    
                 }
-                await writeBigInt(fdQAP, vX_i[i][xi][0], n8r);
             }
         }
         for (var i=0; i<m[k]; i++){
-            for (var xi=0; xi<n; xi++){
+            let degree = wX_i[i].length;
+            await fdQAP.writeULE32(degree);
+            for (var xi=0; xi<degree; xi++){
                 if (typeof wX_i[i][xi][0] != "bigint"){
-                    throw new Error(`Error in coefficient type of wX_i at k: ${k}, i: ${i}`);
+                    await fdQAP.write(wX_i[i][xi][0]);   
+                } else{
+                    await writeBigInt(fdQAP, wX_i[i][xi][0], n8r);    
                 }
-                await writeBigInt(fdQAP, wX_i[i][xi][0], n8r);
             }
         }
         await endWriteSection(fdQAP)
         await fdQAP.close();
+        FSTimeAccum += timer.end(FSTime);
     }
+    const qapTime = timer.end(partTime);
+    const totalTime = timer.end(startTime);
 
-    timer.end(startTime);
 
+    console.log(` `)
+    console.log(`-----Build QAP Time Analyzer-----`)
+    console.log(`###Total ellapsed time: ${totalTime} [ms]`)
+    console.log(` ##R1CS loading time: ${r1csTime} [ms] (${r1csTime/totalTime*100} %)`)
+    console.log(` ##Total QAP time for ${m.reduce((accu,curr) => accu + curr)} wires: ${qapTime} [ms] (${qapTime/totalTime*100} %)`)
+    console.log(`  #QAP interpolation time: ${qapTime-FSTimeAccum} [ms] (${(qapTime-FSTimeAccum)/totalTime*100} %)`)
+    console.log(`  #QAP file writing time: ${FSTimeAccum} [ms] (${FSTimeAccum/totalTime*100} %)`)
+    console.log(` ##Average QAP time per wire with ${n} interpolation points: ${qapTime/m.reduce((accu,curr) => accu + curr)} [ms]`)
 
 }
