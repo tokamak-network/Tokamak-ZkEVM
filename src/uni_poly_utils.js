@@ -1,13 +1,9 @@
 import {processConstraints} from "./uni_zkey_utils.js";
 import * as binFileUtils from "@iden3/binfileutils";
 
-export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, flagMemorySave){
+export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k){
     const Fr = curve.Fr;
     const ParamR1cs = r1cs_k;
-    let flag_memory = true;
-    if ( (flagMemorySave === undefined) || (flagMemorySave == false) ){
-        flag_memory = false;
-    }
 
     let U;
     let Uid;
@@ -35,7 +31,6 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, fla
     let uX_i = new Array(m_k);
     let vX_i = new Array(m_k);
     let wX_i = new Array(m_k);
-    console.log(`checkpoint 0-0`)
     
     constraints_k = await processConstraints(curve, n_k, sR1cs_k);
     U = constraints_k.U
@@ -45,17 +40,13 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, fla
     W = constraints_k.W
     Wid = constraints_k.Wid
 
-    console.log(`checkpoint 0-1`)
-
     for(var i=0; i<m_k; i++){
-        uX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-        vX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-        wX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-        if (flag_memory){
-            uX_i[i] = _transToObject(Fr, uX_i[i]);
-            vX_i[i] = _transToObject(Fr, vX_i[i]);
-            wX_i[i] = _transToObject(Fr, wX_i[i]);
-        }
+        //uX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        //vX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        //wX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        uX_i[i] = [[Fr.zero]];
+        vX_i[i] = [[Fr.zero]];
+        wX_i[i] = [[Fr.zero]];
     }
     let item_i;
     for(var i=0; i<ParamR1cs.nConstraints; i++){
@@ -70,9 +61,6 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, fla
             if(U_idx>=0){
                 Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], U_coefs[j]);
                 item_i = await addPoly(Fr, uX_i[U_idx], Lagrange_poly);
-                if (flag_memory){
-                    item_i = _transToObject(Fr, item_i);
-                }
                 uX_i[U_idx] = item_i;
             }
         }
@@ -81,9 +69,6 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, fla
             if(V_idx>=0){
                 Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], V_coefs[j]);
                 item_i = await addPoly(Fr, vX_i[V_idx], Lagrange_poly);
-                if (flag_memory){
-                    item_i = _transToObject(Fr, item_i);
-                }
                 vX_i[V_idx] = item_i;
             }
         }
@@ -92,32 +77,22 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k, fla
             if(W_idx>=0){
                 Lagrange_poly = await scalePoly(Fr, Lagrange_basis[i], W_coefs[j]);
                 item_i = await addPoly(Fr, wX_i[W_idx], Lagrange_poly);
-                if (flag_memory){
-                    item_i = _transToObject(Fr, item_i);
-                }
                 wX_i[W_idx] = item_i;
             }
         }
     }
 
-    console.log(`checkpoint 0-2`)
-
     return {uX_i, vX_i, wX_i}
     // uX_ki[k][i] = polynomial of the i-th wire in the k-th subcircuit.
 }
 
-export async function buildCommonPolys(rs, flagMemorySave){
+export async function buildCommonPolys(rs){
     const curve = rs.curve;
     const Fr = curve.Fr;
     const n = rs.n;
     const s_max = rs.s_max;
     const omega_x = await Fr.e(rs.omega_x);
-    let flag_memory = true;
-    if ( (flagMemorySave === undefined) || (flagMemorySave == false) ){
-        flag_memory = false;
-    }
 
-    console.log(`checkpoint 0-0`)
     let Lagrange_basis = new Array(n);
     let item_i;
     for(var i=0; i<n; i++){
@@ -128,13 +103,8 @@ export async function buildCommonPolys(rs, flagMemorySave){
             terms[j][0]=await Fr.mul(terms[j-1][0], multiplier);
         }
         item_i = await scalePoly(Fr, terms, Fr.inv(Fr.e(n)));
-        if (flag_memory){
-            item_i = _transToObject(Fr, item_i);
-        }
         Lagrange_basis[i] = item_i;
     }
-    console.log(`checkpoint 0-1`)
-
    
     return Lagrange_basis
     // uX_ki[k][i] = polynomial of the i-th wire in the k-th subcircuit.
@@ -208,8 +178,11 @@ export async function filterPoly(Fr, coefs1, vect, dir){
 
 export async function scalePoly(Fr, coefs, scaler){
     // Assume scaler is in Fr
-    const {N_X: NSlots_X, N_Y: NSlots_Y} = _polyCheck(coefs);
-    coefs = _autoTransFromObject(Fr, coefs)
+    //const {N_X: NSlots_X, N_Y: NSlots_Y} = _polyCheck(coefs);
+    //coefs = _autoTransFromObject(Fr, coefs)
+
+    const NSlots_X = coefs.length;
+    const NSlots_Y = coefs[0].length;
 
     let res = Array.from(Array(NSlots_X), () => new Array(NSlots_Y));
     for(var i=0; i<NSlots_X; i++){
@@ -260,75 +233,120 @@ export async function mulUniPolys2(Fr, coefsX, coefsY){
     return res;
 }
 
-export async function addPoly(Fr, coefs1, coefs2, SUBFLAG){
-    const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
-    const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
+export async function addPoly(Fr, coefs1, coefs2){
+    //const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
+    //const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
 
-    coefs1 = _autoTransFromObject(Fr, coefs1)
-    coefs2 = _autoTransFromObject(Fr, coefs2)
+    //coefs1 = _autoTransFromObject(Fr, coefs1)
+    //coefs2 = _autoTransFromObject(Fr, coefs2)
 
-    if (SUBFLAG !== undefined){
-        if (SUBFLAG == 1){
-            coefs2 = await scalePoly(Fr, coefs2, Fr.negone);
-        } else if (SUBFLAG !=0){
-            throw new Error(`Unexpected Subflag in addPoly`);
-        }
-    }
+    const N1_X = coefs1.length;
+    const N1_Y = coefs1[0].length;
+    const N2_X = coefs2.length;
+    const N2_Y = coefs2[0].length;
+
     const N3_X = Math.max(N1_X, N2_X);
     const N3_Y = Math.max(N1_Y, N2_Y);
 
-    let res = Array.from(Array(N3_X), () => new Array(N3_Y));
+    let res = new Array(N3_X);
+
     for (var i=0; i<N3_X; i++){
+        let temprow = new Array(N3_Y);
         for (var j=0; j<N3_Y; j++){
-            res[i][j] = Fr.zero;
+            let _arg1 = Fr.zero;
+            if (coefs1[i] !== undefined){
+                if (coefs1[i][j] !== undefined){
+                    _arg1 = coefs1[i][j];
+                }
+            }
+            let _arg2 = Fr.zero;
+            if (coefs2[i] !== undefined){
+                if (coefs2[i][j] !== undefined){
+                    _arg2 = coefs2[i][j];
+                }
+            }
+            temprow[j] = Fr.add(_arg1,_arg2);
         }
-    }
-
-    for (var i=0; i<N1_X; i++){
-        for (var j=0; j<N1_Y; j++){
-            res[i][j] = Fr.add(res[i][j], coefs1[i][j]);
-        }
-    }
-
-    for (var i=0; i<N2_X; i++){
-        for (var j=0; j<N2_Y; j++){
-            res[i][j] = Fr.add(res[i][j], coefs2[i][j]);
-        }
+        res[i] = temprow;
     }
     return res
 }
 
-export async function mulPoly(Fr, coefs1, coefs2, object_flag){
-    
-    coefs1 = reduceDimPoly(Fr, coefs1);
-    coefs2 = reduceDimPoly(Fr, coefs2);
+export async function subPoly(Fr, coefs1, coefs2){
+    //const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
+    //const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
 
-    const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
-    const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
+    //coefs1 = _autoTransFromObject(Fr, coefs1)
+    //coefs2 = _autoTransFromObject(Fr, coefs2)
+
+    const N1_X = coefs1.length;
+    const N1_Y = coefs1[0].length;
+    const N2_X = coefs2.length;
+    const N2_Y = coefs2[0].length;
+    
+    const N3_X = Math.max(N1_X, N2_X);
+    const N3_Y = Math.max(N1_Y, N2_Y);
+
+    let res = new Array(N3_X);
+    for (var i=0; i<N3_X; i++){
+        let temprow = new Array(N3_Y);
+        for (var j=0; j<N3_Y; j++){
+            let _arg1 = Fr.zero;
+            if (coefs1[i] !== undefined){
+                if (coefs1[i][j] !== undefined){
+                    _arg1 = coefs1[i][j];
+                }
+            }
+            let _arg2 = Fr.zero;
+            if (coefs2[i] !== undefined){
+                if (coefs2[i][j] !== undefined){
+                    _arg2 = coefs2[i][j];
+                }
+            }
+            temprow[j] = Fr.sub(_arg1,_arg2);
+        }
+        res[i] = temprow;
+    }
+    return res
+}
+
+export async function mulPoly(Fr, coefs1, coefs2){
+    
+    //coefs1 = reduceDimPoly(Fr, coefs1);
+    //coefs2 = reduceDimPoly(Fr, coefs2);
+
+    //const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
+    //const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
+
+    const N1_X = coefs1.length;
+    const N1_Y = coefs1[0].length;
+    const N2_X = coefs2.length;
+    const N2_Y = coefs2[0].length;
+
     const N3_X = N1_X+N2_X-1;
     const N3_Y = N1_Y+N2_Y-1;
 
-    coefs1 = _autoTransFromObject(Fr, coefs1)
-    coefs2 = _autoTransFromObject(Fr, coefs2)
+    //coefs1 = _autoTransFromObject(Fr, coefs1)
+    //coefs2 = _autoTransFromObject(Fr, coefs2)
 
-    let res = Array.from(Array(N3_X), () => new Array(N3_Y));
+    let res = new Array(N3_X);
     for (var i=0; i<N3_X; i++){
+        let xmin = Math.max(0,i-(N2_X-1));
+        let xmax = Math.min(i,N1_X-1);
+        let temprow = new Array(N3_Y);
         for (var j=0; j<N3_Y; j++){
             let sum = Fr.zero;
-            for (var ii=0; ii<=Math.min(i,N1_X-1); ii++){
-                for (var jj=0; jj<=Math.min(j,N1_Y-1); jj++){
-                    if (((i-ii)>=0 && i-ii<N2_X) && ((j-jj)>=0 && j-jj<N2_Y)){
-                        let term = Fr.mul(coefs1[ii][jj], coefs2[i-ii][j-jj]);
-                        sum = Fr.add(sum, term);
-                    }
+            let ymin = Math.max(0,j-(N2_Y-1));
+            let ymax = Math.min(j,N1_Y-1);
+            for (var ii=xmin; ii<=xmax; ii++){
+                for (var jj=ymin; jj<=ymax; jj++){
+                    let term = Fr.mul(coefs1[ii][jj], coefs2[i-ii][j-jj]);
+                    sum = Fr.add(sum, term);
+                    temprow[j] = sum;
                 }
             }
-            if ((object_flag === undefined) || (object_flag == false)){
-                res[i][j] = sum;
-            } else{
-                res[i][j] = Fr.toObject(sum);
-            }
         }
+        res[i] = temprow;
     }
     return res
 }
@@ -417,7 +435,7 @@ export async function divPoly(Fr, coefs1, coefs2, object_flag){
         const energy = await mulPoly(Fr, quo, denom);
         //console.log(`x_o_dif: ${diff_order_X}, y_o_dif: ${diff_order_Y}`)
         //console.log(_transToObject(Fr, numer))
-        const rem = reduceDimPoly(Fr, await addPoly(Fr, numer, energy, true));
+        const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
         return {quo, rem}
     }
@@ -439,7 +457,7 @@ export async function divPolyByX(Fr, coefs1, coefs2, object_flag){
   
     while (1){
         let {xId: nu_order_X, yId: nu_order_Y, coef: nu_high_coef} = _findOrder(Fr, numer, dictOrder);
-        console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
+        //console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
         if ((prev_order_X <= nu_order_X) && prev_order_Y <= nu_order_Y){
             throw new Error(`infinite loop`)
         }
@@ -456,7 +474,7 @@ export async function divPolyByX(Fr, coefs1, coefs2, object_flag){
         }
 
         const energy = await mulPoly(Fr, quoXY, denom);
-        const rem = reduceDimPoly(Fr, await addPoly(Fr, numer, energy, true));            
+        const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));            
 
         res = await addPoly(Fr, res, quoXY);
         numer = rem;
@@ -489,7 +507,7 @@ export async function divPolyByY(Fr, coefs1, coefs2, object_flag){
   
     while (1){
         let {xId: nu_order_X, yId: nu_order_Y, coef: nu_high_coef} = _findOrder(Fr, numer, dictOrder);
-        console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
+        //console.log(`i: ${nu_order_X}, j: ${nu_order_Y}`)
         if ((prev_order_X <= nu_order_X) && prev_order_Y <= nu_order_Y){
             throw new Error(`infinite loop`)
         }
@@ -506,7 +524,7 @@ export async function divPolyByY(Fr, coefs1, coefs2, object_flag){
         }
 
         const energy = await mulPoly(Fr, quoXY, denom);
-        const rem = reduceDimPoly(Fr, await addPoly(Fr, numer, energy, true));            
+        const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));            
 
         res = await addPoly(Fr, res, quoXY);
         numer = rem;
@@ -525,7 +543,9 @@ export async function divPolyByY(Fr, coefs1, coefs2, object_flag){
 
 function _findOrder(Fr, coefs, dir){
     /// output order is the highest order in dictionary order
-    const {N_X: N_X, N_Y: N_Y} = _polyCheck(coefs);
+    //const {N_X: N_X, N_Y: N_Y} = _polyCheck(coefs);
+    const N_X = coefs.length;
+    const N_Y = coefs[0].length;
     const NumEl=N_X*N_Y;
     let xId;
     let yId;
@@ -564,14 +584,19 @@ export function _orderPoly(Fr, coefs){
 
 export function reduceDimPoly(Fr, coefs){
     const {x_order: x_order, y_order: y_order} = _orderPoly(Fr,coefs);
+    const old_N_X = coefs.length;
+    const old_N_Y = coefs[0].length;
     const N_X = x_order+1;
     const N_Y = y_order+1;
-    let res = Array.from(Array(N_X), () => new Array(N_Y));
-    for (var i=0; i<N_X; i++){
-        res[i] = coefs[i].slice(0, N_Y);
+    if (N_X != old_N_X || N_Y != old_N_Y){
+        let res = Array.from(Array(N_X), () => new Array(N_Y));
+        for (var i=0; i<N_X; i++){
+            res[i] = coefs[i].slice(0, N_Y);
+        }
+        return res
+    } else {
+        return coefs
     }
-
-    return res
 }
 
 export async function readQAP(QAPName, k, m_k, n, n8r){
@@ -583,24 +608,30 @@ export async function readQAP(QAPName, k, m_k, n, n8r){
     let wX_i = new Array(m_k);
     await binFileUtils.startReadUniqueSection(fdQAP,sectionsQAP, 2);
     for (var i=0; i<m_k; i++){
-        let data = Array.from(Array(n), () => new Array(1));
-        for (var xi=0; xi<n; xi++){
-            data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+        let degree = await fdQAP.readULE32();
+        let data = Array.from(Array(degree), () => new Array(1));
+        for (var xi=0; xi<degree; xi++){
+            //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+            data[xi][0] = await fdQAP.read(n8r);
         }
         uX_i[i] = data;
     }
     for (var i=0; i<m_k; i++){
-        let data = Array.from(Array(n), () => new Array(1));
-        for (var xi=0; xi<n; xi++){
-            data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+        let degree = await fdQAP.readULE32();
+        let data = Array.from(Array(degree), () => new Array(1));
+        for (var xi=0; xi<degree; xi++){
+            //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+            data[xi][0] = await fdQAP.read(n8r);
         }
         vX_i[i] = data;
     }
 
     for (var i=0; i<m_k; i++){
-        let data = Array.from(Array(n), () => new Array(1));
-        for (var xi=0; xi<n; xi++){
-            data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+        let degree = await fdQAP.readULE32();
+        let data = Array.from(Array(degree), () => new Array(1));
+        for (var xi=0; xi<degree; xi++){
+            //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
+            data[xi][0] = await fdQAP.read(n8r);
         }
         wX_i[i] = data;
     }
@@ -622,23 +653,38 @@ export async function readCircuitQAP_i(Fr, fdQAP, sectionsQAP, i, n, s_max, n8r)
 
     for (var xi=0; xi<n; xi++){
         for (var yi=0; yi<s_max; yi++){
-            uXY_i[xi][yi] = Fr.e(await binFileUtils.readBigInt(fdQAP, n8r));
+            uXY_i[xi][yi] = await fdQAP.read(n8r);
         }
     }
 
     for (var xi=0; xi<n; xi++){
         for (var yi=0; yi<s_max; yi++){
-            vXY_i[xi][yi] = Fr.e(await binFileUtils.readBigInt(fdQAP, n8r));
+            vXY_i[xi][yi] = await fdQAP.read(n8r);
         }
     }
 
     for (var xi=0; xi<n; xi++){
         for (var yi=0; yi<s_max; yi++){
-            wXY_i[xi][yi] = Fr.e(await binFileUtils.readBigInt(fdQAP, n8r));
+            wXY_i[xi][yi] = await fdQAP.read(n8r);
         }
     }
 
     await binFileUtils.endReadSection(fdQAP)
 
     return {uXY_i, vXY_i, wXY_i}
+}
+
+export async function tensorProduct(Fr, _array1, _array2) {
+    //_array1: a m-by-1 matrix in Fr
+    //_array2: a 1-by-n matrix in Fr
+
+    let product = new Array(_array1.length);
+    for (var i = 0; i < _array1.length; i++) {
+        let temprow = new Array(_array2[0].length);
+        for (var j = 0; j<_array2[0].length; j++) {
+            temprow[j] = Fr.mul(_array2[0][j], _array1[i][0]);
+        }
+        product[i] = temprow;
+    }
+    return product
 }
