@@ -41,12 +41,9 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k){
     Wid = constraints_k.Wid
 
     for(var i=0; i<m_k; i++){
-        //uX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-        //vX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-        //wX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-        uX_i[i] = [[Fr.zero]];
-        vX_i[i] = [[Fr.zero]];
-        wX_i[i] = [[Fr.zero]];
+        uX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        vX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        wX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
     }
     let item_i;
     for(var i=0; i<ParamR1cs.nConstraints; i++){
@@ -608,18 +605,16 @@ export async function readQAP(QAPName, k, m_k, n, n8r){
     let wX_i = new Array(m_k);
     await binFileUtils.startReadUniqueSection(fdQAP,sectionsQAP, 2);
     for (var i=0; i<m_k; i++){
-        let degree = await fdQAP.readULE32();
-        let data = Array.from(Array(degree), () => new Array(1));
-        for (var xi=0; xi<degree; xi++){
+        let data = Array.from(Array(n), () => new Array(1));
+        for (var xi=0; xi<n; xi++){
             //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
             data[xi][0] = await fdQAP.read(n8r);
         }
         uX_i[i] = data;
     }
     for (var i=0; i<m_k; i++){
-        let degree = await fdQAP.readULE32();
-        let data = Array.from(Array(degree), () => new Array(1));
-        for (var xi=0; xi<degree; xi++){
+        let data = Array.from(Array(n), () => new Array(1));
+        for (var xi=0; xi<n; xi++){
             //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
             data[xi][0] = await fdQAP.read(n8r);
         }
@@ -627,9 +622,8 @@ export async function readQAP(QAPName, k, m_k, n, n8r){
     }
 
     for (var i=0; i<m_k; i++){
-        let degree = await fdQAP.readULE32();
-        let data = Array.from(Array(degree), () => new Array(1));
-        for (var xi=0; xi<degree; xi++){
+        let data = Array.from(Array(n), () => new Array(1));
+        for (var xi=0; xi<n; xi++){
             //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
             data[xi][0] = await fdQAP.read(n8r);
         }
