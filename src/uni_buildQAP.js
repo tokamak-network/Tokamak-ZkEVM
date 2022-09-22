@@ -175,7 +175,9 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
 
         await startWriteSection(fdQAP, 2);
         for (var i=0; i<m[k]; i++){
-            for (var xi=0; xi<n; xi++){
+            let degree = uX_i[i].length;
+            await fdQAP.writeULE32(degree);
+            for (var xi=0; xi<degree; xi++){
                 if (typeof uX_i[i][xi][0] != "bigint"){
                     await fdQAP.write(uX_i[i][xi][0]);    
                 } else{
@@ -184,7 +186,9 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
             }
         }
         for (var i=0; i<m[k]; i++){
-            for (var xi=0; xi<n; xi++){
+            let degree = vX_i[i].length;
+            await fdQAP.writeULE32(degree);
+            for (var xi=0; xi<degree; xi++){
                 if (typeof vX_i[i][xi][0] != "bigint"){
                     await fdQAP.write(vX_i[i][xi][0]);    
                 } else{
@@ -193,7 +197,9 @@ export default async function uni_buildQAP(curveName, s_D, min_s_max) {
             }
         }
         for (var i=0; i<m[k]; i++){
-            for (var xi=0; xi<n; xi++){
+            let degree = wX_i[i].length;
+            await fdQAP.writeULE32(degree);
+            for (var xi=0; xi<degree; xi++){
                 if (typeof wX_i[i][xi][0] != "bigint"){
                     await fdQAP.write(wX_i[i][xi][0]);   
                 } else{

@@ -309,13 +309,13 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
         for (i=1; i<s_max; i++){
             inv_omega_y_k[i] = Fr.mul(inv_omega_y_k[i-1], await Fr.exp(Fr.inv(omega_y), k));
         }
+        PolTimeStart = timer.start();
         let LagY = await polyUtils.filterPoly(Fr, fY, inv_omega_y_k, 1);
         fY_k[k] = await polyUtils.scalePoly(Fr, LagY, Fr_s_max_inv);
+        PolTimeAccum += timer.end(PolTimeStart);
     }
 
     console.log(`  Deriving u_i(X,Y), v_i(X,Y), w_i(X,Y) for i upto ${m}...`)
-    let InitPoly = Array.from(Array(n), () => new Array(s_max));
-    InitPoly = await polyUtils.scalePoly(Fr, InitPoly, Fr.zero);
     for(var i=0; i<m; i++){
         await startWriteSection(fdQAP, 2+i);
         let arrayIdx;
@@ -328,40 +328,45 @@ export default async function uniDerive(RSName, cRSName, circuitName, QAPName) {
             PreImgSet = IdSetP.PreImgs[arrayIdx]
         }
         let PreImgSize = PreImgSet.length;
-        let uXY_i = InitPoly;
-        let vXY_i = InitPoly;
-        let wXY_i = InitPoly;
-        partTime = timer.start();
+        let uXY_i = [[Fr.zero]];
+        let vXY_i = [[Fr.zero]];
+        let wXY_i = [[Fr.zero]];
         for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
             let kPrime = PreImgSet[PreImgIdx][0];
             let iPrime = PreImgSet[PreImgIdx][1];
             let s_kPrime = OpList[kPrime];
 
-            let u_term = await polyUtils_mulPoly(Fr, uX_ki[s_kPrime][iPrime], fY_k[kPrime]);
+            PolTimeStart = timer.start();
+            let u_term = await polyUtils.tensorProduct(Fr, uX_ki[s_kPrime][iPrime], fY_k[kPrime]);
             uXY_i = await polyUtils.addPoly(Fr, uXY_i, u_term);
 
-            let v_term = await polyUtils_mulPoly(Fr, vX_ki[s_kPrime][iPrime], fY_k[kPrime]);
+            let v_term = await polyUtils.tensorProduct(Fr, vX_ki[s_kPrime][iPrime], fY_k[kPrime]);
             vXY_i = await polyUtils.addPoly(Fr, vXY_i, v_term);
 
-            let w_term = await polyUtils_mulPoly(Fr, wX_ki[s_kPrime][iPrime], fY_k[kPrime]);
+            let w_term = await polyUtils.tensorProduct(Fr, wX_ki[s_kPrime][iPrime], fY_k[kPrime]);
             wXY_i = await polyUtils.addPoly(Fr, wXY_i, w_term);
+            PolTimeAccum += timer.end(PolTimeStart);
         }
 
         QAPWriteTimeStart = timer.start();
-        for (var xi=0; xi<n; xi++){
-            for (var yi=0; yi<s_max; yi++){
+        await fdQAP.writeULE32(uXY_i.length);
+        await fdQAP.writeULE32(uXY_i[0].length);
+        for (var xi=0; xi<uXY_i.length; xi++){
+            for (var yi=0; yi<uXY_i[0].length; yi++){
                 await fdQAP.write(uXY_i[xi][yi]);
             }
         }
-
-        for (var xi=0; xi<n; xi++){
-            for (var yi=0; yi<s_max; yi++){
+        await fdQAP.writeULE32(vXY_i.length);
+        await fdQAP.writeULE32(vXY_i[0].length);
+        for (var xi=0; xi<vXY_i.length; xi++){
+            for (var yi=0; yi<vXY_i[0].length; yi++){
                 await fdQAP.write(vXY_i[xi][yi]);
             }
         }
-
-        for (var xi=0; xi<n; xi++){
-            for (var yi=0; yi<s_max; yi++){
+        await fdQAP.writeULE32(wXY_i.length);
+        await fdQAP.writeULE32(wXY_i[0].length);
+        for (var xi=0; xi<wXY_i.length; xi++){
+            for (var yi=0; yi<wXY_i[0].length; yi++){
                 await fdQAP.write(wXY_i[xi][yi]);
             }
         }

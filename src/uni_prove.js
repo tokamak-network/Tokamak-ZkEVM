@@ -213,11 +213,9 @@ export default async function groth16Prove(cRSName, proofName, circuitName, inst
     console.log(`  Computing p(X,Y)...`)
     const {fd: fdQAP, sections: sectionsQAP}  = await binFileUtils.readBinFile(`resource/circuits/${circuitName}/circuitQAP.qap`, "qapp", 1, 1<<22, 1<<24);
     let pxyTime = timer.start();
-    let InitPoly = Array.from(Array(n), () => new Array(s_max));
-    InitPoly = await polyUtils.scalePoly(Fr, InitPoly, Fr.zero);
-    let p1XY = InitPoly;
-    let p2XY = InitPoly;
-    let p3XY = InitPoly;
+    let p1XY = [[Fr.zero]];
+    let p2XY = [[Fr.zero]];
+    let p3XY = [[Fr.zero]];
     for(var i=0; i<m; i++){
         qapLoadTimeStart = timer.start();
         const {uXY_i, vXY_i, wXY_i} = await polyUtils.readCircuitQAP_i(Fr, fdQAP, sectionsQAP, i, n, s_max, n8r);
@@ -232,7 +230,7 @@ export default async function groth16Prove(cRSName, proofName, circuitName, inst
     await fdQAP.close();
 
     const temp = await polyUtils.mulPoly(Fr, p1XY, p2XY);
-    const pXY = await polyUtils.addPoly(Fr, temp, p3XY, true);
+    const pXY = await polyUtils.subPoly(Fr, temp, p3XY);
     pxyTime = timer.end(pxyTime);
     
     /// compute H
@@ -271,10 +269,10 @@ export default async function groth16Prove(cRSName, proofName, circuitName, inst
                 }
             }
             let res = pXY;
-            let temp1 = await polyUtils_mulPoly(Fr, h1XY, tX);
-            let temp2 = await polyUtils_mulPoly(Fr, h2XY, tY);
-            res= await polyUtils.addPoly(Fr, res, temp1, true);
-            res= await polyUtils.addPoly(Fr, res, temp2, true);
+            let temp1 = await polyUtils.mulPoly(Fr, h1XY, tX);
+            let temp2 = await polyUtils.mulPoly(Fr, h2XY, tY);
+            res= await polyUtils.subPoly(Fr, res, temp1);
+            res= await polyUtils.subPoly(Fr, res, temp2);
             if (!Fr.eq(await polyUtils.evalPoly(Fr, res, Fr.one, Fr.one), Fr.zero)){
                 throw new Error('Error in pXY=h1t+h2t');
             }

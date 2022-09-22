@@ -92,8 +92,6 @@ export default async function groth16Verify(proofName, cRSName, circuitName, ins
     const NConstWires = 1;
     const NOutputWires = 1;
 
-
-
     if(!((mPublic == IdSetV.set.length) && (mPrivate == IdSetP.set.length)))
     {
         throw new Error(`Error in crs file: invalid crs parameters. mPublic: ${mPublic}, IdSetV: ${IdSetV.set.length}, mPrivate: ${mPrivate}, IdSetP: ${IdSetP.set.length},`)
@@ -168,20 +166,25 @@ export default async function groth16Verify(proofName, cRSName, circuitName, ins
     await fdPrf.close();
 
     /// Compute term D
+    let EncTime = timer.start();
     let vk1_D
     vk1_D = await G1.timesFr(buffG1, Fr.e(0));
     for(var i=0; i<mPublic; i++){
         let term = await G1.timesFr(crs.vk1_zxy_i[i], Fr.e(cInstance[i]));
         vk1_D = await G1.add(vk1_D, term);
     }
+    EncTime = timer.end(EncTime);
     
     /// Verify
+    let PairingTime = timer.start();
     const res = await curve.pairingEq(urs.sigma_G.vk1_alpha_v, urs.sigma_H.vk2_alpha_u,
         vk1_D, urs.sigma_H.vk2_gamma_z,
         vk1_C, urs.sigma_H.vk2_gamma_a,
         vk1_A,  await G2.neg(vk2_B));
+    PairingTime = timer.end(PairingTime);
     console.log(`Circuit verification result = ${res}`);
 
+    let HashTime = timer.start();
     const { keccak256 } = hash
     let res2 = true;
     for (var i=0; i<keccakList.length; i++){
@@ -196,11 +199,18 @@ export default async function groth16Verify(proofName, cRSName, circuitName, ins
         const hex_hashout = keccak256(string_input);
         res2 = res2 && (hex_expected == hex_hashout);
     }
+    HashTime = timer.end(HashTime);
     if (keccakList.length>0){
         console.log(`Keccak verification result = ${res2}`);
     }
 
-    timer.end(startTime);
+    const totalTime = timer.end(startTime);
+    console.log(` `)
+    console.log(`-----Verify Time Analyzer-----`)
+    console.log(`###Total ellapsed time: ${totalTime} [ms]`)
+    console.log(` ##Encryption time: ${EncTime} [ms] (${EncTime/totalTime*100} %)`)
+    console.log(` ##Pairing time: ${PairingTime} [ms] (${PairingTime/totalTime*100} %)`)
+    console.log(` ##Hashing time: ${HashTime} [ms] (${HashTime/totalTime*100} %)`)
 
     function hexToString(hex) {
         if (!hex.match(/^[0-9a-fA-F]+$/)) {
