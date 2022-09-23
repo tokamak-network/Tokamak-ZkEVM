@@ -41,9 +41,12 @@ export async function buildR1csPolys(curve, Lagrange_basis, r1cs_k, sR1cs_k){
     Wid = constraints_k.Wid
 
     for(var i=0; i<m_k; i++){
-        uX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-        vX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
-        wX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        //uX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        //vX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        //wX_i[i] = await scalePoly(Fr, Lagrange_basis[0], Fr.zero);
+        uX_i[i] = [[Fr.zero]];
+        vX_i[i] = [[Fr.zero]];
+        wX_i[i] = [[Fr.zero]];
     }
     let item_i;
     for(var i=0; i<ParamR1cs.nConstraints; i++){
@@ -191,41 +194,6 @@ export async function scalePoly(Fr, coefs, scaler){
             }
             res[i][j] = Fr.mul(target, scaler); 
         }
-    }
-    return res;
-}
-
-export async function mulUniPolys(Fr, coefs1, vector){
-    // coefs1 is the coefficients(2-dim) of a X-variate polynomial, vector is the coefficients(1-dim) of a Y-variate polynomial
-    const {N_X: N_X, N_Y: N_Y} = _polyCheck(coefs1);
-    if ( N_Y != 1 ){
-        throw new Error(`mulUniPolys: coefs1 is not a X-variate polynomial`);
-    }
-    if ( !( Array.isArray(vector) && !Array.isArray(vector[0]) ) ){
-        throw new Error(`mulUniPolys: vector is a not 1-dim array`);
-    }
-    coefs1 = _autoTransFromObject(Fr, coefs1);
-    const N2_X = N_X;
-    const N2_Y = vector.length;
-    let res = Array.from(Array(N2_X), () => new Array(N2_Y));
-    for (var i=0; i<N2_X; i++){
-        let X_coef = coefs1[i][0];
-        for (var j=0; j<N2_Y; j++){
-            let Y_coef = vector[j];
-            res[i][j] = Fr.mul(X_coef, Y_coef);
-        }
-    }
-    return res;
-}
-export async function mulUniPolys2(Fr, coefsX, coefsY){
-    // coefsX is the coefficients(1-dim) of a X-variate polynomial, coefsY is the coefficients(1-dim) of a Y-variate polynomial
-    const N_Y = coefsY.length;
-    
-    const res = [];
-    for (var j=0; j<N_Y; j++){
-        let scaler = coefsY[j];
-        const temp = coefsX.map(x => Fr.mul(Fr.e(x), Fr.e(scaler)));
-        res.push(temp);
     }
     return res;
 }
@@ -605,16 +573,18 @@ export async function readQAP(QAPName, k, m_k, n, n8r){
     let wX_i = new Array(m_k);
     await binFileUtils.startReadUniqueSection(fdQAP,sectionsQAP, 2);
     for (var i=0; i<m_k; i++){
-        let data = Array.from(Array(n), () => new Array(1));
-        for (var xi=0; xi<n; xi++){
+        let degree = await fdQAP.readULE32();
+        let data = Array.from(Array(degree), () => new Array(1));
+        for (var xi=0; xi<degree; xi++){
             //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
             data[xi][0] = await fdQAP.read(n8r);
         }
         uX_i[i] = data;
     }
     for (var i=0; i<m_k; i++){
-        let data = Array.from(Array(n), () => new Array(1));
-        for (var xi=0; xi<n; xi++){
+        let degree = await fdQAP.readULE32();
+        let data = Array.from(Array(degree), () => new Array(1));
+        for (var xi=0; xi<degree; xi++){
             //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
             data[xi][0] = await fdQAP.read(n8r);
         }
@@ -622,8 +592,9 @@ export async function readQAP(QAPName, k, m_k, n, n8r){
     }
 
     for (var i=0; i<m_k; i++){
-        let data = Array.from(Array(n), () => new Array(1));
-        for (var xi=0; xi<n; xi++){
+        let degree = await fdQAP.readULE32();
+        let data = Array.from(Array(degree), () => new Array(1));
+        for (var xi=0; xi<degree; xi++){
             //data[xi][0] = await binFileUtils.readBigInt(fdQAP, n8r);
             data[xi][0] = await fdQAP.read(n8r);
         }
@@ -641,24 +612,32 @@ export async function readCircuitQAP_i(Fr, fdQAP, sectionsQAP, i, n, s_max, n8r)
     
     await binFileUtils.startReadUniqueSection(fdQAP,sectionsQAP, 2+i);
 
-    let uXY_i = Array.from(Array(n), () => new Array(s_max));
-    let vXY_i = Array.from(Array(n), () => new Array(s_max));
-    let wXY_i = Array.from(Array(n), () => new Array(s_max));
+    let degree_X;
+    let degree_Y;
 
-    for (var xi=0; xi<n; xi++){
-        for (var yi=0; yi<s_max; yi++){
+    degree_X = await fdQAP.readULE32();
+    degree_Y = await fdQAP.readULE32();
+    let uXY_i = Array.from(Array(degree_X), () => new Array(degree_Y));
+    for (var xi=0; xi<degree_X; xi++){
+        for (var yi=0; yi<degree_Y; yi++){
             uXY_i[xi][yi] = await fdQAP.read(n8r);
         }
     }
 
-    for (var xi=0; xi<n; xi++){
-        for (var yi=0; yi<s_max; yi++){
+    degree_X = await fdQAP.readULE32();
+    degree_Y = await fdQAP.readULE32();
+    let vXY_i = Array.from(Array(degree_X), () => new Array(degree_Y));
+    for (var xi=0; xi<degree_X; xi++){
+        for (var yi=0; yi<degree_Y; yi++){
             vXY_i[xi][yi] = await fdQAP.read(n8r);
         }
     }
 
-    for (var xi=0; xi<n; xi++){
-        for (var yi=0; yi<s_max; yi++){
+    degree_X = await fdQAP.readULE32();
+    degree_Y = await fdQAP.readULE32();
+    let wXY_i = Array.from(Array(degree_X), () => new Array(degree_Y));
+    for (var xi=0; xi<degree_X; xi++){
+        for (var yi=0; yi<degree_Y; yi++){
             wXY_i[xi][yi] = await fdQAP.read(n8r);
         }
     }
