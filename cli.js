@@ -8,7 +8,7 @@ Logger.setLogLevel("INFO");
 
 const commands = [
     {
-        cmd: "setup [paramName] [RSName] [entropy]",
+        cmd: "setup [paramName] [RSName] [QAPName] [entropy]",
         description: "setup phase",
         alias: ["st"],
         action: uniSetup
@@ -20,7 +20,7 @@ const commands = [
         action: uniDerive
     },
     {
-        cmd: "prove [cRSName] [proofName] [QAPName] [circuitName] [entropy] [instanceId]",
+        cmd: "prove [cRSName] [proofName] [circuitName] [instanceId] [entropy]",
         description: "prove phase",
         alias: ["dr"],
         action: groth16Prove
@@ -57,10 +57,11 @@ clProcessor(commands).then( (res) => {
 async function uniSetup(params) {
     const paramName = params[0];
     const RSName = params[1];
-    const entropy = params[2];
+    const QAPName = params[2];
+    const entropy = params[3];
 
     // console.log(curveName, s_D, min_x_max, r1csName, RSName, entropy)
-    return zkey.uniSetup(paramName, RSName, entropy);
+    return zkey.uniSetup(paramName, RSName, QAPName, entropy);
 }
 // derive [RSName] [cRSName] [circuitName] [QAPName]
 async function uniDerive(params) {
@@ -76,17 +77,11 @@ async function uniDerive(params) {
 async function groth16Prove(params){
     const cRSName = params[0];
     const proofName = params[1];
-    const QAPName = params[2];
-    const circuitName = params[3];
+    const circuitName = params[2];
+    const instanceId = params[3];
     const entropy = params[4];
-    let instanceId;
-    if (params[5] === undefined){
-        instanceId = '';
-    } else{
-        instanceId = params[5];
-    }
 
-    return zkey.groth16Prove(cRSName, proofName, QAPName, circuitName, entropy, instanceId)
+    return zkey.groth16Prove(cRSName, proofName, circuitName, instanceId, entropy)
 }
 
 async function groth16Verify(params){
