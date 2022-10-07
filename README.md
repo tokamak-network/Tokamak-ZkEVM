@@ -149,7 +149,7 @@ All file names used in the following commands does not include the file name ext
 |anyNumber|1|1|1|
 
 ## Performance test
-- [A report on performance test](https://github.com/Onther-Tech/UniGro16js/edit/master/benchmark.md)
+- [A report on performance test](https://github.com/Onther-Tech/UniGro16js/blob/master/Performance.md)
 
 ## Paper
 - will be uploaded.
