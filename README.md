@@ -20,9 +20,8 @@ Our contributions can be summarized as follows:
 - We have designed UniGro16 which consists of five algorithms: setup, decode, derive, prove, and verify,
 - We have implemented UniGro16 and tested it with practical EVM applications,
 - We have shown that the security of UniGroth16 remains unchanged from Groth16 even with the derived public keys,
-- We have shown that the public keys derived by helpers are secure,
-- We have shown that the prover and verifier complexity of UniGro16 is lower than that of strictly-universal SNARKs,
-- Any more contributions?
+- We have shown that the public keys derived by helpers are secure, and
+- We have shown that the prover and verifier complexity of UniGro16 is lower than that of strictly-universal SNARKs.
 
 ## Demo. version implementations
 
