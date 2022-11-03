@@ -71,7 +71,6 @@ export async function buildR1csPolys(curve, lagrangeBasis, r1cs, sR1cs) {
   }
 
   return {uX, vX, wX};
-  // uX_ki[k][i] = polynomial of the i-th wire in the k-th subcircuit.
 }
 
 export async function buildCommonPolys(rs) {
@@ -90,17 +89,18 @@ export async function buildCommonPolys(rs) {
     for (let j = 1; j < n; j++) {
       terms[j][0] = await Fr.mul(terms[j - 1][0], multiplier);
     }
-    // item_i = await scalePoly(Fr, terms, Fr.inv(Fr.e(n)));
-    // lagrangeBasis[i] = item_i;
     lagrangeBasis[i] = await scalePoly(Fr, terms, Fr.inv(Fr.e(n)));
   }
 
   return lagrangeBasis;
-  // uX_ki[k][i] = polynomial of the i-th wire in the k-th subcircuit.
 }
 
+/**
+ * 
+ * @param {*} coefs a matrix of Fr elements
+ * @returns 
+ */
 function _polyCheck(coefs) {
-  // Assert if coefs is a matrix of Fr elements
   let numVars = 0;
   let currObject = coefs;
   while (Array.isArray(currObject)) {
@@ -137,10 +137,16 @@ export async function evalPoly(Fr, coefs, x, y) {
   return sum;
 }
 
+/**
+ * Elemetwise multiplication of the coefficients
+ * of a polynomial along with a directed variable with a filtering vector
+ * @param {*} Fr 
+ * @param {*} coefs1 
+ * @param {*} vect 
+ * @param {*} dir Y:X
+ * @returns 
+ */
 export async function filterPoly(Fr, coefs1, vect, dir) {
-  // Elemetwise multiplication of the coefficients
-  // of a polynomial along with a directed variable with a filtering vector
-  // dir? Y:X
   const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
   if ( !((!dir) && (N1_X == vect.length) || (dir) && (N1_Y == vect.length)) ) {
     throw new Error(
@@ -169,11 +175,14 @@ export async function filterPoly(Fr, coefs1, vect, dir) {
   return res;
 }
 
+/**
+ * 
+ * @param {*} Fr 
+ * @param {*} coefs 
+ * @param {*} scaler scaler in Fr
+ * @returns 
+ */
 export async function scalePoly(Fr, coefs, scaler) {
-  // Assume scaler is in Fr
-  // const {N_X: nSlotX, N_Y: nSlotY} = _polyCheck(coefs);
-  // coefs = _autoTransFromObject(Fr, coefs)
-
   const nSlotX = coefs.length;
   const nSlotY = coefs[0].length;
 
@@ -191,12 +200,6 @@ export async function scalePoly(Fr, coefs, scaler) {
 }
 
 export async function addPoly(Fr, coefs1, coefs2) {
-  // const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
-  // const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
-
-  // coefs1 = _autoTransFromObject(Fr, coefs1)
-  // coefs2 = _autoTransFromObject(Fr, coefs2)
-
   const N1_X = coefs1.length;
   const N1_Y = coefs1[0].length;
   const N2_X = coefs2.length;
@@ -230,12 +233,6 @@ export async function addPoly(Fr, coefs1, coefs2) {
 }
 
 export async function subPoly(Fr, coefs1, coefs2) {
-  // const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
-  // const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
-
-  // coefs1 = _autoTransFromObject(Fr, coefs1)
-  // coefs2 = _autoTransFromObject(Fr, coefs2)
-
   const N1_X = coefs1.length;
   const N1_Y = coefs1[0].length;
   const N2_X = coefs2.length;
@@ -268,12 +265,6 @@ export async function subPoly(Fr, coefs1, coefs2) {
 }
 
 export async function mulPoly(Fr, coefs1, coefs2) {
-  // coefs1 = reduceDimPoly(Fr, coefs1);
-  // coefs2 = reduceDimPoly(Fr, coefs2);
-
-  // const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
-  // const {N_X: N2_X, N_Y: N2_Y} = _polyCheck(coefs2);
-
   const N1_X = coefs1.length;
   const N1_Y = coefs1[0].length;
   const N2_X = coefs2.length;
@@ -348,8 +339,6 @@ export async function divPoly(Fr, coefs1, coefs2, objectFlag) {
     yId: deOrderY,
     coef: deHighCoef,
   } = _findOrder(Fr, denom);
-  // console.log(`i: ${deOrderX}, j: ${deOrderY}`)
-
   let numer = coefs1;
   let res = [[Fr.zero]];
 
@@ -405,8 +394,6 @@ export async function divPoly(Fr, coefs1, coefs2, objectFlag) {
     }
     quo[diffOrderX][diffOrderY] = scaler;
     const energy = await mulPoly(Fr, quo, denom);
-    // console.log(`x_o_dif: ${diffOrderX}, y_o_dif: ${diffOrderY}`)
-    // console.log(_transToObject(Fr, numer))
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     return {quo, rem};
@@ -423,7 +410,6 @@ export async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
     yId: deOrderY,
     coef: deHighCoef,
   } = _findOrder(Fr, denom, dictOrder);
-  // console.log(`i: ${deOrderX}, j: ${deOrderY}`)
 
   let numer = coefs1;
   let res = [[Fr.zero]];
@@ -437,7 +423,6 @@ export async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
       yId: nuOrderY,
       coef: nuHighCoef,
     } = _findOrder(Fr, numer, dictOrder);
-    // console.log(`i: ${nuOrderX}, j: ${nuOrderY}`)
     if ((prevOrderX <= nuOrderX) && prevOrderY <= nuOrderY) {
       throw new Error(`infinite loop`);
     }
@@ -489,7 +474,6 @@ export async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
     yId: deOrderY,
     coef: deHighCoef,
   } = _findOrder(Fr, denom, dictOrder);
-  // console.log(`i: ${deOrderX}, j: ${deOrderY}`)
 
   let numer = coefs1;
   let res = [[Fr.zero]];
@@ -503,7 +487,6 @@ export async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
       yId: nuOrderY,
       coef: nuHighCoef,
     } = _findOrder(Fr, numer, dictOrder);
-    // console.log(`i: ${nuOrderX}, j: ${nuOrderY}`)
     if ((prevOrderX <= nuOrderX) && prevOrderY <= nuOrderY) {
       throw new Error(`infinite loop`);
     }
@@ -546,9 +529,14 @@ export async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
   return {res, finalrem};
 }
 
+/**
+ * 
+ * @param {*} Fr 
+ * @param {*} coefs 
+ * @param {*} dir 
+ * @returns output order is the highest order in dictionary order
+ */
 function _findOrder(Fr, coefs, dir) {
-  // / output order is the highest order in dictionary order
-  // const {N_X: N_X, N_Y: N_Y} = _polyCheck(coefs);
   const N_X = coefs.length;
   const N_Y = coefs[0].length;
   const NumEl=N_X*N_Y;
@@ -578,9 +566,13 @@ function _findOrder(Fr, coefs, dir) {
   }
   return {xId, yId, coef};
 }
-
+/**
+ * 
+ * @param {*} Fr 
+ * @param {*} coefs 
+ * @returns highest orders of respective variables
+ */
 export function _orderPoly(Fr, coefs) {
-  // / highest orders of respective variables
   coefs = _autoTransFromObject(Fr, coefs);
   const {xId: xOrder} = _findOrder(Fr, coefs, 0);
   const {yId: yOrder} = _findOrder(Fr, coefs, 1);
@@ -634,7 +626,6 @@ export async function readQAP(QAPName, k, m, n, n8r) {
         () => new Array(1),
     );
     for (let j = 0; j<degree; j++) {
-      // data[j][0] = await binFileUtils.readBigInt(fdQAP, n8r);
       data[j][0] = await fdQAP.read(n8r);
     }
     uX[i] = data;
@@ -646,7 +637,6 @@ export async function readQAP(QAPName, k, m, n, n8r) {
         () => new Array(1),
     );
     for (let j = 0; j < degree; j++) {
-      // data[j][0] = await binFileUtils.readBigInt(fdQAP, n8r);
       data[j][0] = await fdQAP.read(n8r);
     }
     vX[i] = data;
@@ -659,7 +649,6 @@ export async function readQAP(QAPName, k, m, n, n8r) {
         () => new Array(1),
     );
     for (let j = 0; j < degree; j++) {
-      // data[j][0] = await binFileUtils.readBigInt(fdQAP, n8r);
       data[j][0] = await fdQAP.read(n8r);
     }
     wX[i] = data;
@@ -726,9 +715,14 @@ export async function readCircuitQAP(
   return {uXY, vXY, wXY};
 }
 
+/**
+ * 
+ * @param {*} Fr 
+ * @param {*} _array1 m-by-1 matrix in Fr
+ * @param {*} _array2 1-by-n matrix in Fr
+ * @returns 
+ */
 export async function tensorProduct(Fr, _array1, _array2) {
-  // _array1: a m-by-1 matrix in Fr
-  // _array2: a 1-by-n matrix in Fr
 
   const product = new Array(_array1.length);
   for (let i = 0; i < _array1.length; i++) {
