@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 
 import clProcessor from "./src/clprocessor.js";
-import * as zkey from "./src/uni_zkey.js";
+import * as zkey from "./src/zkey.js";
 import Logger from "logplease";
-const logger = Logger.create("snarkJS", {showTimestamp:false});
+const logger = Logger.create("UniGro16js", {showTimestamp:false});
 Logger.setLogLevel("INFO");
 
 const commands = [
@@ -11,13 +11,13 @@ const commands = [
         cmd: "setup [paramName] [RSName] [QAPName] [entropy]",
         description: "setup phase",
         alias: ["st"],
-        action: uniSetup
+        action: setup
     },
     {
         cmd: "derive [RSName] [cRSName] [circuitName] [QAPName]",
         description: "derive phase",
         alias: ["dr"],
-        action: uniDerive
+        action: derive
     },
     {
         cmd: "prove [cRSName] [proofName] [circuitName] [instanceId] [entropy]",
@@ -35,13 +35,13 @@ const commands = [
         cmd: "QAP_all [curveName] [s_D] [min_s_max]",
         description: "prephase",
         alias: ["dr"],
-        action: uniBuildQAP
+        action: buildQAP
     },
     {
         cmd: "QAP_single [paramName] [id]",
         description: "prephase",
         alias: ["dr"],
-        action: uniBuildQAP_single
+        action: buildSingleQAP
     }
 ];
 
@@ -54,24 +54,20 @@ clProcessor(commands).then( (res) => {
 
 
 // setup [curveName], [s_D], [min_s_max], [r1csName], [RSName], [entropy]
-async function uniSetup(params) {
+async function setup(params) {
     const paramName = params[0];
     const RSName = params[1];
     const QAPName = params[2];
     const entropy = params[3];
-
-    // console.log(curveName, s_D, min_x_max, r1csName, RSName, entropy)
-    return zkey.uniSetup(paramName, RSName, QAPName, entropy);
+    return zkey.setup(paramName, RSName, QAPName, entropy);
 }
 // derive [RSName] [cRSName] [circuitName] [QAPName]
-async function uniDerive(params) {
+async function derive(params) {
     const RSName = params[0];
     const cRSName = params[1];
     const circuitName = params[2];
     const QAPName = params[3];
-
-    // console.log(RSName, cRSName, IndSetVName, IndSetPName, OpListName)
-    return zkey.uniDerive(RSName, cRSName, circuitName, QAPName);
+    return zkey.derive(RSName, cRSName, circuitName, QAPName);
 }
 
 async function groth16Prove(params){
@@ -99,19 +95,19 @@ async function groth16Verify(params){
     return zkey.groth16Verify(proofName, cRSName, circuitName, instanceId)
 }
 
-async function uniBuildQAP(params){
+async function buildQAP(params){
     const curveName = params[0];
     const s_D = params[1];
     const min_s_max = params[2];
 
-    return zkey.uniBuildQAP(curveName, s_D, min_s_max)
+    return zkey.buildQAP(curveName, s_D, min_s_max)
 }
 
 // QAP_single [paramName] [id]
-async function uniBuildQAP_single(params){
+async function buildSingleQAP(params){
     const paramName = params[0];
     const id = params[1];
 
-    return zkey.uniBuildQAP_single(paramName, id)
+    return zkey.buildSingleQAP(paramName, id)
 }
 

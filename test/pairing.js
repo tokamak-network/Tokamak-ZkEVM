@@ -83,9 +83,9 @@ describe('Zkey New', function () {
 	})
 	// Test code //
 	// for all i<n-1 and all j<s_max-1
-	// let vk1_xy_pows[i][j]= G1.timesFr(buffG1, xy_pows[i][j])
+	// let vk1XyPows[i][j]= G1.timesFr(buffG1, xy_pows[i][j])
 	// let vk2_t_xy= G2.timesFr(buffG2, t_xy)
-	// assert e(vk1_xy_pows[i][j], vk2_t_xy) == e(vk1_xy_pows_tg,vk2_gamma_a) verify->pairing curve.paingEq
+	// assert e(vk1XyPows[i][j], vk2_t_xy) == e(vk1_xy_pows_tg,vk2GammaA) verify->pairing curve.paingEq
 	// End of the test code //
 	it('paring curve', async () => {
 		const Fr = curve.Fr
@@ -116,7 +116,7 @@ describe('Zkey New', function () {
 		// t_xy
 		const gamma_a_inv = Fr.inv(tau.gamma_a)
 		const t_xy = Fr.mul(Fr.sub(Fr.exp(x, n), Fr.one), Fr.sub(Fr.exp(y, s_max),Fr.one))
-		const vk2_gamma_a = await params.G2.timesFr(params.buffG2, tau.gamma_a)
+		const vk2GammaA = await params.G2.timesFr(params.buffG2, tau.gamma_a)
 		const t_xy_g = Fr.mul(t_xy, gamma_a_inv)
 
 		for (let i = 0; i < n - 1; i++) {
@@ -128,7 +128,7 @@ describe('Zkey New', function () {
 						params.G1.timesFr(params.buffG1, xy_pows[i][j]),
 						params.G2.timesFr(params.buffG2, t_xy), 
 						params.G1.neg(vk1_xy_pows_tg),
-						vk2_gamma_a
+						vk2GammaA
 					)
 				)
 			}

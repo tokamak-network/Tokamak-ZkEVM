@@ -77,11 +77,9 @@ export async function buildCommonPolys(rs) {
   const curve = rs.curve;
   const Fr = curve.Fr;
   const n = rs.n;
-  // const s_max = rs.s_max;
   const omegaX = await Fr.e(rs.omegaX);
 
   const lagrangeBasis = new Array(n);
-  // let item_i;
   for (let i = 0; i < n; i++) {
     const terms = Array.from(Array(n), () => new Array(1));
     const multiplier = await Fr.exp(Fr.inv(omegaX), i);
