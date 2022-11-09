@@ -19,13 +19,13 @@ export const O_RDONLY = ${O_RDONLY}
 export default {
     input: "main.js",
     output: {
-        file: "build/snarkjs.js",
+        file: "build/unigroth.js",
         format: "iife",
         sourcemap: "inline",
         globals: {
             os: "null"
         },
-        name: "snarkjs"
+        name: "unigroth"
     },
     plugins: [
         virtual({
