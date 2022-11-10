@@ -22,7 +22,7 @@ export default async function buildQAP(curveName, sD, minSMax) {
   let partTime;
 
   // TODO: read debug mode from enviroment variable
-  const TESTFLAG = false;
+  const TESTFLAG = process.env.TEST_MODE;
   const r1cs = [];
   const sR1cs = [];
 
@@ -260,9 +260,9 @@ export default async function buildQAP(curveName, sD, minSMax) {
   console.log(' ');
   console.log('-----Build QAP Time Analyzer-----');
   console.log(`###Total ellapsed time: ${totalTime} [ms]`);
-  console.log(` ##R1CS loading time: ${r1csTime} [ms] (${r1csTime/totalTime*100} %)`);
-  console.log(` ##Total QAP time for ${m.reduce((accu, curr) => accu + curr)} wires: ${qapTime} [ms] (${qapTime/totalTime*100} %)`);
-  console.log(`  #QAP interpolation time: ${qapTime-FSTimeAccum} [ms] (${(qapTime-FSTimeAccum)/totalTime*100} %)`);
-  console.log(`  #QAP file writing time: ${FSTimeAccum} [ms] (${FSTimeAccum/totalTime*100} %)`);
+  console.log(` ##R1CS loading time: ${r1csTime} [ms] (${(r1csTime/totalTime*100).toFixed(3)} %)`);
+  console.log(` ##Total QAP time for ${m.reduce((accu, curr) => accu + curr)} wires: ${qapTime} [ms] (${(qapTime/totalTime*100).toFixed(3)} %)`);
+  console.log(`  #QAP interpolation time: ${qapTime-FSTimeAccum} [ms] (${((qapTime-FSTimeAccum)/totalTime*100).toFixed(3)} %)`);
+  console.log(`  #QAP file writing time: ${FSTimeAccum} [ms] (${(FSTimeAccum/totalTime*100).toFixed(3)} %)`);
   console.log(` ##Average QAP time per wire with ${n} interpolation points: ${qapTime/m.reduce((accu, curr) => accu + curr)} [ms]`);
 }

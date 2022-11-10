@@ -45,12 +45,11 @@ fs.readFile('./temp.txt', 'utf8', function(err, data) {
     }
     subcircuitJson['wire-list'].push(subcircuit)
   }
-  // console.log(subcircuitJson)
   fs.writeFile('./subcircuit_info.json', JSON.stringify(subcircuitJson, null, "\t"), err => {
     if (err) {
-      console.log('Error writing a file', err)
+      console.log('Error occurs while writing a file.', err)
     } else {
-      console.log('Successfully wrote a file')
+      console.log('Successfully written.')
     }
   })
 })

@@ -16,7 +16,7 @@ import path from 'path';
 
 
 export default async function buildSingleQAP(paramName, id) {
-  const TESTFLAG = false;
+  const TESTFLAG = process.env.TEST_MODE;
 
   const QAPName = `QAP${paramName.slice(5)}`;
   mkdir(
@@ -55,7 +55,7 @@ export default async function buildSingleQAP(paramName, id) {
   const sR1cs = await readSection(fdR1cs, sectionsR1cs, 2);
   await fdR1cs.close();
 
-  console.log('checkpoint0');
+  // console.log('checkpoint0');
 
   const curve = param.curve;
   const Fr = curve.Fr;
@@ -68,7 +68,7 @@ export default async function buildSingleQAP(paramName, id) {
 
   // Write parameters section
   // /////////
-  console.log(`checkpoint4`);
+  // console.log(`checkpoint4`);
 
   // Group parameters
   const primeR = curve.r;
@@ -95,7 +95,7 @@ export default async function buildSingleQAP(paramName, id) {
   // End of test code 1 //
 
 
-  console.log(`checkpoint5`);
+  // console.log(`checkpoint5`);
 
   // Test code 2 //
   if (TESTFLAG) {

@@ -23,7 +23,7 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
   let qapTimeStart;
   let qapTimeAccum = 0;
 
-  const TESTFLAG = false;
+  const TESTFLAG = process.env.TEST_MODE;
   console.log(`TESTMODE = ${TESTFLAG}`);
 
   mkdir(
@@ -407,18 +407,18 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
   console.log(` `);
   console.log(`-----Setup Time Analyzer-----`);
   console.log(`###Total ellapsed time: ${totalTime} [ms]`);
-  console.log(` ##Time for generating two sigmas with n=${n}, sMax=${sMax}: ${sigmaTime} [ms] (${(sigmaTime)/totalTime*100} %)`);
-  console.log(`  #Encryption time: ${EncTimeAccum1} [ms] (${EncTimeAccum1/totalTime*100} %)`);
-  console.log(`  #File writing time: ${sigmaTime - EncTimeAccum1} [ms] (${(sigmaTime - EncTimeAccum1)/totalTime*100} %)`);
-  console.log(` ##Time for generating thetaG for ${sD} sub-QAPs with totally ${m.reduce((accu, curr) => accu + curr)} wires and sMax=${sMax} opcode slots: ${thetaTime} [ms] (${(thetaTime)/totalTime*100} %)`);
-  console.log(`  #Sub-QAPs loading time: ${qapTimeAccum} [ms] (${qapTimeAccum/totalTime*100} %)`);
-  console.log(`  #Encryption time: ${EncTimeAccum2} [ms] (${(EncTimeAccum2)/totalTime*100} %)`);
-  console.log(`  #file writing time: ${thetaTime - qapTimeAccum - EncTimeAccum2} [ms] (${(thetaTime - qapTimeAccum - EncTimeAccum2)/totalTime*100} %)`);
+  console.log(` ##Time for generating two sigmas with n=${n}, sMax=${sMax}: ${sigmaTime} [ms] (${((sigmaTime)/totalTime*100).toFixed(3)} %)`);
+  console.log(`  #Encryption time: ${EncTimeAccum1} [ms] (${(EncTimeAccum1/totalTime*100).toFixed(3)} %)`);
+  console.log(`  #File writing time: ${sigmaTime - EncTimeAccum1} [ms] (${((sigmaTime - EncTimeAccum1)/totalTime*100).toFixed(3)} %)`);
+  console.log(` ##Time for generating thetaG for ${sD} sub-QAPs with totally ${m.reduce((accu, curr) => accu + curr)} wires and sMax=${sMax} opcode slots: ${thetaTime} [ms] (${((thetaTime)/totalTime*100).toFixed(3)} %)`);
+  console.log(`  #Sub-QAPs loading time: ${qapTimeAccum} [ms] (${(qapTimeAccum/totalTime*100).toFixed(3)} %)`);
+  console.log(`  #Encryption time: ${EncTimeAccum2} [ms] (${((EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
+  console.log(`  #file writing time: ${thetaTime - qapTimeAccum - EncTimeAccum2} [ms] (${((thetaTime - qapTimeAccum - EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
 
 
   function createTauKey(Field, rng) {
     if (rng.length != 6) {
-      console.log(`checkpoint3`);
+      // console.log(`checkpoint3`);
       throw new Error('It should have six elements.');
     }
     const key = {

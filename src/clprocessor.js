@@ -180,7 +180,7 @@ export default async function clProcessor(commands) {
   }
 
   function printVersion() {
-    console.log('snarkjs@'+version);
+    console.log('unigroth@'+version);
   }
 
   function epilog() {
