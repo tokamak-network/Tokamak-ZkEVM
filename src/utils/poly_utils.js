@@ -349,7 +349,7 @@ export async function divPoly(Fr, coefs1, coefs2, objectFlag) {
       yId: nuOrderY,
       coef: nuHighCoef,
     } = _findOrder(Fr, numer);
-    console.log(`i: ${nuOrderX}, j: ${nuOrderY}`);
+    // console.log(`i: ${nuOrderX}, j: ${nuOrderY}`);
     if ((prevOrderX <= nuOrderX) && prevOrderY <= nuOrderY) {
       throw new Error(`infinite loop`);
     }

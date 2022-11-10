@@ -1,7 +1,6 @@
 import * as zkeyUtils from './utils/zkey_utils.js';
 import * as polyUtils from './utils/poly_utils.js';
 import chai from 'chai';
-const assert = chai.assert;
 import {
   readBinFile,
   readSection,
@@ -15,9 +14,9 @@ import {mkdir} from 'fs';
 import path from 'path';
 
 
-export default async function buildSingleQAP(paramName, id) {
+export default async function buildSingleQAP(paramName, id, logger) {
   const TESTFLAG = process.env.TEST_MODE;
-
+  const assert = chai.assert;
   const QAPName = `QAP${paramName.slice(5)}`;
   mkdir(
       path.join(
@@ -55,7 +54,7 @@ export default async function buildSingleQAP(paramName, id) {
   const sR1cs = await readSection(fdR1cs, sectionsR1cs, 2);
   await fdR1cs.close();
 
-  // console.log('checkpoint0');
+  // if (logger) logger.debug('checkpoint0');
 
   const curve = param.curve;
   const Fr = curve.Fr;
@@ -68,7 +67,7 @@ export default async function buildSingleQAP(paramName, id) {
 
   // Write parameters section
   // /////////
-  // console.log(`checkpoint4`);
+  // if (logger) logger.debug(`checkpoint4`);
 
   // Group parameters
   const primeR = curve.r;
@@ -85,23 +84,23 @@ export default async function buildSingleQAP(paramName, id) {
   const omegaY = param.sMax;
 
   // Test code 1 // --> DONE
-  if (TESTFLAG) {
-    console.log(`Running Test 1`);
+  if (TESTFLAG === 'true') {
+    if (logger) logger.debug(`Running Test 1`);
     assert(Fr.eq(await Fr.exp(Fr.e(n), primeR), Fr.e(n)));
     assert(Fr.eq(await Fr.exp(Fr.e(omegaX), n), Fr.one));
     assert(Fr.eq(await Fr.exp(Fr.e(omegaY), sMax), Fr.one));
-    console.log(`Test 1 finished`);
+    if (logger) logger.debug(`Test 1 finished`);
   }
   // End of test code 1 //
 
 
-  // console.log(`checkpoint5`);
+  // if (logger) logger.debug(`checkpoint5`);
 
   // Test code 2 //
-  if (TESTFLAG) {
-    console.log(`Running Test 2`);
+  if (TESTFLAG === 'true') {
+    if (logger) logger.debug(`Running Test 2`);
     assert(Fr.eq(omegaX, Fr.e(Fr.toObject(omegaX))));
-    console.log(`Test 2 finished`);
+    if (logger) logger.debug(`Test 2 finished`);
   }
   // End of test code 2 //
 
@@ -115,7 +114,7 @@ export default async function buildSingleQAP(paramName, id) {
   rs.omegaY = omegaY;
   const lagrangeBasis = await polyUtils.buildCommonPolys(rs, true);
 
-  console.log(`k: ${id}`);
+  if (logger) logger.debug(`k: ${id}`);
   const {
     uX: uX,
     vX: vX,

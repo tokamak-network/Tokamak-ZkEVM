@@ -10,6 +10,7 @@ export default async function groth16Verify(
     cRSName,
     circuitName,
     instanceId,
+    logger
 ) {
   const startTime = timer.start();
 
@@ -89,20 +90,10 @@ export default async function groth16Verify(
   const G1 = urs.param.curve.G1;
   const G2 = urs.param.curve.G2;
   const Fr = urs.param.curve.Fr;
-  //   const n8 = curve.Fr.n8;
   const buffG1 = curve.G1.oneAffine;
-  //   const buffG2 = curve.G2.oneAffine;
-  //   const n = urs.param.n;
-  //   const s_max = urs.param.s_max;
-  //   const s_D = urs.param.s_D;
-  //   const omega_x = await Fr.e(urs.param.omega_x);
-  //   const omega_y = await Fr.e(urs.param.omega_y);
-
   const mPublic = crs.param.mPublic;
   const mPrivate = crs.param.mPrivate;
-  //   const m = mPublic + mPrivate;
   const nConstWires = 1;
-  //   const NOutputWires = 1;
 
   if (!(
     (mPublic == IdSetV.set.length) && (mPrivate == IdSetP.set.length)
@@ -128,7 +119,6 @@ export default async function groth16Verify(
   // / generate instance for each subcircuit
   const hexKeccakInstance = [];
   const subInstance = new Array(OpList.length);
-  //   await OpList.forEach((kPrime, index) => {
   OpList.forEach((kPrime, index) => {
     const inputs = JSON.parse(
         readFileSync(
@@ -217,7 +207,7 @@ export default async function groth16Verify(
       vk1C, urs.sigmaH.vk2GammaA,
       vk1A, await G2.neg(vk2B));
   PairingTime = timer.end(PairingTime);
-  console.log(`Circuit verification result = ${res}`);
+  if (logger) logger.debug(`Circuit verification result = ${res}`);
 
   let HashTime = timer.start();
   const {keccak256} = hash;
@@ -236,29 +226,31 @@ export default async function groth16Verify(
   }
   HashTime = timer.end(HashTime);
   if (keccakList.length>0) {
-    console.log(`Keccak verification result = ${res2}`);
+    if (logger) logger.debug(`Keccak verification result = ${res2}`);
   }
 
   const totalTime = timer.end(startTime);
-  console.log(` `);
-  console.log(`-----Verify Time Analyzer-----`);
-  console.log(`###Total ellapsed time: ${totalTime} [ms]`);
-  console.log(` ##Encryption time: ${EncTime} [ms] (${(EncTime/totalTime*100).toFixed(3)} %)`);
-  console.log(` ##Pairing time: ${PairingTime} [ms] (${(PairingTime/totalTime*100).toFixed(3)} %)`);
-  console.log(` ##Hashing time: ${HashTime} [ms] (${(HashTime/totalTime*100).toFixed(3)} %)`);
-
-  function hexToString(hex) {
-    if (!hex.match(/^[0-9a-fA-F]+$/)) {
-      throw new Error('is not a hex string.');
-    }
-    if (hex.length % 2 !== 0) {
-      hex = '0' + hex;
-    }
-    const bytes = [];
-    for (let n = 0; n < hex.length; n += 2) {
-      const code = parseInt(hex.substr(n, 2), 16);
-      bytes.push(code);
-    }
-    return bytes;
+  if (logger) {
+    logger.debug('  ');
+    logger.debug('----- Verify Time Analyzer -----');
+    logger.debug(`### Total ellapsed time: ${totalTime} [ms]`);
+    logger.debug(` ## Encryption time: ${EncTime} [ms] (${(EncTime/totalTime*100).toFixed(3)} %)`);
+    logger.debug(` ## Pairing time: ${PairingTime} [ms] (${(PairingTime/totalTime*100).toFixed(3)} %)`);
+    logger.debug(` ## Hashing time: ${HashTime} [ms] (${(HashTime/totalTime*100).toFixed(3)} %)`);
   }
+  return res && res2;
+}
+function hexToString(hex) {
+  if (!hex.match(/^[0-9a-fA-F]+$/)) {
+    throw new Error('is not a hex string.');
+  }
+  if (hex.length % 2 !== 0) {
+    hex = '0' + hex;
+  }
+  const bytes = [];
+  for (let n = 0; n < hex.length; n += 2) {
+    const code = parseInt(hex.substr(n, 2), 16);
+    bytes.push(code);
+  }
+  return bytes;
 }

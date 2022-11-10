@@ -1,7 +1,6 @@
 import * as misc from './misc.js';
 import * as zkeyUtils from './utils/zkey_utils.js';
 import chai from 'chai';
-const assert = chai.assert;
 import {
   readBinFile,
   createBinFile,
@@ -14,7 +13,13 @@ import path from 'path';
 import * as timer from './utils/timer.js';
 import * as polyUtils from './utils/poly_utils.js';
 
-export default async function setup(paramName, RSName, QAPName, entropy) {
+export default async function setup(
+  paramName, 
+  rsName, 
+  qapName, 
+  entropy, 
+  logger
+) {
   const startTime = timer.start();
   let partTime;
   let EncTimeAccum1 = 0;
@@ -24,7 +29,8 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
   let qapTimeAccum = 0;
 
   const TESTFLAG = process.env.TEST_MODE;
-  console.log(`TESTMODE = ${TESTFLAG}`);
+  const assert = chai.assert;
+  if (logger) logger.debug(`TESTMODE = ${TESTFLAG}`);
 
   mkdir(
     path.join(
@@ -45,7 +51,7 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
   const sD = param.sD;
 
   const fdRS = await createBinFile(
-      `resource/universal_rs/${RSName}.urs`,
+      `resource/universal_rs/${rsName}.urs`,
       'zkey',
       1,
       4 + sD,
@@ -94,9 +100,9 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
   }
   const tau = createTauKey(Fr, rng);
 
-  // Write the sigma_G section
+  // Write the sigmaG section
   partTime = timer.start();
-  console.log(`Generating sigma_G...`);
+  if (logger) logger.debug(`Generating sigmaG...`);
   await startWriteSection(fdRS, 3);
 
   EncTimeStart = timer.start();
@@ -110,7 +116,7 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
   await zkeyUtils.writeG1(fdRS, curve, vk1GammaA);
   let x=tau.x;
   let y=tau.y;
-  if (TESTFLAG) {
+  if (TESTFLAG === 'true') {
     x = Fr.e(13);
     y = Fr.e(23);
   }
@@ -174,13 +180,13 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
   }
 
   await endWriteSection(fdRS);
-  console.log(`Generating sigma_G...Done`);
-  // End of the sigma_G section
+  if (logger) logger.debug(`Generating sigmaG...Done`);
+  // End of the sigmaG section
 
 
   // Write the sigmaH section
 
-  console.log(`Generating sigmaH...`);
+  if (logger) logger.debug(`Generating sigmaH...`);
   await startWriteSection(fdRS, 4);
 
   EncTimeStart = timer.start();
@@ -203,7 +209,7 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
     }
   }
   await endWriteSection(fdRS);
-  console.log(`Generating sigmaH...Done`);
+  if (logger) logger.debug(`Generating sigmaH...Done`);
   const sigmaTime = timer.end(partTime);
   // End of the sigmaH section
 
@@ -211,14 +217,14 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
   // Write the thetaG[k] sections for k in [0, 1, ..., sD]
   partTime = timer.start();
   for (let k=0; k<sD; k++) {
-    console.log(`Generating thetaG...${k+1}/${sD}`);
-    console.log(`  Loading ${3*m[k]} sub-QAP polynomials...`);
+    if (logger) logger.debug(`Generating thetaG...${k+1}/${sD}`);
+    if (logger) logger.debug(`  Loading ${3*m[k]} sub-QAP polynomials...`);
     qapTimeStart = timer.start();
     const {
       uX: uX,
       vX: vX,
       wX: wX,
-    } = await polyUtils.readQAP(QAPName, k, m[k], n, n8r);
+    } = await polyUtils.readQAP(qapName, k, m[k], n, n8r);
     qapTimeAccum += timer.end(qapTimeStart);
 
     const _ux = new Array(m[k]);
@@ -232,7 +238,7 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
     let combined;
     let zx;
     let ax;
-    console.log(`  Evaluating and combining the sub-QAP polynomials...`);
+    if (logger) logger.debug(`  Evaluating and combining the sub-QAP polynomials...`);
     for (let i=0; i<m[k]; i++) {
       _ux[i] = await polyUtils.evalPoly(Fr, uX[i], x, 0);
       _vx[i] = await polyUtils.evalPoly(Fr, vX[i], x, 0);
@@ -263,13 +269,13 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
     }
 
     // Test code 4//
-    // To test [z^(k)_i(x)]_G and [a^(k)_i(x)]_G in sigma_G
-    if (TESTFLAG) {
-      console.log(`Running Test 4`);
+    // To test [z^(k)_i(x)]_G and [a^(k)_i(x)]_G in sigmaG
+    if (TESTFLAG === 'true') {
+      if (logger) logger.debug(`Running Test 4`);
       const vk2AlphaV = await G2.timesFr(buffG2, tau.alpha_v);
       let vk1WX;
       let res=0;
-      for (let i=0; i<m[k]; i++) { // TODO: 모든 i 대신 랜덤한 몇 개의 i만 해봐도 good
+      for (let i=0; i<m[k]; i++) {
         vk1WX = await G1.timesFr(buffG1, _wx[i]);
         if (i>=NConstWires && i<NConstWires+mPublic[k]) {
           res = await curve.pairingEq(
@@ -287,12 +293,12 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
               vk1WX, buffG2);
         }
         if (res == false) {
-          console.log('k: ', k);
-          console.log('i: ', i);
+          if (logger) logger.debug('k: ', k);
+          if (logger) logger.debug('i: ', i);
         }
         assert(res);
       }
-      console.log(`Test 4 finished`);
+      if (logger) logger.debug(`Test 4 finished`);
     }
     // End of the test code 4//
 
@@ -303,7 +309,7 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
     let vk2Vxy2d;
     let vk1Zxy2d;
     let vk1Axy2d;
-    console.log(`  Encrypting and file writing ${4*m[k]} QAP keys...`);
+    if (logger) logger.debug(`  Encrypting and file writing ${4*m[k]} QAP keys...`);
     for (let i=0; i < m[k]; i++) {
       multiplier=Fr.inv(Fr.e(sMax));
       EncTimeStart = timer.start();
@@ -381,8 +387,8 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
   // Test code 5//
   // k==6 --> MOD subcircuit,
   // c2 mod c3 = c1 <==> c4*c3+c1 = c2 <==> c4*c3 = -c1+c2
-  if (TESTFLAG) {
-    console.log('Running Test 5');
+  if (TESTFLAG === 'true') {
+    if (logger) logger.debug('Running Test 5');
     const res = [];
     res.push(await curve.pairingEq(vk1XyPowsT1g[1][1], vk2GammaA,
         await G1.timesFr(
@@ -390,12 +396,12 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
         await G2.neg(await G2.timesFr(buffG2, t1X)),
     ),
     );
-    console.log(res);
+    if (logger) logger.debug(res);
 
     if (!res[0]) {
       throw new Error('Test 5 failed');
     }
-    console.log(`Test 5 finished`);
+    if (logger) logger.debug(`Test 5 finished`);
   }
   // End of the test code 5//
 
@@ -404,21 +410,23 @@ export default async function setup(paramName, RSName, QAPName, entropy) {
   await fdRS.close();
 
   const totalTime = timer.end(startTime);
-  console.log(` `);
-  console.log(`-----Setup Time Analyzer-----`);
-  console.log(`###Total ellapsed time: ${totalTime} [ms]`);
-  console.log(` ##Time for generating two sigmas with n=${n}, sMax=${sMax}: ${sigmaTime} [ms] (${((sigmaTime)/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #Encryption time: ${EncTimeAccum1} [ms] (${(EncTimeAccum1/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #File writing time: ${sigmaTime - EncTimeAccum1} [ms] (${((sigmaTime - EncTimeAccum1)/totalTime*100).toFixed(3)} %)`);
-  console.log(` ##Time for generating thetaG for ${sD} sub-QAPs with totally ${m.reduce((accu, curr) => accu + curr)} wires and sMax=${sMax} opcode slots: ${thetaTime} [ms] (${((thetaTime)/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #Sub-QAPs loading time: ${qapTimeAccum} [ms] (${(qapTimeAccum/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #Encryption time: ${EncTimeAccum2} [ms] (${((EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #file writing time: ${thetaTime - qapTimeAccum - EncTimeAccum2} [ms] (${((thetaTime - qapTimeAccum - EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
+  if (logger) {
+    logger.debug('  ');
+    logger.debug('----- Setup Time Analyzer -----');
+    logger.debug(`### Total ellapsed time: ${totalTime} [ms]`);
+    logger.debug(` ## Time for generating two sigmas with n=${n}, sMax=${sMax}: ${sigmaTime} [ms] (${((sigmaTime)/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # Encryption time: ${EncTimeAccum1} [ms] (${(EncTimeAccum1/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # File writing time: ${sigmaTime - EncTimeAccum1} [ms] (${((sigmaTime - EncTimeAccum1)/totalTime*100).toFixed(3)} %)`);
+    logger.debug(` ## Time for generating thetaG for ${sD} sub-QAPs with totally ${m.reduce((accu, curr) => accu + curr)} wires and sMax=${sMax} opcode slots: ${thetaTime} [ms] (${((thetaTime)/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # Sub-QAPs loading time: ${qapTimeAccum} [ms] (${(qapTimeAccum/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # Encryption time: ${EncTimeAccum2} [ms] (${((EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # File writing time: ${thetaTime - qapTimeAccum - EncTimeAccum2} [ms] (${((thetaTime - qapTimeAccum - EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
+  }
 
 
   function createTauKey(Field, rng) {
     if (rng.length != 6) {
-      // console.log(`checkpoint3`);
+      // if (logger) logger.debug(`checkpoint3`);
       throw new Error('It should have six elements.');
     }
     const key = {

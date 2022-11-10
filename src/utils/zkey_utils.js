@@ -262,12 +262,12 @@ export async function readRS(fd, sections, rsParam, rsType, toObject) {
   const sD = rsParam.sD;
   const rsContent = {};
 
-  // Read sigma_G section
+  // Read sigmaG section
   await binFileUtils.startReadUniqueSection(fd, sections, 3);
-  rsContent.sigma_G = {};
-  rsContent.sigma_G.vk1_alpha_u = await readG1(fd, curve, toObject);
-  rsContent.sigma_G.vk1_alpha_v = await readG1(fd, curve, toObject);
-  rsContent.sigma_G.vk1_gamma_a = await readG1(fd, curve, toObject);
+  rsContent.sigmaG = {};
+  rsContent.sigmaG.vk1AlphaU = await readG1(fd, curve, toObject);
+  rsContent.sigmaG.vk1AlphaV = await readG1(fd, curve, toObject);
+  rsContent.sigmaG.vk1GammaA = await readG1(fd, curve, toObject);
 
   const vk1XyPows = Array.from(Array(n), () => new Array(sMax));
   for (let i = 0; i < n; i++) {
@@ -275,7 +275,7 @@ export async function readRS(fd, sections, rsParam, rsType, toObject) {
       vk1XyPows[i][j] = await readG1(fd, curve, toObject);
     }
   }
-  rsContent.sigma_G.vk1XyPows = vk1XyPows;
+  rsContent.sigmaG.vk1XyPows = vk1XyPows;
 
   const vk1XyPowsT1g = Array.from(Array(n-1), () => new Array(2*sMax-1));
   for (let i = 0; i < n-1; i++) {
@@ -283,7 +283,7 @@ export async function readRS(fd, sections, rsParam, rsType, toObject) {
       vk1XyPowsT1g[i][j] = await readG1(fd, curve, toObject);
     }
   }
-  rsContent.sigma_G.vk1XyPowsT1g = vk1XyPowsT1g;
+  rsContent.sigmaG.vk1XyPowsT1g = vk1XyPowsT1g;
 
   const vk1XyPowsT2g = Array.from(Array(n), () => new Array(sMax-1));
   for (let i = 0; i < n; i++) {
@@ -291,10 +291,10 @@ export async function readRS(fd, sections, rsParam, rsType, toObject) {
       vk1XyPowsT2g[i][j] = await readG1(fd, curve, toObject);
     }
   }
-  rsContent.sigma_G.vk1XyPowsT2g = vk1XyPowsT2g;
+  rsContent.sigmaG.vk1XyPowsT2g = vk1XyPowsT2g;
 
   await binFileUtils.endReadSection(fd);
-  // End of reading sigma_G
+  // End of reading sigmaG
 
   // Read sigmaH section
   await binFileUtils.startReadUniqueSection(fd, sections, 4);

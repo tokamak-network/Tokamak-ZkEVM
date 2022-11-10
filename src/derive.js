@@ -9,7 +9,13 @@ import {
 import * as fastFile from 'fastfile';
 import * as timer from './utils/timer.js';
 
-export default async function derive(rsName, cRSName, circuitName, qapName) {
+export default async function derive(
+  rsName, 
+  cRSName, 
+  circuitName, 
+  qapName, 
+  logger
+) {
   const startTime = timer.start();
   let partTime;
   let EncTimeStart;
@@ -36,11 +42,11 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
   const urs = {};
   urs.param = await zkeyUtils.readRSParams(fdRS, sectionsRS);
 
-  console.log(`Loading urs...`);
+  if (logger) logger.debug(`Loading urs...`);
   partTime = timer.start();
   urs.content = await zkeyUtils.readRS(fdRS, sectionsRS, urs.param, URS);
   const ursLoadTime = timer.end(partTime);
-  console.log(`Loading urs...Done`);
+  if (logger) logger.debug(`Loading urs...Done`);
 
   const fdIdV = await fastFile.readExisting(
       `${dirPath}/Set_I_V.bin`,
@@ -117,9 +123,9 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
     throw new Error('An opcode in the target EVM bytecode has no subcircuit');
   }
 
-  console.log('Deriving crs...');
+  if (logger) logger.debug('Deriving crs...');
   let crsTime = timer.start();
-  console.log(`  Deriving crs: [z_i(x,y)]_G for i upto ${mPublic}...`);
+  if (logger) logger.debug(`  Deriving crs: [z_i(x,y)]_G for i upto ${mPublic}...`);
   const vk1Zxy = new Array(mPublic);
   for (let i=0; i<mPublic; i++) {
     PreImgSet = IdSetV.PreImgs[i];
@@ -143,7 +149,7 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
     }
   }
 
-  console.log(`  Deriving crs: [a_i(x,y)]_G for i upto ${mPrivate}...`);
+  if (logger) logger.debug(`  Deriving crs: [a_i(x,y)]_G for i upto ${mPrivate}...`);
   const vk1Axy = new Array(mPrivate);
   for (let i=0; i<mPrivate; i++) {
     PreImgSet = IdSetP.PreImgs[i];
@@ -161,7 +167,7 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
         } else if (iPrime >= nZeroWires+mPublicK) {
           arrayIdx = iPrime-mPublicK;
         } else {
-          console.log(`i: ${i}, PreImgIdx: ${PreImgIdx}`);
+          if (logger) logger.debug(`i: ${i}, PreImgIdx: ${PreImgIdx}`);
           throw new Error('invalid access to vk1_axy_kij');
         }
         vk1Term = urs.content.thetaG.vk1Axy[sKPrime][arrayIdx][j];
@@ -171,7 +177,7 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
     }
   }
 
-  console.log(`  Deriving crs: [u_i(x,y)]_G for i upto ${m}...`);
+  if (logger) logger.debug(`  Deriving crs: [u_i(x,y)]_G for i upto ${m}...`);
   const vk1Uxy = new Array(m);
   for (let i=0; i<m; i++) {
     if (IdSetV.set.indexOf(i) > -1) {
@@ -195,7 +201,7 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
     }
   }
 
-  console.log(`  Deriving crs: [v_i(x,y)]_G for i upto ${m}...`);
+  if (logger) logger.debug(`  Deriving crs: [v_i(x,y)]_G for i upto ${m}...`);
   const vk1Vxy = new Array(m);
   for (let i=0; i<m; i++) {
     if (IdSetV.set.indexOf(i) > -1) {
@@ -220,7 +226,7 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
     }
   }
 
-  console.log(`  Deriving crs: [v_i(x,y)]_H for i upto ${m}...`);
+  if (logger) logger.debug(`  Deriving crs: [v_i(x,y)]_H for i upto ${m}...`);
   const vk2Vxy = new Array(m);
   for (let i=0; i<m; i++) {
     if (IdSetV.set.indexOf(i) > -1) {
@@ -252,7 +258,7 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
 
   await fdRS.close();
 
-  console.log(`  Writing crs file...`);
+  if (logger) logger.debug(`  Writing crs file...`);
   partTime = timer.start();
   await startWriteSection(fdcRS, 5);
   await fdcRS.writeULE32(m);
@@ -281,11 +287,11 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
   await fdcRS.close();
 
   crsTime = timer.end(crsTime);
-  console.log(`Deriving crs...Done`);
+  if (logger) logger.debug(`Deriving crs...Done`);
 
-  console.log(`Deriving QAP...`);
+  if (logger) logger.debug(`Deriving QAP...`);
   let qapTime = timer.start();
-  console.log(`  Loading sub-QAPs...`);
+  if (logger) logger.debug(`  Loading sub-QAPs...`);
   partTime = timer.start();
   const uXK = new Array(sD);
   const vXK = new Array(sD);
@@ -304,7 +310,7 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
       wXK[k] = _wX;
     }
   }
-  console.log(`  Loading ${uXK.length} sub-QAPs...Done`);
+  if (logger) logger.debug(`  Loading ${uXK.length} sub-QAPs...Done`);
   const subQapLoadTime = timer.end(partTime);
 
   const fdQAP = await createBinFile(
@@ -320,7 +326,7 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
   await fdQAP.writeULE32(1); // Groth
   await endWriteSection(fdQAP);
 
-  console.log(`  Generating f_k(Y) of degree ${sMax-1} for k upto ${sF}...`);
+  if (logger) logger.debug(`  Generating f_k(Y) of degree ${sMax-1} for k upto ${sF}...`);
   const fYK = new Array(sF);
   const fY = Array.from(Array(1), () => new Array(sMax));
   const FrSMaxInv = Fr.inv(Fr.e(sMax));
@@ -336,7 +342,7 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
     PolTimeAccum += timer.end(PolTimeStart);
   }
 
-  console.log(`  Deriving u_i(X,Y), v_i(X,Y), w_i(X,Y) for i upto ${m}...`);
+  if (logger) logger.debug(`  Deriving u_i(X,Y), v_i(X,Y), w_i(X,Y) for i upto ${m}...`);
   for (let i=0; i<m; i++) {
     await startWriteSection(fdQAP, 2+i);
     let arrayIdx;
@@ -408,20 +414,22 @@ export default async function derive(rsName, cRSName, circuitName, qapName) {
   }
   await fdQAP.close();
   qapTime = timer.end(qapTime);
-  console.log('Deriving QAP...Done');
-  console.log('  ');
+  if (logger) logger.debug('Deriving QAP...Done');
+  if (logger) logger.debug('  ');
 
   const totalTime = timer.end(startTime);
-  console.log(`-----Derive Time Analyzer-----`);
-  console.log(`###Total ellapsed time: ${totalTime} [ms]`);
-  console.log(` ##Time for deriving crs for ${m} wires (${4*m} keys): ${crsTime} [ms] (${((crsTime)/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #urs loading time: ${ursLoadTime} [ms] (${(ursLoadTime/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #Encryption time: ${EncTimeAccum} [ms] (${(EncTimeAccum/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #File writing time: ${crsWriteTime} [ms] (${(crsWriteTime/totalTime*100).toFixed(3)} %)`);
-  console.log(` ##Time for deriving ${3*m} QAP polynomials of degree (${n},${sMax}): ${qapTime} [ms] (${(qapTime/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #Sub-QAPs loading time: ${subQapLoadTime} [ms] (${(subQapLoadTime/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #Polynomial multiplication time: ${PolTimeAccum} [ms] (${(PolTimeAccum/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #file writing time: ${QAPWriteTimeAccum} [ms] (${(QAPWriteTimeAccum/totalTime*100).toFixed(3)} %)`);
+  if (logger) {
+    logger.debug('----- Derive Time Analyzer -----');
+    logger.debug(`### Total ellapsed time: ${totalTime} [ms]`);
+    logger.debug(` ## Time for deriving crs for ${m} wires (${4*m} keys): ${crsTime} [ms] (${((crsTime)/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # URS loading time: ${ursLoadTime} [ms] (${(ursLoadTime/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # Encryption time: ${EncTimeAccum} [ms] (${(EncTimeAccum/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # File writing time: ${crsWriteTime} [ms] (${(crsWriteTime/totalTime*100).toFixed(3)} %)`);
+    logger.debug(` ## Time for deriving ${3*m} QAP polynomials of degree (${n},${sMax}): ${qapTime} [ms] (${(qapTime/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # Sub-QAPs loading time: ${subQapLoadTime} [ms] (${(subQapLoadTime/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # Polynomial multiplication time: ${PolTimeAccum} [ms] (${(PolTimeAccum/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # File writing time: ${QAPWriteTimeAccum} [ms] (${(QAPWriteTimeAccum/totalTime*100).toFixed(3)} %)`);
+  }
 
 
   async function mulFrInG1(point, fieldval) {

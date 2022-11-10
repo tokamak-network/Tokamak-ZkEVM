@@ -1,7 +1,6 @@
 import * as curves from './curves.js';
 import * as polyUtils from './utils/poly_utils';
 import chai from 'chai';
-const assert = chai.assert;
 import {readR1csHeader} from 'r1csfile';
 import {
   readBinFile,
@@ -17,12 +16,13 @@ import path from 'path';
 import * as timer from './utils/timer.js';
 
 
-export default async function buildQAP(curveName, sD, minSMax) {
+export default async function buildQAP(curveName, sD, minSMax, logger) {
   const startTime = timer.start();
   let partTime;
 
-  // TODO: read debug mode from enviroment variable
+  // read debug mode from enviroment variable
   const TESTFLAG = process.env.TEST_MODE;
+  const assert = chai.assert;
   const r1cs = [];
   const sR1cs = [];
 
@@ -35,7 +35,7 @@ export default async function buildQAP(curveName, sD, minSMax) {
 
   partTime = timer.start();
   for (let i=0; i<sD; i++) {
-    console.log(`Loading R1CSs...${i+1}/${sD}`);
+    if (logger) logger.debug(`Loading R1CSs...${i+1}/${sD}`);
     const r1csIdx = String(i);
     const {
       fd: fdR1cs,
@@ -55,7 +55,7 @@ export default async function buildQAP(curveName, sD, minSMax) {
     );
     await fdR1cs.close();
   }
-  console.log(`Loading R1CSs...Done`);
+  if (logger) logger.debug(`Loading R1CSs...Done`);
   const r1csTime = timer.end(partTime);
 
   const fdRS = await createBinFile(
@@ -71,8 +71,8 @@ export default async function buildQAP(curveName, sD, minSMax) {
   const Fr = curve.Fr;
 
   if (r1cs[0].prime != curve.r) {
-    console.log('r1cs_prime: ', r1cs[0].prime);
-    console.log('curve_r: ', curve.r);
+    if (logger) logger.debug('r1cs_prime: ', r1cs[0].prime);
+    if (logger) logger.debug('curve_r: ', curve.r);
     throw new Error(
         'r1cs curve does not match powers of tau ceremony curve',
     );
@@ -136,12 +136,12 @@ export default async function buildQAP(curveName, sD, minSMax) {
   const omegaY = await Fr.exp(Fr.w[Fr.s], Scalar.exp(2, Fr.s-expos));
 
   // TODO: chai should not be used for production code
-  if (TESTFLAG) {
-    console.log(`Running Test 1`);
+  if (TESTFLAG === 'true') {
+    if (logger) logger.debug(`Running Test 1`);
     assert(Fr.eq(await Fr.exp(Fr.e(n), primeR), Fr.e(n)));
     assert(Fr.eq(await Fr.exp(Fr.e(omegaX), n), Fr.one));
     assert(Fr.eq(await Fr.exp(Fr.e(omegaY), sMax), Fr.one));
-    console.log(`Test 1 finished`);
+    if (logger) logger.debug(`Test 1 finished`);
   }
   // End of test code 1 //
 
@@ -158,10 +158,10 @@ export default async function buildQAP(curveName, sD, minSMax) {
   await writeBigInt(fdRS, Fr.toObject(omegaY), n8r);
 
   // Test code 2 //
-  if (TESTFLAG) {
-    console.log(`Running Test 2`);
+  if (TESTFLAG === 'true') {
+    if (logger) logger.debug(`Running Test 2`);
     assert(Fr.eq(omegaX, Fr.e(Fr.toObject(omegaX))));
-    console.log(`Test 2 finished`);
+    if (logger) logger.debug(`Test 2 finished`);
   }
   // End of test code 2 //
 
@@ -179,17 +179,17 @@ export default async function buildQAP(curveName, sD, minSMax) {
 
   partTime = timer.start();
 
-  console.log(
+  if (logger) logger.debug(
       `Generating Lagrange bases for X with ${n} evaluation points...`,
   );
   const lagrangeBasis = await polyUtils.buildCommonPolys(rs);
-  console.log(
+  if (logger) logger.debug(
       `Generating Lagrange bases for X with ${n} evaluation points...Done`,
   );
 
   let FSTimeAccum = 0;
   for (let k=0; k<sD; k++) {
-    console.log(`Interpolating ${3*m[k]} QAP polynomials...${k+1}/${sD}`);
+    if (logger) logger.debug(`Interpolating ${3*m[k]} QAP polynomials...${k+1}/${sD}`);
     const {
       uX: uX,
       vX: vX,
@@ -201,7 +201,7 @@ export default async function buildQAP(curveName, sD, minSMax) {
         sR1cs[k],
     );
 
-    console.log(`File writing the polynomials...`);
+    if (logger) logger.debug(`File writing the polynomials...`);
     const FSTime = timer.start();
     const fdQAP = await createBinFile(
         `${dirPath}/subcircuit${k}.qap`,
@@ -257,12 +257,14 @@ export default async function buildQAP(curveName, sD, minSMax) {
   const qapTime = timer.end(partTime);
   const totalTime = timer.end(startTime);
 
-  console.log(' ');
-  console.log('-----Build QAP Time Analyzer-----');
-  console.log(`###Total ellapsed time: ${totalTime} [ms]`);
-  console.log(` ##R1CS loading time: ${r1csTime} [ms] (${(r1csTime/totalTime*100).toFixed(3)} %)`);
-  console.log(` ##Total QAP time for ${m.reduce((accu, curr) => accu + curr)} wires: ${qapTime} [ms] (${(qapTime/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #QAP interpolation time: ${qapTime-FSTimeAccum} [ms] (${((qapTime-FSTimeAccum)/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #QAP file writing time: ${FSTimeAccum} [ms] (${(FSTimeAccum/totalTime*100).toFixed(3)} %)`);
-  console.log(` ##Average QAP time per wire with ${n} interpolation points: ${qapTime/m.reduce((accu, curr) => accu + curr)} [ms]`);
+  if (logger) {
+    logger.debug(' ');
+    logger.debug('----- Build QAP Time Analyzer -----');
+    logger.debug(`### Total ellapsed time: ${totalTime} [ms]`);
+    logger.debug(` ## R1CS loading time: ${r1csTime} [ms] (${(r1csTime/totalTime*100).toFixed(3)} %)`);
+    logger.debug(` ## Total QAP time for ${m.reduce((accu, curr) => accu + curr)} wires: ${qapTime} [ms] (${(qapTime/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # QAP interpolation time: ${qapTime-FSTimeAccum} [ms] (${((qapTime-FSTimeAccum)/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # QAP file writing time: ${FSTimeAccum} [ms] (${(FSTimeAccum/totalTime*100).toFixed(3)} %)`);
+    logger.debug(` ## Average QAP time per wire with ${n} interpolation points: ${qapTime/m.reduce((accu, curr) => accu + curr)} [ms]`);
+  } 
 }

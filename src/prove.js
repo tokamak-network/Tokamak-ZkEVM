@@ -4,10 +4,6 @@ import * as zkeyUtils from './utils/zkey_utils.js';
 import * as wtnsUtils from './utils/wtns_utils.js';
 import generateWitness from './generate_witness.js';
 import * as fastFile from 'fastfile';
-// import { getCurveFromQ as getCurve } from "./curves.js";
-// import { log2 } from "./misc.js";
-// import { Scalar, utils, BigBuffer } from "ffjavascript";
-// const {stringifyBigInts} = utils;
 import * as misc from './misc.js';
 import * as timer from './utils/timer.js';
 
@@ -17,6 +13,7 @@ export default async function groth16Prove(
     circuitName,
     instanceId,
     entropy,
+    logger
 ) {
   const startTime = timer.start();
   let EncTimeStart;
@@ -28,7 +25,7 @@ export default async function groth16Prove(
   const TESTFLAG = process.env.TEST_MODE;
   const CRS = 1;
 
-  console.log(`TESTMODE = ${TESTFLAG}`);
+  if (logger) logger.debug(`TESTMODE = ${TESTFLAG}`);
 
   const {
     fd: fdRS,
@@ -132,9 +129,9 @@ export default async function groth16Prove(
 
 
   // generate witness for each subcircuit
-  console.log(`Solving QAP...`);
+  if (logger) logger.debug(`Solving QAP...`);
   let qapSolveTime = timer.start();
-  console.log(`  Generating circuit witness...`);
+  if (logger) logger.debug(`  Generating circuit witness...`);
   await generateWitness(circuitName, instanceId);
   const wtns = [];
   for (let k=0; k<OpList.length; k++ ) {
@@ -153,8 +150,8 @@ export default async function groth16Prove(
   }
 
   // / TEST CODE 2
-  if (TESTFLAG) {
-    console.log(`Running test 2`);
+  if (TESTFLAG === 'true') {
+    if (logger) logger.debug(`Running test 2`);
     const sR1cs = [];
     for (let k=0; k<sD; k++) {
       const {
@@ -216,13 +213,13 @@ export default async function groth16Prove(
           constraintW = Fr.sub(constraintW, term);
         }
         if (!Fr.eq(constraintW, Fr.e(0))) {
-          console.log(`uIdArray: ${uIdArray}`);
-          console.log(`uCoefArray: ${uCoefArray}`);
-          console.log(`vIdArray: ${vIdArray}`);
-          console.log(`vCoefArray: ${vCoefArray}`);
-          console.log(`wIdArray: ${wIdArray}`);
-          console.log(`wCoefArray: ${wCoefArray}`);
-          console.log(`wtnsK: ${wtnsK}`);
+          if (logger) logger.debug(`uIdArray: ${uIdArray}`);
+          if (logger) logger.debug(`uCoefArray: ${uCoefArray}`);
+          if (logger) logger.debug(`vIdArray: ${vIdArray}`);
+          if (logger) logger.debug(`vCoefArray: ${vCoefArray}`);
+          if (logger) logger.debug(`wIdArray: ${wIdArray}`);
+          if (logger) logger.debug(`wCoefArray: ${wCoefArray}`);
+          if (logger) logger.debug(`wtnsK: ${wtnsK}`);
           throw new Error(
               `assertion not passed at k: ${k}, i: ${i}, 
               constraint: ${Fr.toObject(constraintW)}`,
@@ -230,7 +227,7 @@ export default async function groth16Prove(
         }
       }
     }
-    console.log(`Test 2 finished`);
+    if (logger) logger.debug(`Test 2 finished`);
   }
   // / END of TEST CODE 2
 
@@ -262,7 +259,7 @@ export default async function groth16Prove(
   // <=> finding h(X,Y) is the goal of Prove algorithm
 
   // / compute p(X,Y)
-  console.log(`  Computing p(X,Y)...`);
+  if (logger) logger.debug(`  Computing p(X,Y)...`);
   const {
     fd: fdQAP,
     sections: sectionsQAP,
@@ -307,20 +304,20 @@ export default async function groth16Prove(
   pxyTime = timer.end(pxyTime);
 
   // / compute H
-  console.log(`  Finding h1(X,Y)...`);
+  if (logger) logger.debug(`  Finding h1(X,Y)...`);
   let PolDivTime = timer.start();
   const {res: h1XY, finalrem: rem1} = await polyUtils.divPolyByX(Fr, pXY, tX);
-  console.log(`  Finding h2(X,Y)...`);
+  if (logger) logger.debug(`  Finding h2(X,Y)...`);
   const {res: h2XY, finalrem: rem2} = await polyUtils.divPolyByY(Fr, rem1, tY);
   PolDivTime = timer.end(PolDivTime);
   qapSolveTime = timer.end(qapSolveTime);
-  console.log(`Solving QAP...Done`);
-  if (TESTFLAG) {
-    console.log(`rem: ${rem2}`);
+  if (logger) logger.debug(`Solving QAP...Done`);
+  if (TESTFLAG === 'true') {
+    if (logger) logger.debug(`rem: ${rem2}`);
   }
 
-  if (TESTFLAG) {
-    // console.log(`rem2: ${polyUtils._transToObject(Fr, rem2)}`)
+  if (TESTFLAG === 'true') {
+    // if (logger) logger.debug(`rem2: ${polyUtils._transToObject(Fr, rem2)}`)
     const {
       xOrder: h1XOrder,
       yOrder: h1YOrder,
@@ -329,14 +326,14 @@ export default async function groth16Prove(
       xOrder: h2XOrder,
       yOrder: h2YOrder,
     } = polyUtils._orderPoly(Fr, h2XY);
-    console.log(`h1_x_order: ${h1XOrder}, h1_y_order: ${h1YOrder}`);
-    console.log(`h2_x_order: ${h2XOrder}, h2_y_order: ${h2YOrder}`);
-    console.log(`n: ${n}, sMax: ${sMax}`);
+    if (logger) logger.debug(`h1_x_order: ${h1XOrder}, h1_y_order: ${h1YOrder}`);
+    if (logger) logger.debug(`h2_x_order: ${h2XOrder}, h2_y_order: ${h2YOrder}`);
+    if (logger) logger.debug(`n: ${n}, sMax: ${sMax}`);
   }
 
   // / TEST CODE 3
-  if (TESTFLAG) {
-    console.log('Running Test 3');
+  if (TESTFLAG === 'true') {
+    if (logger) logger.debug('Running Test 3');
     for (let i=0; i<n; i++) {
       for (let j=0; j<sMax; j++) {
         const evalPointX = await Fr.exp(omegaX, i);
@@ -364,7 +361,7 @@ export default async function groth16Prove(
       throw new Error('Error in pXY=h1t+h2t');
     }
 
-    console.log(`Test 3 finished`);
+    if (logger) logger.debug(`Test 3 finished`);
   }
   // / End of TEST CODE 3
 
@@ -374,9 +371,9 @@ export default async function groth16Prove(
   const r = Fr.fromRng(rawr);
   const s = Fr.fromRng(raws);
 
-  console.log(`Generating Proofs...`);
+  if (logger) logger.debug(`Generating Proofs...`);
   let provingTime = timer.start();
-  console.log(`  Generating Proof A...`);
+  if (logger) logger.debug(`  Generating Proof A...`);
   // Compute proof A
   const vk1AP1 = urs.sigmaG.vk1AlphaV;
   const vk1AP3 = await mulFrInG1(urs.sigmaG.vk1GammaA, r);
@@ -387,7 +384,7 @@ export default async function groth16Prove(
   }
   const vk1A = await G1.add(await G1.add(vk1AP1, vk1AP2), vk1AP3);
 
-  console.log(`  Generating Proof B...`);
+  if (logger) logger.debug(`  Generating Proof B...`);
   // Compute proof B_H
   const vk2BP1 = urs.sigmaH.vk2AlphaU;
   const vk2BP3 = await mulFrInG2(urs.sigmaH.vk2GammaA, s);
@@ -398,7 +395,7 @@ export default async function groth16Prove(
   }
   const vk2B = await G2.add(await G2.add(vk2BP1, vk2BP2), vk2BP3);
 
-  console.log(`  Generating Proof C...`);
+  if (logger) logger.debug(`  Generating Proof C...`);
   // Compute proof B_G
   const vk1BP1 = urs.sigmaG.vk1AlphaU;
   const vk1BP3 = await mulFrInG1(urs.sigmaG.vk1GammaA, s);
@@ -450,11 +447,11 @@ export default async function groth16Prove(
     vk1C = await G1.add(vk1C, vk1CP[i]);
   }
   provingTime = timer.end(provingTime);
-  console.log(`Generating Proofs...Done`);
+  if (logger) logger.debug(`Generating Proofs...Done`);
 
   // / TEST CODE 4
-  if (TESTFLAG) {
-    console.log('Running Test 4');
+  if (TESTFLAG === 'true') {
+    if (logger) logger.debug('Running Test 4');
     const x = Fr.e(13);
     const y = Fr.e(23);
     const res = [];
@@ -541,13 +538,13 @@ export default async function groth16Prove(
         throw new Error(`Error in TEST CODE 4 at i=${i}`);
       }
     }
-    console.log(`Test 4 finished`);
+    if (logger) logger.debug(`Test 4 finished`);
   }
   // / End of TEST CODE 4
 
   // / TEST CODE 5
-  if (TESTFLAG) {
-    console.log('Running Test 5');
+  if (TESTFLAG === 'true') {
+    if (logger) logger.debug('Running Test 5');
     let vk1D;
     vk1D = await mulFrInG1(buffG1, Fr.e(0));
     for (let i=0; i<mPublic; i++) {
@@ -565,7 +562,7 @@ export default async function groth16Prove(
     if (!res) {
       throw new Error(`Error in TEST CODE 5`);
     }
-    console.log(`Test 5 finished`);
+    if (logger) logger.debug(`Test 5 finished`);
   }
   // / END of TEST CODE 5
 
@@ -586,15 +583,17 @@ export default async function groth16Prove(
   await fdPrf.close();
 
   const totalTime = timer.end(startTime);
-  console.log(` `);
-  console.log(`-----Prove Time Analyzer-----`);
-  console.log(`###Total ellapsed time: ${totalTime} [ms]`);
-  console.log(` ##Time for solving QAP of degree (${n},${sMax}) with ${m} wires: ${qapSolveTime} [ms] (${(qapSolveTime/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #Loading QAP time: ${qapLoadTimeAccum} [ms] (${(qapLoadTimeAccum/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #Computing p(X,Y) time (including single multiplication): ${pxyTime-qapLoadTimeAccum} [ms] (${((pxyTime-qapLoadTimeAccum)/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #Finding h1(X,Y) and h2(X,Y) time (two divisions): ${PolDivTime} [ms] (${(PolDivTime/totalTime*100).toFixed(3)} %)`);
-  console.log(` ##Time for generating proofs with m=${m}, n=${n}, sMax=${sMax}: ${provingTime} [ms] (${(provingTime/totalTime*100).toFixed(3)} %)`);
-  console.log(`  #Encryption time: ${EncTimeAccum} [ms] (${(EncTimeAccum/totalTime*100).toFixed(3)} %)`);
+  if (logger) {
+    logger.debug('  ');
+    logger.debug('----- Prove Time Analyzer -----');
+    logger.debug(`### Total ellapsed time: ${totalTime} [ms]`);
+    logger.debug(` ## Time for solving QAP of degree (${n},${sMax}) with ${m} wires: ${qapSolveTime} [ms] (${(qapSolveTime/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # Loading QAP time: ${qapLoadTimeAccum} [ms] (${(qapLoadTimeAccum/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # Computing p(X,Y) time (including single multiplication): ${pxyTime-qapLoadTimeAccum} [ms] (${((pxyTime-qapLoadTimeAccum)/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # Finding h1(X,Y) and h2(X,Y) time (two divisions): ${PolDivTime} [ms] (${(PolDivTime/totalTime*100).toFixed(3)} %)`);
+    logger.debug(` ## Time for generating proofs with m=${m}, n=${n}, sMax=${sMax}: ${provingTime} [ms] (${(provingTime/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`  # Encryption time: ${EncTimeAccum} [ms] (${(EncTimeAccum/totalTime*100).toFixed(3)} %)`);
+  } 
 
   async function mulFrInG1(point, fieldval) {
     EncTimeStart = timer.start();
