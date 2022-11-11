@@ -1,21 +1,19 @@
-#! /usr/bin/env node
-
 'use strict';
 
-var path = require('path');
-var fs = require('fs');
-var url = require('url');
+Object.defineProperty(exports, '__esModule', { value: true });
+
 var Blake2b = require('blake2b-wasm');
 var readline = require('readline');
 var ffjavascript = require('ffjavascript');
 var crypto = require('crypto');
 var binFileUtils = require('@iden3/binfileutils');
 var chai = require('chai');
+var fs = require('fs');
+var path = require('path');
 var fastFile = require('fastfile');
 var appRootPath = require('app-root-path');
 var hash = require('js-sha3');
 var r1csfile = require('r1csfile');
-var Logger = require('logplease');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -37,273 +35,15 @@ function _interopNamespace(e) {
   return Object.freeze(n);
 }
 
-var path__default = /*#__PURE__*/_interopDefaultLegacy(path);
-var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs);
-var url__default = /*#__PURE__*/_interopDefaultLegacy(url);
 var Blake2b__default = /*#__PURE__*/_interopDefaultLegacy(Blake2b);
 var readline__default = /*#__PURE__*/_interopDefaultLegacy(readline);
 var crypto__default = /*#__PURE__*/_interopDefaultLegacy(crypto);
 var binFileUtils__namespace = /*#__PURE__*/_interopNamespace(binFileUtils);
 var chai__default = /*#__PURE__*/_interopDefaultLegacy(chai);
+var path__default = /*#__PURE__*/_interopDefaultLegacy(path);
 var fastFile__namespace = /*#__PURE__*/_interopNamespace(fastFile);
 var appRootPath__default = /*#__PURE__*/_interopDefaultLegacy(appRootPath);
 var hash__default = /*#__PURE__*/_interopDefaultLegacy(hash);
-var Logger__default = /*#__PURE__*/_interopDefaultLegacy(Logger);
-
-const __dirname$1 = path__default["default"].dirname(url__default["default"].fileURLToPath((typeof document === 'undefined' ? new (require('u' + 'rl').URL)('file:' + __filename).href : (document.currentScript && document.currentScript.src || new URL('cli.cjs', document.baseURI).href))));
-
-let pkgS;
-try {
-  pkgS = fs__default["default"].readFileSync(path__default["default"].join(__dirname$1, 'package.json'));
-} catch (err) {
-  pkgS = fs__default["default"].readFileSync(path__default["default"].join(__dirname$1, '..', 'package.json'));
-}
-
-const pkg = JSON.parse(pkgS);
-const version = pkg.version;
-const selectedCommand = null;
-
-async function clProcessor(commands) {
-  const cl = [];
-  const argv = {};
-  for (let i=2; i<process.argv.length; i++) {
-    if (process.argv[i][0] == '-') {
-      let S = process.argv[i];
-      while (S[0] == '-') S = S.slice(1);
-      const arr = S.split('=');
-      if (arr.length > 1) {
-        argv[arr[0]] = arr.slice(1).join('=');
-      } else {
-        argv[arr[0]] = true;
-      }
-    } else {
-      cl.push(process.argv[i]);
-    }
-  }
-  for (let i=0; i<commands.length; i++) {
-    const cmd = commands[i];
-    const m = calculateMatch(commands[i], cl);
-    let res;
-    if (m) {
-      if ((argv.h) || (argv.help)) {
-        helpCmd(cmd);
-        return;
-      }
-      if (areParamsValid(cmd.cmd, m)) {
-        if (cmd.options) {
-          const options = getOptions(cmd.options);
-          res = await cmd.action(m, options);
-        } else {
-          res = await cmd.action(m, {});
-        }
-      } else {
-        if (m.length>0) console.log('Invalid number of parameters');
-        helpCmd(cmd);
-        return 99;
-      }
-      return res;
-    }
-  }
-  if (cl.length>0) console.log('Invalid command');
-  helpAll();
-  return 99;
-
-  function calculateMatch(cmd, cl) {
-    const alias = [];
-    const m = parseLine(cmd.cmd);
-    alias.push(m);
-    if (cmd.alias) {
-      if (Array.isArray(cmd.alias)) {
-        for (let i=0; i<cmd.alias.length; i++) {
-          const a = parseLine(cmd.alias[i]);
-          alias.push({
-            cmd: a.cmd,
-            params: m.params,
-          });
-        }
-      } else {
-        const a = parseLine(cmd.alias);
-        alias.push({
-          cmd: a.cmd,
-          params: m.params,
-        });
-      }
-    }
-    for (let i=0; i<cl.length; i++) {
-      for (let j=0; j<alias.length; j++) {
-        const w = alias[j].cmd.shift();
-        if (cl[i].toUpperCase() == w.toUpperCase()) {
-          if (alias[j].cmd.length == 0) {
-            return buildRemaining(alias[j].params, cl.slice(i+1));
-          }
-        } else {
-          alias.splice(j, 1);
-          j--;
-        }
-      }
-    }
-    return null;
-
-
-    function buildRemaining(defParams, cl) {
-      const res = [];
-      let p=0;
-      for (let i=0; i<defParams.length; i++) {
-        if (defParams[i][0]=='-') {
-          res.push(getOption(defParams[i]).val);
-        } else {
-          if (p<cl.length) {
-            res.push(cl[p++]);
-          } else {
-            res.push(null);
-          }
-        }
-      }
-      while (p<cl.length) {
-        res.push(cl[p++]);
-      }
-      return res;
-    }
-  }
-
-  function parseLine(l) {
-    const words = l.match(/(\S+)/g);
-    for (let i=0; i<words.length; i++) {
-      if ( (words[i][0] == '<') ||
-                 (words[i][0] == '[') ||
-                 (words[i][0] == '-')) {
-        return {
-          cmd: words.slice(0, i),
-          params: words.slice(i),
-        };
-      }
-    }
-    return {
-      cmd: words,
-      params: [],
-    };
-  }
-
-
-  function getOption(o) {
-    const arr1 = o.slice(1).split(':');
-    const arr2 = arr1[0].split('|');
-    for (let i = 0; i<arr2.length; i++) {
-      if (argv[arr2[i]]) {
-        return {
-          key: arr2[0],
-          val: argv[arr2[i]],
-        };
-      }
-    }
-    return {
-      key: arr2[0],
-      val: (arr1.length >1) ? arr1[1] : null,
-    };
-  }
-
-
-  function areParamsValid(cmd, params) {
-    while ((params.length)&&(!params[params.length-1])) params.pop();
-    const pl = parseLine(cmd);
-    if (params.length > pl.params.length) return false;
-    let minParams = pl.params.length;
-    while ((minParams>0)&&(pl.params[minParams-1][0] == '[')) minParams --;
-    if (params.length < minParams) return false;
-
-    for (let i=0; (i< pl.params.length)&&(pl.params[i][0]=='<'); i++) {
-      if (typeof params[i] == 'undefined') return false;
-    }
-    return true;
-  }
-
-  function getOptions(options) {
-    const res = {};
-    const opts = options.match(/(\S+)/g);
-    for (let i=0; i<opts.length; i++) {
-      const o = getOption(opts[i]);
-      res[o.key] = o.val;
-    }
-    return res;
-  }
-
-  function printVersion() {
-    console.log('unigroth@'+version);
-  }
-
-  function epilog() {
-    console.log(`         Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
-    Everyone is permitted to copy and distribute verbatim copies
-    of this license document, but changing it is not allowed.; see the COPYING file in the official
-        repo directory at  https://github.com/Onther-Tech/UniGro16js `);
-  }
-
-  function helpAll() {
-    printVersion();
-    epilog();
-    console.log('');
-    console.log('Usage:');
-    console.log('        unigroth <full command> ...  <options>');
-    console.log('   or   unigroth <shorcut> ...  <options>');
-    console.log('');
-    console.log('Type unigroth <command> --help to get more information for that command');
-    console.log('');
-    console.log('Full Command                  Description');
-    console.log('============                  =================');
-    for (let i=0; i<commands.length; i++) {
-      const cmd = commands[i];
-      let S = '';
-      const pl = parseLine(cmd.cmd);
-      S += pl.cmd.join(' ');
-      while (S.length<30) S = S+' ';
-      S += cmd.description;
-      console.log(S);
-      S = '     Usage:  unigroth ';
-      if (cmd.alias) {
-        if (Array.isArray(cmd.alias)) {
-          S += cmd.alias[0];
-        } else {
-          S += cmd.alias;
-        }
-      } else {
-        S += pl.cmd.join(' ');
-      }
-      S += ' ' + pl.params.join(' ');
-      console.log(S);
-    }
-  }
-
-  function helpCmd(cmd) {
-    if (typeof cmd == 'undefined') cmd = selectedCommand;
-    if (typeof cmd == 'undefined') return helpAll();
-    printVersion();
-    epilog();
-    console.log('');
-    if (cmd.longDescription) {
-      console.log(cmd.longDescription);
-    } else {
-      console.log(cmd.description);
-    }
-    console.log('Usage: ');
-    console.log('        unigroth '+ cmd.cmd);
-    const pl = parseLine(cmd.cmd);
-    let S = '   or   unigroth ';
-    if (cmd.alias) {
-      if (Array.isArray(cmd.alias)) {
-        S += cmd.alias[0];
-      } else {
-        S += cmd.alias;
-      }
-    } else {
-      S += pl.cmd.join(' ');
-    }
-    S += ' ' + pl.params.join(' ');
-    console.log(S);
-
-
-    console.log('');
-  }
-}
 
 /* global window */
 
@@ -1404,13 +1144,9 @@ async function tensorProduct(Fr, _array1, _array2) {
   return product;
 }
 
-async function setup$1(
-  paramName, 
-  rsName, 
-  qapName, 
-  entropy, 
-  logger
-) {
+chai__default["default"].assert;
+
+async function setup(paramName, RSName, QAPName, entropy) {
   const startTime = start();
   let partTime;
   let EncTimeAccum1 = 0;
@@ -1419,9 +1155,8 @@ async function setup$1(
   let qapTimeStart;
   let qapTimeAccum = 0;
 
-  const TESTFLAG = process.env.TEST_MODE;
-  const assert = chai__default["default"].assert;
-  if (logger) logger.debug(`TESTMODE = ${TESTFLAG}`);
+  const TESTFLAG = false;
+  console.log(`TESTMODE = ${TESTFLAG}`);
 
   fs.mkdir(
     path__default["default"].join(
@@ -1442,7 +1177,7 @@ async function setup$1(
   const sD = param.sD;
 
   const fdRS = await binFileUtils.createBinFile(
-      `resource/universal_rs/${rsName}.urs`,
+      `resource/universal_rs/${RSName}.urs`,
       'zkey',
       1,
       4 + sD,
@@ -1493,7 +1228,7 @@ async function setup$1(
 
   // Write the sigmaG section
   partTime = start();
-  if (logger) logger.debug(`Generating sigmaG...`);
+  console.log(`Generating sigmaG...`);
   await binFileUtils.startWriteSection(fdRS, 3);
 
   EncTimeStart = start();
@@ -1507,10 +1242,6 @@ async function setup$1(
   await writeG1(fdRS, curve, vk1GammaA);
   let x=tau.x;
   let y=tau.y;
-  if (TESTFLAG === 'true') {
-    x = Fr.e(13);
-    y = Fr.e(23);
-  }
 
   const vk1XyPows = Array.from(
       Array(n),
@@ -1571,13 +1302,13 @@ async function setup$1(
   }
 
   await binFileUtils.endWriteSection(fdRS);
-  if (logger) logger.debug(`Generating sigmaG...Done`);
+  console.log(`Generating sigmaG...Done`);
   // End of the sigmaG section
 
 
   // Write the sigmaH section
 
-  if (logger) logger.debug(`Generating sigmaH...`);
+  console.log(`Generating sigmaH...`);
   await binFileUtils.startWriteSection(fdRS, 4);
 
   EncTimeStart = start();
@@ -1600,7 +1331,7 @@ async function setup$1(
     }
   }
   await binFileUtils.endWriteSection(fdRS);
-  if (logger) logger.debug(`Generating sigmaH...Done`);
+  console.log(`Generating sigmaH...Done`);
   const sigmaTime = end(partTime);
   // End of the sigmaH section
 
@@ -1608,14 +1339,14 @@ async function setup$1(
   // Write the thetaG[k] sections for k in [0, 1, ..., sD]
   partTime = start();
   for (let k=0; k<sD; k++) {
-    if (logger) logger.debug(`Generating thetaG...${k+1}/${sD}`);
-    if (logger) logger.debug(`  Loading ${3*m[k]} sub-QAP polynomials...`);
+    console.log(`Generating thetaG...${k+1}/${sD}`);
+    console.log(`  Loading ${3*m[k]} sub-QAP polynomials...`);
     qapTimeStart = start();
     const {
       uX: uX,
       vX: vX,
       wX: wX,
-    } = await readQAP(qapName, k, m[k], n, n8r);
+    } = await readQAP(QAPName, k, m[k], n, n8r);
     qapTimeAccum += end(qapTimeStart);
 
     const _ux = new Array(m[k]);
@@ -1629,7 +1360,7 @@ async function setup$1(
     let combined;
     let zx;
     let ax;
-    if (logger) logger.debug(`  Evaluating and combining the sub-QAP polynomials...`);
+    console.log(`  Evaluating and combining the sub-QAP polynomials...`);
     for (let i=0; i<m[k]; i++) {
       _ux[i] = await evalPoly(Fr, uX[i], x, 0);
       _vx[i] = await evalPoly(Fr, vX[i], x, 0);
@@ -1658,39 +1389,6 @@ async function setup$1(
         EncTimeAccum2 += end(EncTimeStart);
       }
     }
-
-    // Test code 4//
-    // To test [z^(k)_i(x)]_G and [a^(k)_i(x)]_G in sigmaG
-    if (TESTFLAG === 'true') {
-      if (logger) logger.debug(`Running Test 4`);
-      const vk2AlphaV = await G2.timesFr(buffG2, tau.alpha_v);
-      let vk1WX;
-      let res=0;
-      for (let i=0; i<m[k]; i++) {
-        vk1WX = await G1.timesFr(buffG1, _wx[i]);
-        if (i>=NConstWires && i<NConstWires+mPublic[k]) {
-          res = await curve.pairingEq(
-              vk1ZX[i-NConstWires],
-              await G2.neg(vk2GammaZ),
-              vk1UX[i], vk2AlphaU,
-              vk1VX[i], vk2AlphaV,
-              vk1WX, buffG2);
-        } else {
-          res = await curve.pairingEq(
-              vk1AX[Math.max(0, i-mPublic[k])],
-              await G2.neg(vk2GammaA),
-              vk1UX[i], vk2AlphaU,
-              vk1VX[i], vk2AlphaV,
-              vk1WX, buffG2);
-        }
-        if (res == false) {
-          if (logger) logger.debug('k: ', k);
-          if (logger) logger.debug('i: ', i);
-        }
-        assert(res);
-      }
-      if (logger) logger.debug(`Test 4 finished`);
-    }
     // End of the test code 4//
 
     await binFileUtils.startWriteSection(fdRS, 5+k);
@@ -1700,7 +1398,7 @@ async function setup$1(
     let vk2Vxy2d;
     let vk1Zxy2d;
     let vk1Axy2d;
-    if (logger) logger.debug(`  Encrypting and file writing ${4*m[k]} QAP keys...`);
+    console.log(`  Encrypting and file writing ${4*m[k]} QAP keys...`);
     for (let i=0; i < m[k]; i++) {
       multiplier=Fr.inv(Fr.e(sMax));
       EncTimeStart = start();
@@ -1774,26 +1472,6 @@ async function setup$1(
     await binFileUtils.endWriteSection(fdRS);
   }
   const thetaTime = end(partTime);
-
-  // Test code 5//
-  // k==6 --> MOD subcircuit,
-  // c2 mod c3 = c1 <==> c4*c3+c1 = c2 <==> c4*c3 = -c1+c2
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug('Running Test 5');
-    const res = [];
-    res.push(await curve.pairingEq(vk1XyPowsT1g[1][1], vk2GammaA,
-        await G1.timesFr(
-            buffG1, Fr.mul(x, y)),
-        await G2.neg(await G2.timesFr(buffG2, t1X)),
-    ),
-    );
-    if (logger) logger.debug(res);
-
-    if (!res[0]) {
-      throw new Error('Test 5 failed');
-    }
-    if (logger) logger.debug(`Test 5 finished`);
-  }
   // End of the test code 5//
 
   // End of the thetaG section
@@ -1801,23 +1479,21 @@ async function setup$1(
   await fdRS.close();
 
   const totalTime = end(startTime);
-  if (logger) {
-    logger.debug('  ');
-    logger.debug('----- Setup Time Analyzer -----');
-    logger.debug(`### Total ellapsed time: ${totalTime} [ms]`);
-    logger.debug(` ## Time for generating two sigmas with n=${n}, sMax=${sMax}: ${sigmaTime} [ms] (${((sigmaTime)/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Encryption time: ${EncTimeAccum1} [ms] (${(EncTimeAccum1/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # File writing time: ${sigmaTime - EncTimeAccum1} [ms] (${((sigmaTime - EncTimeAccum1)/totalTime*100).toFixed(3)} %)`);
-    logger.debug(` ## Time for generating thetaG for ${sD} sub-QAPs with totally ${m.reduce((accu, curr) => accu + curr)} wires and sMax=${sMax} opcode slots: ${thetaTime} [ms] (${((thetaTime)/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Sub-QAPs loading time: ${qapTimeAccum} [ms] (${(qapTimeAccum/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Encryption time: ${EncTimeAccum2} [ms] (${((EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # File writing time: ${thetaTime - qapTimeAccum - EncTimeAccum2} [ms] (${((thetaTime - qapTimeAccum - EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
-  }
+  console.log(` `);
+  console.log(`-----Setup Time Analyzer-----`);
+  console.log(`###Total ellapsed time: ${totalTime} [ms]`);
+  console.log(` ##Time for generating two sigmas with n=${n}, sMax=${sMax}: ${sigmaTime} [ms] (${(sigmaTime)/totalTime*100} %)`);
+  console.log(`  #Encryption time: ${EncTimeAccum1} [ms] (${EncTimeAccum1/totalTime*100} %)`);
+  console.log(`  #File writing time: ${sigmaTime - EncTimeAccum1} [ms] (${(sigmaTime - EncTimeAccum1)/totalTime*100} %)`);
+  console.log(` ##Time for generating thetaG for ${sD} sub-QAPs with totally ${m.reduce((accu, curr) => accu + curr)} wires and sMax=${sMax} opcode slots: ${thetaTime} [ms] (${(thetaTime)/totalTime*100} %)`);
+  console.log(`  #Sub-QAPs loading time: ${qapTimeAccum} [ms] (${qapTimeAccum/totalTime*100} %)`);
+  console.log(`  #Encryption time: ${EncTimeAccum2} [ms] (${(EncTimeAccum2)/totalTime*100} %)`);
+  console.log(`  #file writing time: ${thetaTime - qapTimeAccum - EncTimeAccum2} [ms] (${(thetaTime - qapTimeAccum - EncTimeAccum2)/totalTime*100} %)`);
 
 
   function createTauKey(Field, rng) {
     if (rng.length != 6) {
-      // if (logger) logger.debug(`checkpoint3`);
+      console.log(`checkpoint3`);
       throw new Error('It should have six elements.');
     }
     const key = {
@@ -1832,447 +1508,393 @@ async function setup$1(
   }
 }
 
-async function derive$1(
-  rsName, 
-  cRSName, 
-  circuitName, 
-  qapName, 
-  logger
-) {
-  const startTime = start();
-  let partTime;
-  let EncTimeStart;
-  let EncTimeAccum = 0;
-  let PolTimeStart;
-  let PolTimeAccum = 0;
-  let QAPWriteTimeStart;
-  let QAPWriteTimeAccum = 0;
+// import * as curves from "./curves.js"
 
-  // const TESTFLAG = process.env.TEST_MODE;
-  const dirPath = `resource/circuits/${circuitName}`;
 
-  const URS = 0;
-  const {
-    fd: fdRS,
-    sections: sectionsRS,
-  } = await binFileUtils__namespace.readBinFile(
-      `resource/universal_rs/${rsName}.urs`,
-      'zkey',
-      2,
-      1<<25,
-      1<<23,
-  );
-  const urs = {};
-  urs.param = await readRSParams(fdRS, sectionsRS);
+async function uniDerive(RSName, cRSName, circuitName, QAPName) {
+    const startTime = start();
+    let partTime;
+    let EncTimeStart;
+    let EncTimeAccum = 0;
+    let PolTimeStart;
+    let PolTimeAccum = 0;
+    let QAPWriteTimeStart;
+    let QAPWriteTimeAccum = 0;
+    const dirPath = `resource/circuits/${circuitName}`;
+    
+    const URS=0;
+    const {fd: fdRS, sections: sectionsRS} = await binFileUtils__namespace.readBinFile('resource/universal_rs/'+RSName+'.urs', "zkey", 2, 1<<25, 1<<23);
+    const urs = {};
+    urs.param = await readRSParams(fdRS, sectionsRS);
+    
+    console.log(`Loading urs...`);
+    partTime = start();
+    urs.content = await readRS(fdRS, sectionsRS, urs.param, URS);
+    const ursLoadTime = end(partTime);
+    console.log(`Loading urs...Done`);
 
-  if (logger) logger.debug(`Loading urs...`);
-  partTime = start();
-  urs.content = await readRS(fdRS, sectionsRS, urs.param, URS);
-  const ursLoadTime = end(partTime);
-  if (logger) logger.debug(`Loading urs...Done`);
+    const fdIdV = await fastFile__namespace.readExisting(`${dirPath}/Set_I_V.bin`, 1<<25, 1<<23);
+    const fdIdP = await fastFile__namespace.readExisting(`${dirPath}/Set_I_P.bin`, 1<<25, 1<<23);
+    const fdOpL = await fastFile__namespace.readExisting(`${dirPath}/OpList.bin`, 1<<25, 1<<23);
 
-  const fdIdV = await fastFile__namespace.readExisting(
-      `${dirPath}/Set_I_V.bin`,
-      1<<25,
-      1<<23,
-  );
-  const fdIdP = await fastFile__namespace.readExisting(
-      `${dirPath}/Set_I_P.bin`,
-      1<<25,
-      1<<23,
-  );
-  const fdOpL = await fastFile__namespace.readExisting(
-      `${dirPath}/OpList.bin`,
-      1<<25,
-      1<<23,
-  );
+    const IdSetV = await readIndSet(fdIdV);
+    const IdSetP = await readIndSet(fdIdP);
+    const OpList = await readOpList(fdOpL);
+    // IdSet#.set, IdSet#.PreImgs
+    
+    await fdIdV.close();
+    await fdIdP.close();
+    await fdOpL.close();
 
-  const IdSetV = await readIndSet(fdIdV);
-  const IdSetP = await readIndSet(fdIdP);
-  const OpList = await readOpList(fdOpL);
-  // IdSet#.set, IdSet#.PreImgs
+    const fdcRS = await binFileUtils.createBinFile(`${dirPath}/${cRSName}.crs`, "zkey", 1, 5, 1<<22, 1<<24);
 
-  await fdIdV.close();
-  await fdIdP.close();
-  await fdOpL.close();
+    const ParamR1cs = urs.param.r1cs;
+    const curve = urs.param.curve;
+    const G1 = urs.param.curve.G1;
+    const G2 = urs.param.curve.G2;
+    const Fr = urs.param.curve.Fr;
+    const n8r = urs.param.n8r;
+    const n = urs.param.n;
+    const buffG1 = curve.G1.oneAffine;
+    const buffG2 = curve.G2.oneAffine;
+    const s_max = urs.param.s_max;
+    const s_D = urs.param.s_D;
+    const s_F = OpList.length;
+    const omega_y = await Fr.e(urs.param.omega_y);
 
-  const fdcRS = await binFileUtils.createBinFile(
-      `${dirPath}/${cRSName}.crs`,
-      'zkey',
-      1,
-      5,
-      1<<22,
-      1<<24,
-  );
+    const mPublic = IdSetV.set.length; // length of input instance + the total number of subcircuit outputs
+    const mPrivate = IdSetP.set.length; 
+    const m = mPublic + mPrivate;
+    const NZeroWires = 1;
 
-  const ParamR1cs = urs.param.r1cs;
-  const curve = urs.param.curve;
-  const G1 = urs.param.curve.G1;
-  const G2 = urs.param.curve.G2;
-  const Fr = urs.param.curve.Fr;
-  const n8r = urs.param.n8r;
-  const n = urs.param.n;
-  const buffG1 = curve.G1.oneAffine;
-  const buffG2 = curve.G2.oneAffine;
-  const sMax = urs.param.sMax;
-  const sD = urs.param.sD;
-  const sF = OpList.length;
-  const omegaY = await Fr.e(urs.param.omegaY);
-
-  // length of input instance + the total number of subcircuit outputs
-  const mPublic = IdSetV.set.length;
-  const mPrivate = IdSetP.set.length;
-  const m = mPublic + mPrivate;
-  const nZeroWires = 1;
-
-  let PreImgSet;
-  let PreImgSize;
-  let mPublicK;
-  let vk1Term;
-  let vk2Term;
-  let arrayIdx;
-  let kPrime;
-  let sKPrime;
-  let iPrime;
-
-  const OmegaFactors = new Array(sMax);
-  OmegaFactors[0] = Fr.one;
-  const omegaYInv = Fr.inv(omegaY);
-  for (let j=1; j<sMax; j++) {
-    OmegaFactors[j] = Fr.mul(OmegaFactors[j-1], omegaYInv);
-  }
-
-  if (Math.max(OpList) >= sD) {
-    throw new Error('An opcode in the target EVM bytecode has no subcircuit');
-  }
-
-  if (logger) logger.debug('Deriving crs...');
-  let crsTime = start();
-  if (logger) logger.debug(`  Deriving crs: [z_i(x,y)]_G for i upto ${mPublic}...`);
-  const vk1Zxy = new Array(mPublic);
-  for (let i=0; i<mPublic; i++) {
-    PreImgSet = IdSetV.PreImgs[i];
-    PreImgSize = IdSetV.PreImgs[i].length;
-    vk1Zxy[i] = await mulFrInG1(buffG1, Fr.zero);
-    for (let j=0; j<sMax; j++) {
-      for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
-        kPrime = PreImgSet[PreImgIdx][0];
-        sKPrime = OpList[kPrime];
-        iPrime = PreImgSet[PreImgIdx][1];
-        mPublicK = ParamR1cs[sKPrime].mPublic;
-
-        if (!(iPrime >= nZeroWires && iPrime < nZeroWires+mPublicK)) {
-          throw new Error('invalid access to vk1_zxy_kij');
-        }
-        arrayIdx = iPrime-nZeroWires;
-        vk1Term = urs.content.thetaG.vk1Zxy[sKPrime][arrayIdx][j];
-        vk1Term = await mulFrInG1(vk1Term, OmegaFactors[(kPrime*j)%sMax]);
-        vk1Zxy[i] = await G1.add(vk1Zxy[i], vk1Term);
-      }
-    }
-  }
-
-  if (logger) logger.debug(`  Deriving crs: [a_i(x,y)]_G for i upto ${mPrivate}...`);
-  const vk1Axy = new Array(mPrivate);
-  for (let i=0; i<mPrivate; i++) {
-    PreImgSet = IdSetP.PreImgs[i];
-    PreImgSize = IdSetP.PreImgs[i].length;
-    vk1Axy[i] = await mulFrInG1(buffG1, Fr.zero);
-    for (let j=0; j<sMax; j++) {
-      for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
-        kPrime = PreImgSet[PreImgIdx][0];
-        sKPrime = OpList[kPrime];
-        iPrime = PreImgSet[PreImgIdx][1];
-        mPublicK = ParamR1cs[sKPrime].mPublic;
-
-        if (iPrime < nZeroWires) {
-          arrayIdx = iPrime;
-        } else if (iPrime >= nZeroWires+mPublicK) {
-          arrayIdx = iPrime-mPublicK;
-        } else {
-          if (logger) logger.debug(`i: ${i}, PreImgIdx: ${PreImgIdx}`);
-          throw new Error('invalid access to vk1_axy_kij');
-        }
-        vk1Term = urs.content.thetaG.vk1Axy[sKPrime][arrayIdx][j];
-        vk1Term = await mulFrInG1(vk1Term, OmegaFactors[(kPrime*j)%sMax]);
-        vk1Axy[i] = await G1.add(vk1Axy[i], vk1Term);
-      }
-    }
-  }
-
-  if (logger) logger.debug(`  Deriving crs: [u_i(x,y)]_G for i upto ${m}...`);
-  const vk1Uxy = new Array(m);
-  for (let i=0; i<m; i++) {
-    if (IdSetV.set.indexOf(i) > -1) {
-      arrayIdx = IdSetV.set.indexOf(i);
-      PreImgSet = IdSetV.PreImgs[arrayIdx];
-    } else {
-      arrayIdx = IdSetP.set.indexOf(i);
-      PreImgSet = IdSetP.PreImgs[arrayIdx];
-    }
-    PreImgSize = PreImgSet.length;
-    vk1Uxy[i] = await mulFrInG1(buffG1, Fr.zero);
-    for (let j=0; j<sMax; j++) {
-      for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
-        kPrime = PreImgSet[PreImgIdx][0];
-        sKPrime = OpList[kPrime];
-        iPrime = PreImgSet[PreImgIdx][1];
-        vk1Term = urs.content.thetaG.vk1Uxy[sKPrime][iPrime][j];
-        vk1Term = await mulFrInG1(vk1Term, OmegaFactors[(kPrime*j)%sMax]);
-        vk1Uxy[i] = await G1.add(vk1Uxy[i], vk1Term);
-      }
-    }
-  }
-
-  if (logger) logger.debug(`  Deriving crs: [v_i(x,y)]_G for i upto ${m}...`);
-  const vk1Vxy = new Array(m);
-  for (let i=0; i<m; i++) {
-    if (IdSetV.set.indexOf(i) > -1) {
-      arrayIdx = IdSetV.set.indexOf(i);
-      PreImgSet = IdSetV.PreImgs[arrayIdx];
-    } else {
-      arrayIdx = IdSetP.set.indexOf(i);
-      PreImgSet = IdSetP.PreImgs[arrayIdx];
-    }
-    PreImgSize = PreImgSet.length;
-    vk1Vxy[i] = await mulFrInG1(buffG1, Fr.zero);
-    for (let j=0; j<sMax; j++) {
-      for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
-        kPrime = PreImgSet[PreImgIdx][0];
-        sKPrime = OpList[kPrime];
-        iPrime = PreImgSet[PreImgIdx][1];
-
-        vk1Term = urs.content.thetaG.vk1Vxy[sKPrime][iPrime][j];
-        vk1Term = await mulFrInG1(vk1Term, OmegaFactors[(kPrime*j)%sMax]);
-        vk1Vxy[i] = await G1.add(vk1Vxy[i], vk1Term);
-      }
-    }
-  }
-
-  if (logger) logger.debug(`  Deriving crs: [v_i(x,y)]_H for i upto ${m}...`);
-  const vk2Vxy = new Array(m);
-  for (let i=0; i<m; i++) {
-    if (IdSetV.set.indexOf(i) > -1) {
-      arrayIdx = IdSetV.set.indexOf(i);
-      PreImgSet = IdSetV.PreImgs[arrayIdx];
-    } else {
-      arrayIdx = IdSetP.set.indexOf(i);
-      PreImgSet = IdSetP.PreImgs[arrayIdx];
-    }
-    PreImgSize = PreImgSet.length;
-    vk2Vxy[i] = await mulFrInG2(buffG2, Fr.zero);
-    for (let j=0; j<sMax; j++) {
-      for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
-        kPrime = PreImgSet[PreImgIdx][0];
-        sKPrime = OpList[kPrime];
-        iPrime = PreImgSet[PreImgIdx][1];
-
-        vk2Term = urs.content.thetaG.vk2Vxy[sKPrime][iPrime][j];
-        vk2Term = await mulFrInG2(vk2Term, OmegaFactors[(kPrime*j)%sMax]);
-        vk2Vxy[i] = await G2.add(vk2Vxy[i], vk2Term);
-      }
-    }
-  }
-
-  await binFileUtils__namespace.copySection(fdRS, sectionsRS, fdcRS, 1);
-  await binFileUtils__namespace.copySection(fdRS, sectionsRS, fdcRS, 2);
-  await binFileUtils__namespace.copySection(fdRS, sectionsRS, fdcRS, 3);
-  await binFileUtils__namespace.copySection(fdRS, sectionsRS, fdcRS, 4);
-
-  await fdRS.close();
-
-  if (logger) logger.debug(`  Writing crs file...`);
-  partTime = start();
-  await binFileUtils.startWriteSection(fdcRS, 5);
-  await fdcRS.writeULE32(m);
-  await fdcRS.writeULE32(mPublic);
-  await fdcRS.writeULE32(mPrivate);
-  for (let i=0; i<m; i++) {
-    await writeG1(fdcRS, curve, vk1Uxy[i]);
-  }
-  for (let i=0; i<m; i++) {
-    await writeG1(fdcRS, curve, vk1Vxy[i]);
-  }
-  for (let i=0; i<mPublic; i++) {
-    await writeG1(fdcRS, curve, vk1Zxy[i]);
-  }
-  // vk1Zxy[i] is for the IdSetV.set[i]-th wire of circuit
-  for (let i=0; i<mPrivate; i++) {
-    await writeG1(fdcRS, curve, vk1Axy[i]);
-  }
-  // vk1Axy[i] is for the IdSetP.set[i]-th wire of circuit
-  for (let i=0; i<m; i++) {
-    await writeG2(fdcRS, curve, vk2Vxy[i]);
-  }
-  await binFileUtils.endWriteSection(fdcRS);
-  const crsWriteTime = end(partTime);
-
-  await fdcRS.close();
-
-  crsTime = end(crsTime);
-  if (logger) logger.debug(`Deriving crs...Done`);
-
-  if (logger) logger.debug(`Deriving QAP...`);
-  let qapTime = start();
-  if (logger) logger.debug(`  Loading sub-QAPs...`);
-  partTime = start();
-  const uXK = new Array(sD);
-  const vXK = new Array(sD);
-  const wXK = new Array(sD);
-  for (let i=0; i<sF; i++) {
-    const k = OpList[i];
-    if ( (uXK[k] === undefined) ) {
-      const mK = ParamR1cs[k].m;
-      const {
-        uX: _uX,
-        vX: _vX,
-        wX: _wX,
-      } = await readQAP(qapName, k, mK, n, n8r);
-      uXK[k] = _uX;
-      vXK[k] = _vX;
-      wXK[k] = _wX;
-    }
-  }
-  if (logger) logger.debug(`  Loading ${uXK.length} sub-QAPs...Done`);
-  const subQapLoadTime = end(partTime);
-
-  const fdQAP = await binFileUtils.createBinFile(
-      `${dirPath}/circuitQAP.qap`,
-      'qapp',
-      1,
-      1+m,
-      1<<22,
-      1<<24,
-  );
-
-  await binFileUtils.startWriteSection(fdQAP, 1);
-  await fdQAP.writeULE32(1); // Groth
-  await binFileUtils.endWriteSection(fdQAP);
-
-  if (logger) logger.debug(`  Generating f_k(Y) of degree ${sMax-1} for k upto ${sF}...`);
-  const fYK = new Array(sF);
-  const fY = Array.from(Array(1), () => new Array(sMax));
-  const FrSMaxInv = Fr.inv(Fr.e(sMax));
-  for (let k=0; k<sF; k++) {
-    const invOmegaYK = new Array(sMax);
-    invOmegaYK[0] = Fr.one;
-    for (let i=1; i<sMax; i++) {
-      invOmegaYK[i] = Fr.mul(invOmegaYK[i-1], await Fr.exp(Fr.inv(omegaY), k));
-    }
-    PolTimeStart = start();
-    const LagY = await filterPoly(Fr, fY, invOmegaYK, 1);
-    fYK[k] = await scalePoly(Fr, LagY, FrSMaxInv);
-    PolTimeAccum += end(PolTimeStart);
-  }
-
-  if (logger) logger.debug(`  Deriving u_i(X,Y), v_i(X,Y), w_i(X,Y) for i upto ${m}...`);
-  for (let i=0; i<m; i++) {
-    await binFileUtils.startWriteSection(fdQAP, 2+i);
-    let arrayIdx;
     let PreImgSet;
-    if (IdSetV.set.indexOf(i) > -1) {
-      arrayIdx = IdSetV.set.indexOf(i);
-      PreImgSet = IdSetV.PreImgs[arrayIdx];
-    } else {
-      arrayIdx = IdSetP.set.indexOf(i);
-      PreImgSet = IdSetP.PreImgs[arrayIdx];
+    let PreImgSize;
+    let mPublic_k;
+    let vk1_term;
+    let vk2_term;
+    let arrayIdx;
+    let kPrime;
+    let s_kPrime;
+    let iPrime;
+
+    let OmegaFactors = new Array(s_max);
+    OmegaFactors[0] = Fr.one;
+    const omega_y_inv = Fr.inv(omega_y);
+    for (var j=1; j<s_max; j++){
+        OmegaFactors[j] = Fr.mul(OmegaFactors[j-1], omega_y_inv);
     }
-    const PreImgSize = PreImgSet.length;
-    let uXY = [[Fr.zero]];
-    let vXY = [[Fr.zero]];
-    let wXY = [[Fr.zero]];
-    for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
-      const kPrime = PreImgSet[PreImgIdx][0];
-      const iPrime = PreImgSet[PreImgIdx][1];
-      const sKPrime = OpList[kPrime];
-
-      PolTimeStart = start();
-      const uTerm = await tensorProduct(
-          Fr,
-          uXK[sKPrime][iPrime],
-          fYK[kPrime],
-      );
-      uXY = await addPoly(Fr, uXY, uTerm);
-
-      const vTerm = await tensorProduct(
-          Fr,
-          vXK[sKPrime][iPrime],
-          fYK[kPrime],
-      );
-      vXY = await addPoly(Fr, vXY, vTerm);
-
-      const wTerm = await tensorProduct(
-          Fr,
-          wXK[sKPrime][iPrime],
-          fYK[kPrime],
-      );
-      wXY = await addPoly(Fr, wXY, wTerm);
-      PolTimeAccum += end(PolTimeStart);
+    
+    if (Math.max(OpList) >= s_D){
+        throw new Error('An opcode in the target EVM bytecode has no subcircuit');
     }
 
-    QAPWriteTimeStart = start();
-    await fdQAP.writeULE32(uXY.length);
-    await fdQAP.writeULE32(uXY[0].length);
-    for (let xi=0; xi<uXY.length; xi++) {
-      for (let yi=0; yi<uXY[0].length; yi++) {
-        await fdQAP.write(uXY[xi][yi]);
-      }
+    console.log(`Deriving crs...`);
+    let crsTime = start();
+    console.log(`  Deriving crs: [z_i(x,y)]_G for i upto ${mPublic}...`);
+    let vk1_zxy = new Array(mPublic);
+    for(var i=0; i<mPublic; i++){
+        PreImgSet = IdSetV.PreImgs[i];
+        PreImgSize = IdSetV.PreImgs[i].length;
+        vk1_zxy[i] = await G1_timesFr(buffG1, Fr.zero);
+        for(var j=0; j<s_max; j++){
+            for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
+                kPrime = PreImgSet[PreImgIdx][0];
+                s_kPrime = OpList[kPrime];
+                iPrime = PreImgSet[PreImgIdx][1];
+                mPublic_k = ParamR1cs[s_kPrime].mPublic;
+                
+                if(!(iPrime >= NZeroWires && iPrime < NZeroWires+mPublic_k)){
+                    throw new Error('invalid access to vk1Zxy')
+                }
+                arrayIdx = iPrime-NZeroWires;
+                vk1_term = urs.content.thetaG.vk1Zxy[s_kPrime][arrayIdx][j];
+                //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
+                //vk1_term = await G1_timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1_timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
+                vk1_zxy[i] = await G1.add(vk1_zxy[i], vk1_term);
+            }
+        }
     }
-    await fdQAP.writeULE32(vXY.length);
-    await fdQAP.writeULE32(vXY[0].length);
-    for (let xi=0; xi<vXY.length; xi++) {
-      for (let yi=0; yi<vXY[0].length; yi++) {
-        await fdQAP.write(vXY[xi][yi]);
-      }
+
+    console.log(`  Deriving crs: [a_i(x,y)]_G for i upto ${mPrivate}...`);
+    let vk1_axy = new Array(mPrivate);
+    for(var i=0; i<mPrivate; i++){
+        PreImgSet = IdSetP.PreImgs[i];
+        PreImgSize = IdSetP.PreImgs[i].length;
+        vk1_axy[i] = await G1_timesFr(buffG1, Fr.zero);
+        for(var j=0; j<s_max; j++){
+            for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
+                kPrime = PreImgSet[PreImgIdx][0];
+                s_kPrime = OpList[kPrime];
+                iPrime = PreImgSet[PreImgIdx][1];
+                mPublic_k = ParamR1cs[s_kPrime].mPublic;
+ 
+                if(iPrime < NZeroWires){
+                    arrayIdx = iPrime;
+                } else if(iPrime >= NZeroWires+mPublic_k){
+                    arrayIdx = iPrime-mPublic_k;
+                } else {
+                    console.log(`i: ${i}, PreImgIdx: ${PreImgIdx}`);
+                    throw new Error('invalid access to vk1Axy')
+                }
+
+                vk1_term = urs.content.thetaG.vk1Axy[s_kPrime][arrayIdx][j];
+                //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
+                //vk1_term = await G1_timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1_timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
+                vk1_axy[i] = await G1.add(vk1_axy[i], vk1_term);
+            }
+        }
     }
-    await fdQAP.writeULE32(wXY.length);
-    await fdQAP.writeULE32(wXY[0].length);
-    for (let xi=0; xi<wXY.length; xi++) {
-      for (let yi=0; yi<wXY[0].length; yi++) {
-        await fdQAP.write(wXY[xi][yi]);
-      }
+
+    console.log(`  Deriving crs: [u_i(x,y)]_G for i upto ${m}...`);
+    let vk1_uxy = new Array(m);
+    for(var i=0; i<m; i++){
+        if(IdSetV.set.indexOf(i) > -1){
+            arrayIdx = IdSetV.set.indexOf(i);
+            PreImgSet = IdSetV.PreImgs[arrayIdx];
+        } else {
+            arrayIdx = IdSetP.set.indexOf(i);
+            PreImgSet = IdSetP.PreImgs[arrayIdx];
+        }
+        PreImgSize = PreImgSet.length;
+        vk1_uxy[i] = await G1_timesFr(buffG1, Fr.zero);
+        for(var j=0; j<s_max; j++){
+            for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
+                kPrime = PreImgSet[PreImgIdx][0];
+                s_kPrime = OpList[kPrime];
+                iPrime = PreImgSet[PreImgIdx][1];
+                vk1_term = urs.content.thetaG.vk1Uxy[s_kPrime][iPrime][j];
+                //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
+                //vk1_term = await G1_timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1_timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
+                vk1_uxy[i] = await G1.add(vk1_uxy[i], vk1_term);
+            }
+        }
     }
-    QAPWriteTimeAccum += end(QAPWriteTimeStart);
+
+    console.log(`  Deriving crs: [v_i(x,y)]_G for i upto ${m}...`);
+    let vk1_vxy = new Array(m);
+    for(var i=0; i<m; i++){
+        if(IdSetV.set.indexOf(i) > -1){
+            arrayIdx = IdSetV.set.indexOf(i);
+            PreImgSet = IdSetV.PreImgs[arrayIdx];
+        } else {
+            arrayIdx = IdSetP.set.indexOf(i);
+            PreImgSet = IdSetP.PreImgs[arrayIdx];
+        }
+        PreImgSize = PreImgSet.length;
+        vk1_vxy[i] = await G1_timesFr(buffG1, Fr.zero);
+        for(var j=0; j<s_max; j++){
+            for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
+                kPrime = PreImgSet[PreImgIdx][0];
+                s_kPrime = OpList[kPrime];
+                iPrime = PreImgSet[PreImgIdx][1];
+
+                vk1_term = urs.content.thetaG.vk1Vxy[s_kPrime][iPrime][j];
+                //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
+                //vk1_term = await G1_timesFr(vk1_term, OmegaFactor)
+                vk1_term = await G1_timesFr(vk1_term, OmegaFactors[(kPrime*j)%s_max]);
+                vk1_vxy[i] = await G1.add(vk1_vxy[i], vk1_term);
+            }
+        }
+    }
+
+    console.log(`  Deriving crs: [v_i(x,y)]_H for i upto ${m}...`);
+    let vk2_vxy = new Array(m);
+    for(var i=0; i<m; i++){
+        if(IdSetV.set.indexOf(i) > -1){
+            arrayIdx = IdSetV.set.indexOf(i);
+            PreImgSet = IdSetV.PreImgs[arrayIdx];
+        } else {
+            arrayIdx = IdSetP.set.indexOf(i);
+            PreImgSet = IdSetP.PreImgs[arrayIdx];
+        }
+        PreImgSize = PreImgSet.length;
+        vk2_vxy[i] = await G2_timesFr(buffG2, Fr.zero);
+        for(var j=0; j<s_max; j++){
+            for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
+                kPrime = PreImgSet[PreImgIdx][0];
+                s_kPrime = OpList[kPrime];
+                iPrime = PreImgSet[PreImgIdx][1];
+
+                vk2_term = urs.content.thetaG.vk2Vxy[s_kPrime][iPrime][j];
+                //OmegaFactor = Fr.inv(await Fr.exp(omega_y, kPrime*j))
+                //vk2_term = await G2_timesFr(vk2_term, OmegaFactor)
+                vk2_term = await G2_timesFr(vk2_term, OmegaFactors[(kPrime*j)%s_max]);
+                vk2_vxy[i] = await G2.add(vk2_vxy[i], vk2_term);
+            }
+        }
+    }
+
+    await binFileUtils__namespace.copySection(fdRS, sectionsRS, fdcRS, 1);
+    await binFileUtils__namespace.copySection(fdRS, sectionsRS, fdcRS, 2);
+    await binFileUtils__namespace.copySection(fdRS, sectionsRS, fdcRS, 3);
+    await binFileUtils__namespace.copySection(fdRS, sectionsRS, fdcRS, 4);
+
+    await fdRS.close();
+    
+    console.log(`  Writing crs file...`);
+    partTime = start();
+    await binFileUtils.startWriteSection(fdcRS, 5);
+    await fdcRS.writeULE32(m);
+    await fdcRS.writeULE32(mPublic);
+    await fdcRS.writeULE32(mPrivate);
+    for(var i=0; i<m; i++){
+        await writeG1(fdcRS, curve, vk1_uxy[i]);
+    }
+    for(var i=0; i<m; i++){
+        await writeG1(fdcRS, curve, vk1_vxy[i]);
+    }
+    for(var i=0; i<mPublic; i++){
+        await writeG1(fdcRS, curve, vk1_zxy[i]);
+    }
+    // vk1_zxy[i] is for the IdSetV.set[i]-th wire of circuit
+    for(var i=0; i<mPrivate; i++){
+        await writeG1(fdcRS, curve, vk1_axy[i]);
+    }
+    // vk1_axy[i] is for the IdSetP.set[i]-th wire of circuit
+    for(var i=0; i<m; i++){
+        await writeG2(fdcRS, curve, vk2_vxy[i]);
+    }
+    await binFileUtils.endWriteSection(fdcRS);
+    const crsWriteTime = end(partTime);
+
+    await fdcRS.close();
+
+    crsTime = end(crsTime);
+    console.log(`Deriving crs...Done`);
+
+    console.log(`Deriving QAP...`);
+    let qapTime = start();
+    console.log(`  Loading sub-QAPs...`);
+    partTime = start();
+    let uX_ki = new Array(s_D);
+    let vX_ki = new Array(s_D);
+    let wX_ki = new Array(s_D);
+    for (var i=0; i<s_F; i++){
+        let k = OpList[i];
+        if ( (uX_ki[k] === undefined) ){
+            let m_k = ParamR1cs[k].m;
+            let {uX_i: uX_i, vX_i: vX_i, wX_i: wX_i} = await readQAP(QAPName, k, m_k, n, n8r);
+            uX_ki[k] = uX_i;
+            vX_ki[k] = vX_i;
+            wX_ki[k] = wX_i;
+        }
+    }
+    console.log(`  Loading ${uX_ki.length} sub-QAPs...Done`);
+    const subQapLoadTime = end(partTime);
+
+    const fdQAP = await binFileUtils.createBinFile(`${dirPath}/circuitQAP.qap`, "qapp", 1, 1+m, 1<<22, 1<<24);
+
+    await binFileUtils.startWriteSection(fdQAP, 1);
+    await fdQAP.writeULE32(1); // Groth
     await binFileUtils.endWriteSection(fdQAP);
-  }
-  await fdQAP.close();
-  qapTime = end(qapTime);
-  if (logger) logger.debug('Deriving QAP...Done');
-  if (logger) logger.debug('  ');
 
-  const totalTime = end(startTime);
-  if (logger) {
-    logger.debug('----- Derive Time Analyzer -----');
-    logger.debug(`### Total ellapsed time: ${totalTime} [ms]`);
-    logger.debug(` ## Time for deriving crs for ${m} wires (${4*m} keys): ${crsTime} [ms] (${((crsTime)/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # URS loading time: ${ursLoadTime} [ms] (${(ursLoadTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Encryption time: ${EncTimeAccum} [ms] (${(EncTimeAccum/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # File writing time: ${crsWriteTime} [ms] (${(crsWriteTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(` ## Time for deriving ${3*m} QAP polynomials of degree (${n},${sMax}): ${qapTime} [ms] (${(qapTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Sub-QAPs loading time: ${subQapLoadTime} [ms] (${(subQapLoadTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Polynomial multiplication time: ${PolTimeAccum} [ms] (${(PolTimeAccum/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # File writing time: ${QAPWriteTimeAccum} [ms] (${(QAPWriteTimeAccum/totalTime*100).toFixed(3)} %)`);
-  }
+    console.log(`  Generating f_k(Y) of degree ${s_max-1} for k upto ${s_F}...`);
+    let fY_k = new Array(s_F);
+    const fY = Array.from(Array(1), () => new Array(s_max));
+    const Fr_s_max_inv = Fr.inv(Fr.e(s_max));
+    for (var k=0; k<s_F; k++){
+        let inv_omega_y_k = new Array(s_max);
+        inv_omega_y_k[0] = Fr.one;
+        for (i=1; i<s_max; i++){
+            inv_omega_y_k[i] = Fr.mul(inv_omega_y_k[i-1], await Fr.exp(Fr.inv(omega_y), k));
+        }
+        PolTimeStart = start();
+        let LagY = await filterPoly(Fr, fY, inv_omega_y_k, 1);
+        fY_k[k] = await scalePoly(Fr, LagY, Fr_s_max_inv);
+        PolTimeAccum += end(PolTimeStart);
+    }
 
+    console.log(`  Deriving u_i(X,Y), v_i(X,Y), w_i(X,Y) for i upto ${m}...`);
+    for(var i=0; i<m; i++){
+        await binFileUtils.startWriteSection(fdQAP, 2+i);
+        let arrayIdx;
+        let PreImgSet;
+        if(IdSetV.set.indexOf(i) > -1){
+            arrayIdx = IdSetV.set.indexOf(i);
+            PreImgSet = IdSetV.PreImgs[arrayIdx];
+        } else {
+            arrayIdx = IdSetP.set.indexOf(i);
+            PreImgSet = IdSetP.PreImgs[arrayIdx];
+        }
+        let PreImgSize = PreImgSet.length;
+        let uXY_i = [[Fr.zero]];
+        let vXY_i = [[Fr.zero]];
+        let wXY_i = [[Fr.zero]];
+        for(var PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++){
+            let kPrime = PreImgSet[PreImgIdx][0];
+            let iPrime = PreImgSet[PreImgIdx][1];
+            let s_kPrime = OpList[kPrime];
 
-  async function mulFrInG1(point, fieldval) {
-    EncTimeStart = start();
-    const out = await G1.timesFr(point, fieldval);
-    EncTimeAccum += end(EncTimeStart);
-    return out;
-  }
-  async function mulFrInG2(point, fieldval) {
-    EncTimeStart = start();
-    const out = await G2.timesFr(point, fieldval);
-    EncTimeAccum += end(EncTimeStart);
-    return out;
-  }
-//   async function polyUtils_mulPoly(Fr, coef1, coef2) {
-//     PolTimeStart = timer.start();
-//     const out = await polyUtils.mulPoly(Fr, coef1, coef2);
-//     PolTimeAccum += timer.end(PolTimeStart);
-//     return out;
-//   }
+            PolTimeStart = start();
+            let u_term = await tensorProduct(Fr, uX_ki[s_kPrime][iPrime], fY_k[kPrime]);
+            uXY_i = await addPoly(Fr, uXY_i, u_term);
+
+            let v_term = await tensorProduct(Fr, vX_ki[s_kPrime][iPrime], fY_k[kPrime]);
+            vXY_i = await addPoly(Fr, vXY_i, v_term);
+
+            let w_term = await tensorProduct(Fr, wX_ki[s_kPrime][iPrime], fY_k[kPrime]);
+            wXY_i = await addPoly(Fr, wXY_i, w_term);
+            PolTimeAccum += end(PolTimeStart);
+        }
+
+        QAPWriteTimeStart = start();
+        await fdQAP.writeULE32(uXY_i.length);
+        await fdQAP.writeULE32(uXY_i[0].length);
+        for (var xi=0; xi<uXY_i.length; xi++){
+            for (var yi=0; yi<uXY_i[0].length; yi++){
+                await fdQAP.write(uXY_i[xi][yi]);
+            }
+        }
+        await fdQAP.writeULE32(vXY_i.length);
+        await fdQAP.writeULE32(vXY_i[0].length);
+        for (var xi=0; xi<vXY_i.length; xi++){
+            for (var yi=0; yi<vXY_i[0].length; yi++){
+                await fdQAP.write(vXY_i[xi][yi]);
+            }
+        }
+        await fdQAP.writeULE32(wXY_i.length);
+        await fdQAP.writeULE32(wXY_i[0].length);
+        for (var xi=0; xi<wXY_i.length; xi++){
+            for (var yi=0; yi<wXY_i[0].length; yi++){
+                await fdQAP.write(wXY_i[xi][yi]);
+            }
+        }
+        QAPWriteTimeAccum += end(QAPWriteTimeStart);
+        await binFileUtils.endWriteSection(fdQAP);
+    }
+    await fdQAP.close();
+    qapTime = end(qapTime);
+    console.log(`Deriving QAP...Done`);
+    console.log(` `);
+
+    const totalTime = end(startTime);
+    console.log(`-----Derive Time Analyzer-----`);
+    console.log(`###Total ellapsed time: ${totalTime} [ms]`);
+    console.log(` ##Time for deriving crs for ${m} wires (${4*m} keys): ${crsTime} [ms] (${(crsTime)/totalTime*100} %)`);
+    console.log(`  #urs loading time: ${ursLoadTime} [ms] (${ursLoadTime/totalTime*100} %)`);
+    console.log(`  #Encryption time: ${EncTimeAccum} [ms] (${EncTimeAccum/totalTime*100} %)`);
+    console.log(`  #File writing time: ${crsWriteTime} [ms] (${crsWriteTime/totalTime*100} %)`);
+    console.log(` ##Time for deriving ${3*m} QAP polynomials of degree (${n},${s_max}): ${qapTime} [ms] (${qapTime/totalTime*100} %)`);
+    console.log(`  #Sub-QAPs loading time: ${subQapLoadTime} [ms] (${subQapLoadTime/totalTime*100} %)`);
+    console.log(`  #Polynomial multiplication time: ${PolTimeAccum} [ms] (${PolTimeAccum/totalTime*100} %)`);
+    console.log(`  #file writing time: ${QAPWriteTimeAccum} [ms] (${QAPWriteTimeAccum/totalTime*100} %)`);
+    
+
+    async function G1_timesFr(point, fieldval){
+        EncTimeStart = start();
+        const out = await G1.timesFr(point, fieldval);
+        EncTimeAccum += end(EncTimeStart);
+        return out;
+    }
+    async function G2_timesFr(point, fieldval){
+        EncTimeStart = start();
+        const out = await G2.timesFr(point, fieldval);
+        EncTimeAccum += end(EncTimeStart);
+        return out;
+    }
 }
 
 async function readHeader(fd, sections) {
@@ -2635,865 +2257,479 @@ async function generateWitness(circuitName, instanceId){
 	}
 }
 
-async function groth16Prove$1(
-    cRSName,
-    proofName,
-    circuitName,
-    instanceId,
-    entropy,
-    logger
-) {
-  const startTime = start();
-  let EncTimeStart;
-  let EncTimeAccum = 0;
-  let qapLoadTimeStart;
-  let qapLoadTimeAccum = 0;
+async function groth16Prove(cRSName, proofName, circuitName, instanceId, entropy) {
+    const startTime = start();
+    let EncTimeStart;
+    let EncTimeAccum = 0;
+    let qapLoadTimeStart;
+    let qapLoadTimeAccum = 0;
 
-  const dirPath = `resource/circuits/${circuitName}`;
-  const TESTFLAG = process.env.TEST_MODE;
-  const CRS = 1;
+    const dirPath = `resource/circuits/${circuitName}`;
+    const TESTFLAG = false;
+    const CRS = 1;
 
-  if (logger) logger.debug(`TESTMODE = ${TESTFLAG}`);
+    console.log(`TESTMODE = ${TESTFLAG}`);
 
-  const {
-    fd: fdRS,
-    sections: sectionsRS,
-  } = await binFileUtils__namespace.readBinFile(
-      `${dirPath}/${cRSName}.crs`,
-      'zkey',
-      2,
-      1<<25,
-      1<<23,
-  );
-  const fdIdV = await fastFile__namespace.readExisting(
-      `${dirPath}/Set_I_V.bin`,
-      1<<25,
-      1<<23,
-  );
-  const fdIdP = await fastFile__namespace.readExisting(
-      `${dirPath}/Set_I_P.bin`,
-      1<<25,
-      1<<23,
-  );
-  const fdOpL = await fastFile__namespace.readExisting(
-      `${dirPath}/OpList.bin`,
-      1<<25,
-      1<<23,
-  );
-  const fdWrL = await fastFile__namespace.readExisting(
-      `${dirPath}/WireList.bin`,
-      1<<25,
-      1<<23,
-  );
+    const {fd: fdRS, sections: sectionsRS} = await binFileUtils__namespace.readBinFile(`${dirPath}/${cRSName}.crs`, "zkey", 2, 1<<25, 1<<23);
+    const fdIdV = await fastFile__namespace.readExisting(`${dirPath}/Set_I_V.bin`, 1<<25, 1<<23);
+    const fdIdP = await fastFile__namespace.readExisting(`${dirPath}/Set_I_P.bin`, 1<<25, 1<<23);
+    const fdOpL = await fastFile__namespace.readExisting(`${dirPath}/OpList.bin`, 1<<25, 1<<23);
+    const fdWrL = await fastFile__namespace.readExisting(`${dirPath}/WireList.bin`, 1<<25, 1<<23);
+    
+    const urs = {};
+    const crs = {};
+    urs.param = await readRSParams(fdRS, sectionsRS);
+    const rs = await readRS(fdRS, sectionsRS, urs.param, CRS);
+    const IdSetV = await readIndSet(fdIdV);
+    const IdSetP = await readIndSet(fdIdP);
+    const OpList = await readOpList(fdOpL);
+    const WireList = await readWireList(fdWrL);
+    await fdRS.close();
+    await fdIdV.close();
+    await fdIdP.close();
+    await fdOpL.close();
+    await fdWrL.close();
 
-  const urs = {};
-  const crs = {};
-  urs.param = await readRSParams(fdRS, sectionsRS);
-  const rs = await readRS(
-      fdRS,
-      sectionsRS,
-      urs.param,
-      CRS,
-  );
-  const IdSetV = await readIndSet(fdIdV);
-  const IdSetP = await readIndSet(fdIdP);
-  const OpList = await readOpList(fdOpL);
-  const WireList = await readWireList(fdWrL);
-  await fdRS.close();
-  await fdIdV.close();
-  await fdIdP.close();
-  await fdOpL.close();
-  await fdWrL.close();
+    const fdPrf = await binFileUtils__namespace.createBinFile(`${dirPath}/${proofName}.proof`, "prof", 1, 2, 1<<22, 1<<24);
 
-  const fdPrf = await binFileUtils__namespace.createBinFile(
-      `${dirPath}/${proofName}.proof`,
-      'prof',
-      1,
-      2,
-      1<<22,
-      1<<24,
-  );
+    urs.sigmaG = rs.sigmaG;
+    urs.sigmaH = rs.sigmaH;
+    crs.param = rs.crs.param;
+    crs.vk1Uxy1d = rs.crs.vk1Uxy1d;
+    crs.vk1Vxy1d = rs.crs.vk1Vxy1d;
+    crs.vk1Zxy1d = rs.crs.vk1Zxy1d;
+    crs.vk1Axy1d = rs.crs.vk1Axy1d;
+    crs.vk2Vxy1d = rs.crs.vk2Vxy1d;
 
-  urs.sigmaG = rs.sigmaG;
-  urs.sigmaH = rs.sigmaH;
-  crs.param = rs.crs.param;
-  crs.vk1Uxy1d = rs.crs.vk1Uxy1d;
-  crs.vk1Vxy1d = rs.crs.vk1Vxy1d;
-  crs.vk1Zxy1d = rs.crs.vk1Zxy1d;
-  crs.vk1Axy1d = rs.crs.vk1Axy1d;
-  crs.vk2Vxy1d = rs.crs.vk2Vxy1d;
+    const ParamR1cs = urs.param.r1cs;
+    const curve = urs.param.curve;
+    const G1 = urs.param.curve.G1;
+    const G2 = urs.param.curve.G2;
+    const Fr = urs.param.curve.Fr;
+    curve.Fr.n8;
+    const buffG1 = curve.G1.oneAffine;
+    const buffG2 = curve.G2.oneAffine;
+    const n = urs.param.n;
+    const n8r = urs.param.n8r;
+    const s_max = urs.param.s_max;
+    urs.param.s_D;
+    OpList.length;
+    await Fr.e(urs.param.omega_x);
+    await Fr.e(urs.param.omega_y);
+    
+    const mPublic = crs.param.mPublic;
+    const mPrivate = crs.param.mPrivate;
+    const m = mPublic + mPrivate;
 
-  const ParamR1cs = urs.param.r1cs;
-  const curve = urs.param.curve;
-  const G1 = urs.param.curve.G1;
-  const G2 = urs.param.curve.G2;
-  const Fr = urs.param.curve.Fr;
-  //   const n8 = curve.Fr.n8;
-  const buffG1 = curve.G1.oneAffine;
-  const buffG2 = curve.G2.oneAffine;
-  const n = urs.param.n;
-  const n8r = urs.param.n8r;
-  const sMax = urs.param.sMax;
-  const sD = urs.param.sD;
-  // const s_F = OpList.length;
-  const omegaX = await Fr.e(urs.param.omegaX);
-  const omegaY = await Fr.e(urs.param.omegaY);
-
-  const mPublic = crs.param.mPublic;
-  const mPrivate = crs.param.mPrivate;
-  const m = mPublic + mPrivate;
-
-  if (
-    !((mPublic == IdSetV.set.length) &&
-        (mPrivate == IdSetP.set.length))
-  ) {
-    throw new Error(`Error in crs file: invalid crs parameters. 
-                        mPublic: ${mPublic}, 
-                        IdSetV: ${IdSetV.set.length}, 
-                        mPrivate: ${mPrivate}, 
-                        IdSetP: ${IdSetP.set.length},`,
-    );
-  }
-
-
-  // generate witness for each subcircuit
-  if (logger) logger.debug(`Solving QAP...`);
-  let qapSolveTime = start();
-  if (logger) logger.debug(`  Generating circuit witness...`);
-  await generateWitness(circuitName, instanceId);
-  const wtns = [];
-  for (let k=0; k<OpList.length; k++ ) {
-    const wtnsK = await read(
-        `${dirPath}/witness${instanceId}/witness${k}.wtns`,
-    );
-    const kPrime = OpList[k];
-    const mK = ParamR1cs[kPrime].m;
-    if (wtnsK.length != mK) {
-      throw new Error(`Invalid witness length. 
-                            Circuit: ${mK}, 
-                            witness: ${wtns.length}`,
-      );
+    if(!((mPublic == IdSetV.set.length) && (mPrivate == IdSetP.set.length)))
+    {
+        throw new Error(`Error in crs file: invalid crs parameters. mPublic: ${mPublic}, IdSetV: ${IdSetV.set.length}, mPrivate: ${mPrivate}, IdSetP: ${IdSetP.set.length},`)
     }
-    wtns.push(wtnsK);
-  }
 
-  // / TEST CODE 2
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug(`Running test 2`);
-    const sR1cs = [];
-    for (let k=0; k<sD; k++) {
-      const {
-        fd: fdR1cs,
-        sections: sectionsR1cs,
-      } = await binFileUtils__namespace.readBinFile(
-          `resource/subcircuits/r1cs/subcircuit${k}.r1cs`,
-          'r1cs',
-          1,
-          1<<22,
-          1<<24,
-      );
-      sR1cs.push(await binFileUtils__namespace.readSection(fdR1cs, sectionsR1cs, 2));
-      await fdR1cs.close();
-    }
-    for (let k=0; k<OpList.length; k++) {
-      const kPrime = OpList[k];
-      const processResultsK = await processConstraints(
-          curve,
-          ParamR1cs[kPrime].nConstraints,
-          sR1cs[kPrime],
-      ); // to fill U, V, W
-      const u = processResultsK.u;
-      const uId = processResultsK.uId;
-      const v = processResultsK.v;
-      const vId = processResultsK.vId;
-      const w = processResultsK.w;
-      const wId = processResultsK.wId;
-      const wtnsK = wtns[k];
-
-      let uIdArray;
-      let uCoefArray;
-      let vIdArray;
-      let vCoefArray;
-      let wIdArray;
-      let wCoefArray;
-
-      for (let i=0; i<ParamR1cs[kPrime].nConstraints; i++) {
-        uIdArray=uId[i];
-        uCoefArray=u[i];
-        vIdArray=vId[i];
-        vCoefArray=v[i];
-        wIdArray=wId[i];
-        wCoefArray=w[i];
-
-        let constraintU = Fr.e(0);
-        for (let j=0; j<uIdArray.length; j++) {
-          const term = Fr.mul(uCoefArray[j], Fr.e(wtnsK[uIdArray[j]]));
-          constraintU = Fr.add(constraintU, term);
+    
+    // generate witness for each subcircuit
+    console.log(`Solving QAP...`);
+    let qapSolveTime = start();
+    console.log(`  Generating circuit witness...`);
+    await generateWitness(circuitName, instanceId);
+    const wtns = [];
+    for(var k=0; k<OpList.length; k++ ){
+        const wtns_k = await read(`${dirPath}/witness${instanceId}/witness${k}.wtns`);
+        const kPrime = OpList[k];
+        const m_k = ParamR1cs[kPrime].m;
+        if (wtns_k.length != m_k) {
+            throw new Error(`Invalid witness length. Circuit: ${m_k}, witness: ${wtns.length}`);
         }
-        let constraintV = Fr.e(0);
-        for (let j=0; j<vIdArray.length; j++) {
-          const term = Fr.mul(vCoefArray[j], Fr.e(wtnsK[vIdArray[j]]));
-          constraintV = Fr.add(constraintV, term);
+        wtns.push(wtns_k);
+    }
+
+    /// TEST CODE 2
+    var k, i, j; 
+    /// END of TEST CODE 2
+
+    /// arrange circuit witness
+    let cWtns = new Array(WireList.length);
+    for(var i=0; i<WireList.length; i++){
+        const kPrime = WireList[i][0];
+        const idx = WireList[i][1];
+        cWtns[i] = Fr.e(wtns[kPrime][idx]);
+        if (cWtns[i] === undefined){
+            throw new Error(`Undefined cWtns value at i=${i}`)
         }
-        let constraintW = Fr.mul(constraintU, constraintV);
-        for (let j=0; j<wIdArray.length; j++) {
-          const term = Fr.mul(wCoefArray[j], Fr.e(wtnsK[wIdArray[j]]));
-          constraintW = Fr.sub(constraintW, term);
+    }
+  
+    let tX = Array.from(Array(n+1), () => new Array(1));
+    let tY = Array.from(Array(1), () => new Array(s_max+1));
+    tX = await scalePoly(Fr, tX, Fr.zero);
+    tY = await scalePoly(Fr, tY, Fr.zero);
+    tX[0][0] = Fr.negone;
+    tX[n][0] = Fr.one;
+    tY[0][0] = Fr.negone;
+    tY[0][s_max] = Fr.one;
+    // t(X,Y) = (X^n-1) * (X^s_max-1) = PI(X-omega_x^i) for i=0,...,n * PI(Y-omega_y^j) for j =0,...,s_max
+    // P(X,Y) = (SUM c_i*u_i(X,Y))*(SUM c_i*v_i(X,Y)) - (SUM c_i*w_i(X,Y)) = 0 at X=omega_x^i, Y=omega_y^j
+    // <=> P(X,Y) has zeros at least the points omega_x^i and omega_y^j
+    // <=> there exists h(X,Y) such that p(X,Y) = t(X,Y) * h(X,Y)
+    // <=> finding h(X,Y) is the goal of Prove algorithm
+    
+    /// compute p(X,Y)
+    console.log(`  Computing p(X,Y)...`);
+    const {fd: fdQAP, sections: sectionsQAP}  = await binFileUtils__namespace.readBinFile(`resource/circuits/${circuitName}/circuitQAP.qap`, "qapp", 1, 1<<22, 1<<24);
+    let pxyTime = start();
+    let p1XY = [[Fr.zero]];
+    let p2XY = [[Fr.zero]];
+    let p3XY = [[Fr.zero]];
+    for(var i=0; i<m; i++){
+        qapLoadTimeStart = start();
+        const {uXY_i, vXY_i, wXY_i} = await readCircuitQAP(Fr, fdQAP, sectionsQAP, i, n, s_max, n8r);
+        qapLoadTimeAccum += end(qapLoadTimeStart);
+        let term1 = await scalePoly(Fr, uXY_i, cWtns[i]);
+        p1XY = await addPoly(Fr, p1XY, term1);
+        let term2 = await scalePoly(Fr, vXY_i, cWtns[i]);
+        p2XY = await addPoly(Fr, p2XY, term2);
+        let term3 = await scalePoly(Fr, wXY_i, cWtns[i]);
+        p3XY = await addPoly(Fr, p3XY, term3);
+    }
+    await fdQAP.close();
+
+    const temp = await mulPoly(Fr, p1XY, p2XY);
+    const pXY = await subPoly(Fr, temp, p3XY);
+    pxyTime = end(pxyTime);
+    
+    /// compute H
+    console.log(`  Finding h1(X,Y)...`);
+    let PolDivTime = start();
+    const {res: h1XY, finalrem: rem1} =  await divPolyByX(Fr, pXY, tX);
+    console.log(`  Finding h2(X,Y)...`);
+    const {res: h2XY, finalrem: rem2} =  await divPolyByY(Fr, rem1, tY);
+    PolDivTime = end(PolDivTime);
+    qapSolveTime = end(qapSolveTime);
+    console.log(`Solving QAP...Done`);
+
+        /// TEST CODE 3
+        var i, j;        
+        /// End of TEST CODE 3   
+
+    // Generate r and s
+    const rawr = await getRandomRng(entropy);
+    const raws = await getRandomRng(entropy+1);
+    const r = Fr.fromRng(rawr);
+    const s = Fr.fromRng(raws);
+    
+    console.log(`Generating Proofs...`);
+    let provingTime = start();
+    console.log(`  Generating Proof A...`);
+    // Compute proof A
+    const vk1_A_p1 = urs.sigmaG.vk1AlphaV;
+    const vk1_A_p3 = await G1_timesFr(urs.sigmaG.vk1GammaA, r);
+    let vk1_A_p2 = await G1_timesFr(buffG1, Fr.e(0));
+    for(var i=0; i<m; i++){
+        let term = await G1_timesFr(crs.vk1Uxy1d[i], cWtns[i]);
+        vk1_A_p2 = await G1.add(vk1_A_p2, term);
+    }
+    const vk1_A = await G1.add(await G1.add(vk1_A_p1, vk1_A_p2), vk1_A_p3);
+    
+    console.log(`  Generating Proof B...`);
+    // Compute proof B_H
+    const vk2_B_p1 = urs.sigmaH.vk2AlphaU;
+    const vk2_B_p3 = await G2_timesFr(urs.sigmaH.vk2GammaA, s);
+    let vk2_B_p2 = await G2_timesFr(buffG2, Fr.e(0));
+    for(var i=0; i<m; i++){
+        let term = await G2_timesFr(crs.vk2Vxy1d[i], cWtns[i]);
+        vk2_B_p2 = await G2.add(vk2_B_p2, term);
+    }
+    const vk2_B = await G2.add(await G2.add(vk2_B_p1, vk2_B_p2), vk2_B_p3);
+
+    console.log(`  Generating Proof C...`);
+    // Compute proof B_G
+    const vk1_B_p1 = urs.sigmaG.vk1AlphaU;
+    const vk1_B_p3 = await G1_timesFr(urs.sigmaG.vk1GammaA, s);
+    let vk1_B_p2 = await G1_timesFr(buffG1, Fr.e(0));
+    for(var i=0; i<m; i++){
+        let term = await G1_timesFr(crs.vk1Vxy1d[i], cWtns[i]);
+        vk1_B_p2 = await G1.add(vk1_B_p2, term);
+    }
+    const vk1_B = await G1.add(await G1.add(vk1_B_p1, vk1_B_p2), vk1_B_p3);
+
+    // Compute proof C_G
+    let vk1_C_p = new Array(6);
+    vk1_C_p[0] = await G1_timesFr(buffG1, Fr.e(0));
+    for(var i=0; i<mPrivate; i++){
+        let term = await G1_timesFr(crs.vk1Axy1d[i], cWtns[IdSetP.set[i]]);
+        vk1_C_p[0] = await G1.add(vk1_C_p[0], term);
+    }
+    vk1_C_p[1] = await G1_timesFr(buffG1, Fr.e(0));
+    for(var i=0; i<n-1; i++){
+        for(var j=0; j<2*s_max-1; j++){
+            let term = await G1_timesFr(urs.sigmaG.vk1XyPowsT1g[i][j], h1XY[i][j]);
+            vk1_C_p[1] = await G1.add(vk1_C_p[1], term);
         }
-        if (!Fr.eq(constraintW, Fr.e(0))) {
-          if (logger) logger.debug(`uIdArray: ${uIdArray}`);
-          if (logger) logger.debug(`uCoefArray: ${uCoefArray}`);
-          if (logger) logger.debug(`vIdArray: ${vIdArray}`);
-          if (logger) logger.debug(`vCoefArray: ${vCoefArray}`);
-          if (logger) logger.debug(`wIdArray: ${wIdArray}`);
-          if (logger) logger.debug(`wCoefArray: ${wCoefArray}`);
-          if (logger) logger.debug(`wtnsK: ${wtnsK}`);
-          throw new Error(
-              `assertion not passed at k: ${k}, i: ${i}, 
-              constraint: ${Fr.toObject(constraintW)}`,
-          );
+    }
+    vk1_C_p[2] = await G1_timesFr(buffG1, Fr.e(0));
+    for(var i=0; i<n; i++){
+        for(var j=0; j<s_max-1; j++){
+            let term = await G1_timesFr(urs.sigmaG.vk1XyPowsT2g[i][j], h2XY[i][j]);
+            vk1_C_p[2] = await G1.add(vk1_C_p[2], term);
         }
-      }
     }
-    if (logger) logger.debug(`Test 2 finished`);
-  }
-  // / END of TEST CODE 2
-
-  // / arrange circuit witness
-  const cWtns = new Array(WireList.length);
-  for (let i=0; i<WireList.length; i++) {
-    const kPrime = WireList[i][0];
-    const idx = WireList[i][1];
-    cWtns[i] = Fr.e(wtns[kPrime][idx]);
-    if (cWtns[i] === undefined) {
-      throw new Error(`Undefined cWtns value at i=${i}`);
+    vk1_C_p[3] = await G1_timesFr(vk1_A, s);
+    vk1_C_p[4] = await G1_timesFr(vk1_B, r);
+    vk1_C_p[5] = await G1_timesFr(urs.sigmaG.vk1GammaA, Fr.neg(Fr.mul(r,s)));
+    let vk1_C = vk1_C_p[0];
+    for(var i=1; i<6; i++){
+        vk1_C = await G1.add(vk1_C, vk1_C_p[i]);
     }
-  }
+    provingTime = end(provingTime);
+    console.log(`Generating Proofs...Done`);
 
-  let tX = Array.from(Array(n+1), () => new Array(1));
-  let tY = Array.from(Array(1), () => new Array(sMax+1));
-  tX = await scalePoly(Fr, tX, Fr.zero);
-  tY = await scalePoly(Fr, tY, Fr.zero);
-  tX[0][0] = Fr.negone;
-  tX[n][0] = Fr.one;
-  tY[0][0] = Fr.negone;
-  tY[0][sMax] = Fr.one;
-  // t(X,Y) = (X^n-1) * (X^sMax-1) = PI(X-omegaX^i)
-  // for i=0,...,n * PI(Y-omegaY^j) for j =0,...,sMax
-  // P(X,Y) = (SUM c_i*u_i(X,Y))*(SUM c_i*v_i(X,Y))-(SUM c_i*w_i(X,Y))=0
-  // at X=omegaX^i, Y=omegaY^j
-  // <=> P(X,Y) has zeros at least the points omegaX^i and omegaY^j
-  // <=> there exists h(X,Y) such that p(X,Y) = t(X,Y) * h(X,Y)
-  // <=> finding h(X,Y) is the goal of Prove algorithm
+    /// TEST CODE 4
+    var i; 
+    /// End of TEST CODE 4
 
-  // / compute p(X,Y)
-  if (logger) logger.debug(`  Computing p(X,Y)...`);
-  const {
-    fd: fdQAP,
-    sections: sectionsQAP,
-  } = await binFileUtils__namespace.readBinFile(
-      `resource/circuits/${circuitName}/circuitQAP.qap`,
-      'qapp',
-      1,
-      1<<22,
-      1<<24,
-  );
-  let pxyTime = start();
-  let p1XY = [[Fr.zero]];
-  let p2XY = [[Fr.zero]];
-  let p3XY = [[Fr.zero]];
-  for (let i=0; i<m; i++) {
-    qapLoadTimeStart = start();
-    const {
-      uXY,
-      vXY,
-      wXY,
-    } = await readCircuitQAP(
-        Fr,
-        fdQAP,
-        sectionsQAP,
-        i,
-        n,
-        sMax,
-        n8r,
-    );
-    qapLoadTimeAccum += end(qapLoadTimeStart);
-    const term1 = await scalePoly(Fr, uXY, cWtns[i]);
-    p1XY = await addPoly(Fr, p1XY, term1);
-    const term2 = await scalePoly(Fr, vXY, cWtns[i]);
-    p2XY = await addPoly(Fr, p2XY, term2);
-    const term3 = await scalePoly(Fr, wXY, cWtns[i]);
-    p3XY = await addPoly(Fr, p3XY, term3);
-  }
-  await fdQAP.close();
+    /// TEST CODE 5
+    var i; 
+    /// END of TEST CODE 5
 
-  const temp = await mulPoly(Fr, p1XY, p2XY);
-  const pXY = await subPoly(Fr, temp, p3XY);
-  pxyTime = end(pxyTime);
+    // Write Header
+    ///////////
+    await binFileUtils__namespace.startWriteSection(fdPrf, 1);
+    await fdPrf.writeULE32(1); // Groth
+    await binFileUtils__namespace.endWriteSection(fdPrf);
+    // End of the Header
 
-  // / compute H
-  if (logger) logger.debug(`  Finding h1(X,Y)...`);
-  let PolDivTime = start();
-  const {res: h1XY, finalrem: rem1} = await divPolyByX(Fr, pXY, tX);
-  if (logger) logger.debug(`  Finding h2(X,Y)...`);
-  const {res: h2XY, finalrem: rem2} = await divPolyByY(Fr, rem1, tY);
-  PolDivTime = end(PolDivTime);
-  qapSolveTime = end(qapSolveTime);
-  if (logger) logger.debug(`Solving QAP...Done`);
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug(`rem: ${rem2}`);
-  }
+    await binFileUtils__namespace.startWriteSection(fdPrf, 2);
+    await writeG1(fdPrf, curve, vk1_A);
+    await writeG2(fdPrf, curve, vk2_B);
+    await writeG1(fdPrf, curve, vk1_C);
 
-  if (TESTFLAG === 'true') {
-    // if (logger) logger.debug(`rem2: ${polyUtils._transToObject(Fr, rem2)}`)
-    const {
-      xOrder: h1XOrder,
-      yOrder: h1YOrder,
-    } = _orderPoly(Fr, h1XY);
-    const {
-      xOrder: h2XOrder,
-      yOrder: h2YOrder,
-    } = _orderPoly(Fr, h2XY);
-    if (logger) logger.debug(`h1_x_order: ${h1XOrder}, h1_y_order: ${h1YOrder}`);
-    if (logger) logger.debug(`h2_x_order: ${h2XOrder}, h2_y_order: ${h2YOrder}`);
-    if (logger) logger.debug(`n: ${n}, sMax: ${sMax}`);
-  }
+    await binFileUtils__namespace.endWriteSection(fdPrf);
 
-  // / TEST CODE 3
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug('Running Test 3');
-    for (let i=0; i<n; i++) {
-      for (let j=0; j<sMax; j++) {
-        const evalPointX = await Fr.exp(omegaX, i);
-        const evalPointY = await Fr.exp(omegaY, j);
-        const flag = await evalPoly(
-            Fr,
-            pXY,
-            evalPointX,
-            evalPointY,
-        );
-        if ( !Fr.eq(flag, Fr.zero) ) {
-          throw new Error('Error in pXY');
-        }
-      }
+    await fdPrf.close();
+
+    const totalTime = end(startTime);
+    console.log(` `);
+    console.log(`-----Prove Time Analyzer-----`);
+    console.log(`###Total ellapsed time: ${totalTime} [ms]`);
+    console.log(` ##Time for solving QAP of degree (${n},${s_max}) with ${m} wires: ${qapSolveTime} [ms] (${qapSolveTime/totalTime*100} %)`);
+    console.log(`  #Loading QAP time: ${qapLoadTimeAccum} [ms] (${qapLoadTimeAccum/totalTime*100} %)`);
+    console.log(`  #Computing p(X,Y) time (including single multiplication): ${pxyTime-qapLoadTimeAccum} [ms] (${(pxyTime-qapLoadTimeAccum)/totalTime*100} %)`);
+    console.log(`  #Finding h1(X,Y) and h2(X,Y) time (two divisions): ${PolDivTime} [ms] (${PolDivTime/totalTime*100} %)`);
+    console.log(` ##Time for generating proofs with m=${m}, n=${n}, s_max=${s_max}: ${provingTime} [ms] (${provingTime/totalTime*100} %)`);
+    console.log(`  #Encryption time: ${EncTimeAccum} [ms] (${EncTimeAccum/totalTime*100} %)`);
+    
+    async function G1_timesFr(point, fieldval){
+        EncTimeStart = start();
+        const out = await G1.timesFr(point, fieldval);
+        EncTimeAccum += end(EncTimeStart);
+        return out;
     }
-    let res = pXY;
-    const temp1 = await mulPoly(Fr, h1XY, tX);
-    const temp2 = await mulPoly(Fr, h2XY, tY);
-    res= await subPoly(Fr, res, temp1);
-    res= await subPoly(Fr, res, temp2);
-    if (!Fr.eq(
-        await evalPoly(Fr, res, Fr.one, Fr.one),
-        Fr.zero)
-    ) {
-      throw new Error('Error in pXY=h1t+h2t');
+    async function G2_timesFr(point, fieldval){
+        EncTimeStart = start();
+        const out = await G2.timesFr(point, fieldval);
+        EncTimeAccum += end(EncTimeStart);
+        return out;
     }
-
-    if (logger) logger.debug(`Test 3 finished`);
-  }
-  // / End of TEST CODE 3
-
-  // Generate r and s
-  const rawr = await getRandomRng(entropy);
-  const raws = await getRandomRng(entropy+1);
-  const r = Fr.fromRng(rawr);
-  const s = Fr.fromRng(raws);
-
-  if (logger) logger.debug(`Generating Proofs...`);
-  let provingTime = start();
-  if (logger) logger.debug(`  Generating Proof A...`);
-  // Compute proof A
-  const vk1AP1 = urs.sigmaG.vk1AlphaV;
-  const vk1AP3 = await mulFrInG1(urs.sigmaG.vk1GammaA, r);
-  let vk1AP2 = await mulFrInG1(buffG1, Fr.e(0));
-  for (let i=0; i<m; i++) {
-    const term = await mulFrInG1(crs.vk1Uxy1d[i], cWtns[i]);
-    vk1AP2 = await G1.add(vk1AP2, term);
-  }
-  const vk1A = await G1.add(await G1.add(vk1AP1, vk1AP2), vk1AP3);
-
-  if (logger) logger.debug(`  Generating Proof B...`);
-  // Compute proof B_H
-  const vk2BP1 = urs.sigmaH.vk2AlphaU;
-  const vk2BP3 = await mulFrInG2(urs.sigmaH.vk2GammaA, s);
-  let vk2BP2 = await mulFrInG2(buffG2, Fr.e(0));
-  for (let i=0; i<m; i++) {
-    const term = await mulFrInG2(crs.vk2Vxy1d[i], cWtns[i]);
-    vk2BP2 = await G2.add(vk2BP2, term);
-  }
-  const vk2B = await G2.add(await G2.add(vk2BP1, vk2BP2), vk2BP3);
-
-  if (logger) logger.debug(`  Generating Proof C...`);
-  // Compute proof B_G
-  const vk1BP1 = urs.sigmaG.vk1AlphaU;
-  const vk1BP3 = await mulFrInG1(urs.sigmaG.vk1GammaA, s);
-  let vk1BP2 = await mulFrInG1(buffG1, Fr.e(0));
-  for (let i=0; i<m; i++) {
-    const term = await mulFrInG1(crs.vk1Vxy1d[i], cWtns[i]);
-    vk1BP2 = await G1.add(vk1BP2, term);
-  }
-  const vk1B = await G1.add(await G1.add(vk1BP1, vk1BP2), vk1BP3);
-
-  // Compute proof C_G
-  const vk1CP = new Array(6);
-  vk1CP[0] = await mulFrInG1(buffG1, Fr.e(0));
-  for (let i=0; i<mPrivate; i++) {
-    const term = await mulFrInG1(
-        crs.vk1Axy1d[i],
-        cWtns[IdSetP.set[i]],
-    );
-    vk1CP[0] = await G1.add(vk1CP[0], term);
-  }
-  vk1CP[1] = await mulFrInG1(buffG1, Fr.e(0));
-  for (let i=0; i<n-1; i++) {
-    for (let j=0; j<2*sMax-1; j++) {
-      const term = await mulFrInG1(
-          urs.sigmaG.vk1XyPowsT1g[i][j],
-          h1XY[i][j],
-      );
-      vk1CP[1] = await G1.add(vk1CP[1], term);
-    }
-  }
-  vk1CP[2] = await mulFrInG1(buffG1, Fr.e(0));
-  for (let i=0; i<n; i++) {
-    for (let j=0; j<sMax-1; j++) {
-      const term = await mulFrInG1(
-          urs.sigmaG.vk1XyPowsT2g[i][j],
-          h2XY[i][j],
-      );
-      vk1CP[2] = await G1.add(vk1CP[2], term);
-    }
-  }
-  vk1CP[3] = await mulFrInG1(vk1A, s);
-  vk1CP[4] = await mulFrInG1(vk1B, r);
-  vk1CP[5] = await mulFrInG1(
-      urs.sigmaG.vk1GammaA,
-      Fr.neg(Fr.mul(r, s),
-      ));
-  let vk1C = vk1CP[0];
-  for (let i=1; i<6; i++) {
-    vk1C = await G1.add(vk1C, vk1CP[i]);
-  }
-  provingTime = end(provingTime);
-  if (logger) logger.debug(`Generating Proofs...Done`);
-
-  // / TEST CODE 4
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug('Running Test 4');
-    const x = Fr.e(13);
-    const y = Fr.e(23);
-    const res = [];
-
-    res.push(await curve.pairingEq(
-        urs.sigmaG.vk1XyPows[1][0],
-        urs.sigmaH.vk2XyPows[0][1],
-        await mulFrInG1(buffG1, Fr.mul(x, y)),
-        await G2.neg(buffG2),
-    ));
-
-    const p1xy = await evalPoly(Fr, p1XY, x, y);
-    const p2xy = await evalPoly(Fr, p2XY, x, y);
-    const p3xy = await evalPoly(Fr, p3XY, x, y);
-    const tempVk1U = await mulFrInG1(buffG1, p1xy);
-    // const test_vk1_V = await mulFrInG1(buffG1, p2xy);
-    const tempVk2U = await mulFrInG2(buffG2, p2xy);
-    const tempVk1W = await mulFrInG1(buffG1, p3xy);
-
-    res.push(await curve.pairingEq(
-        await G1.neg(tempVk1U),
-        tempVk2U,
-        vk1AP2,
-        vk2BP2,
-    ));
-
-    let vk1D;
-    vk1D = await mulFrInG1(buffG1, Fr.e(0));
-    for (let i=0; i<mPublic; i++) {
-      const term = await mulFrInG1(
-          crs.vk1Zxy1d[i],
-          cWtns[IdSetV.set[i]],
-      );
-      vk1D = await G1.add(vk1D, term);
-    }
-
-    res.push(await curve.pairingEq(
-        tempVk1U,
-        urs.sigmaH.vk2AlphaU,
-        urs.sigmaG.vk1AlphaV,
-        tempVk2U,
-        tempVk1W,
-        buffG2,
-        vk1CP[0],
-        await G2.neg(urs.sigmaH.vk2GammaA),
-        vk1D,
-        await G2.neg(urs.sigmaH.vk2GammaZ),
-    ));
-
-    const tx= await evalPoly(Fr, tX, x, Fr.one);
-    const ty= await evalPoly(Fr, tY, Fr.one, y);
-    const h1xy = await evalPoly(Fr, h1XY, x, y);
-    const h2xy = await evalPoly(Fr, h2XY, x, y);
-    const h1txh2ty = await Fr.add(Fr.mul(tx, h1xy), Fr.mul(ty, h2xy));
-    const tempVk1H1txh2ty = await mulFrInG1(buffG1, h1txh2ty);
-
-    res.push(await curve.pairingEq(
-        urs.sigmaG.vk1XyPowsT1g[1][1],
-        urs.sigmaH.vk2GammaA,
-        await mulFrInG1(buffG1, Fr.mul(x, y)),
-        await G2.neg(await mulFrInG2(buffG2, tx)),
-    ));
-
-    res.push(await curve.pairingEq(
-        vk1AP2,
-        vk2BP2,
-        await G1.neg(tempVk1W),
-        buffG2,
-        tempVk1H1txh2ty,
-        await G2.neg(buffG2),
-    ));
-
-    res.push(await curve.pairingEq(
-        vk1AP2,
-        vk2BP2,
-        await G1.neg(tempVk1W),
-        buffG2,
-        G1.add(vk1CP[1], vk1CP[2]),
-        await G2.neg(urs.sigmaH.vk2GammaA),
-    ));
-
-    for (let i=0; i<res.length; i++) {
-      if (!res[i]) {
-        throw new Error(`Error in TEST CODE 4 at i=${i}`);
-      }
-    }
-    if (logger) logger.debug(`Test 4 finished`);
-  }
-  // / End of TEST CODE 4
-
-  // / TEST CODE 5
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug('Running Test 5');
-    let vk1D;
-    vk1D = await mulFrInG1(buffG1, Fr.e(0));
-    for (let i=0; i<mPublic; i++) {
-      const term = await mulFrInG1(crs.vk1Zxy1d[i], cWtns[IdSetV.set[i]]);
-      vk1D = await G1.add(vk1D, term);
-    }
-
-    // / Verify
-    const res = await curve.pairingEq(
-        urs.sigmaG.vk1AlphaV,
-        urs.sigmaH.vk2AlphaU,
-        vk1D, urs.sigmaH.vk2GammaZ,
-        vk1C, urs.sigmaH.vk2GammaA,
-        await G1.neg(vk1A), vk2B);
-    if (!res) {
-      throw new Error(`Error in TEST CODE 5`);
-    }
-    if (logger) logger.debug(`Test 5 finished`);
-  }
-  // / END of TEST CODE 5
-
-  // Write Header
-  // /////////
-  await binFileUtils__namespace.startWriteSection(fdPrf, 1);
-  await fdPrf.writeULE32(1); // Groth
-  await binFileUtils__namespace.endWriteSection(fdPrf);
-  // End of the Header
-
-  await binFileUtils__namespace.startWriteSection(fdPrf, 2);
-  await writeG1(fdPrf, curve, vk1A);
-  await writeG2(fdPrf, curve, vk2B);
-  await writeG1(fdPrf, curve, vk1C);
-
-  await binFileUtils__namespace.endWriteSection(fdPrf);
-
-  await fdPrf.close();
-
-  const totalTime = end(startTime);
-  if (logger) {
-    logger.debug('  ');
-    logger.debug('----- Prove Time Analyzer -----');
-    logger.debug(`### Total ellapsed time: ${totalTime} [ms]`);
-    logger.debug(` ## Time for solving QAP of degree (${n},${sMax}) with ${m} wires: ${qapSolveTime} [ms] (${(qapSolveTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Loading QAP time: ${qapLoadTimeAccum} [ms] (${(qapLoadTimeAccum/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Computing p(X,Y) time (including single multiplication): ${pxyTime-qapLoadTimeAccum} [ms] (${((pxyTime-qapLoadTimeAccum)/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Finding h1(X,Y) and h2(X,Y) time (two divisions): ${PolDivTime} [ms] (${(PolDivTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(` ## Time for generating proofs with m=${m}, n=${n}, sMax=${sMax}: ${provingTime} [ms] (${(provingTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Encryption time: ${EncTimeAccum} [ms] (${(EncTimeAccum/totalTime*100).toFixed(3)} %)`);
-  } 
-
-  async function mulFrInG1(point, fieldval) {
-    EncTimeStart = start();
-    const out = await G1.timesFr(point, fieldval);
-    EncTimeAccum += end(EncTimeStart);
-    return out;
-  }
-  async function mulFrInG2(point, fieldval) {
-    EncTimeStart = start();
-    const out = await G2.timesFr(point, fieldval);
-    EncTimeAccum += end(EncTimeStart);
-    return out;
-  }
 }
 
-async function groth16Verify$1(
-    proofName,
-    cRSName,
-    circuitName,
-    instanceId,
-    logger
-) {
-  const startTime = start();
+async function groth16Verify(proofName, cRSName, circuitName, instanceId) {
+    const startTime = start();
+    const ID_KECCAK = 5;
+    
+    const dirPath = `resource/circuits/${circuitName}`;
+    const CRS = 1;
 
-  // const TESTFLAG = process.env.TEST_MODE;
-  const ID_KECCAK = 5;
+    const {fd: fdRS, sections: sectionsRS} = await binFileUtils__namespace.readBinFile(`${dirPath}/${cRSName}.crs`, "zkey", 2, 1<<25, 1<<23);
+    const fdIdV = await fastFile__namespace.readExisting(`${dirPath}/Set_I_V.bin`, 1<<25, 1<<23);
+    const fdIdP = await fastFile__namespace.readExisting(`${dirPath}/Set_I_P.bin`, 1<<25, 1<<23);
+    const fdOpL = await fastFile__namespace.readExisting(`${dirPath}/OpList.bin`, 1<<25, 1<<23);
+    const fdWrL = await fastFile__namespace.readExisting(`${dirPath}/WireList.bin`, 1<<25, 1<<23);
+    const {fd: fdPrf, sections: sectionsPrf} = await binFileUtils__namespace.readBinFile(`${dirPath}/${proofName}.proof`, "prof", 2, 1<<22, 1<<24);
+    
+    const urs = {};
+    const crs = {};
+    urs.param = await readRSParams(fdRS, sectionsRS);
+    const rs = await readRS(fdRS, sectionsRS, urs.param, CRS);
+    const IdSetV = await readIndSet(fdIdV);
+    const IdSetP = await readIndSet(fdIdP);
+    const OpList = await readOpList(fdOpL);
+    const WireList = await readWireList(fdWrL);
+    await fdRS.close();
+    await fdIdV.close();
+    await fdIdP.close();
+    await fdOpL.close();
+    await fdWrL.close();
 
-  const dirPath = `resource/circuits/${circuitName}`;
-  const CRS = 1;
+    
 
-  const {
-    fd: fdRS,
-    sections: sectionsRS,
-  } = await binFileUtils__namespace.readBinFile(
-      `${dirPath}/${cRSName}.crs`,
-      'zkey',
-      2,
-      1<<25,
-      1<<23,
-  );
-  const fdIdV = await fastFile__namespace.readExisting(
-      `${dirPath}/Set_I_V.bin`,
-      1<<25,
-      1<<23,
-  );
-  const fdIdP = await fastFile__namespace.readExisting(
-      `${dirPath}/Set_I_P.bin`,
-      1<<25,
-      1<<23,
-  );
-  const fdOpL = await fastFile__namespace.readExisting(
-      `${dirPath}/OpList.bin`,
-      1<<25,
-      1<<23,
-  );
-  const fdWrL = await fastFile__namespace.readExisting(
-      `${dirPath}/WireList.bin`,
-      1<<25,
-      1<<23,
-  );
-  const {
-    fd: fdPrf,
-    sections: sectionsPrf,
-  } = await binFileUtils__namespace.readBinFile(
-      `${dirPath}/${proofName}.proof`,
-      'prof',
-      2,
-      1<<22,
-      1<<24,
-  );
+    urs.sigmaG = rs.sigmaG;
+    urs.sigmaH = rs.sigmaH;
+    crs.param = rs.crs.param;
+    crs.vk1Uxy1d = rs.crs.vk1Uxy1d;
+    crs.vk1Vxy1d = rs.crs.vk1Vxy1d;
+    crs.vk1Zxy1d = rs.crs.vk1Zxy1d;
+    crs.vk1Axy1d = rs.crs.vk1Axy1d;
+    crs.vk2Vxy1d = rs.crs.vk2Vxy1d;
 
-  const urs = {};
-  const crs = {};
-  urs.param = await readRSParams(fdRS, sectionsRS);
-  const rs = await readRS(fdRS, sectionsRS, urs.param, CRS);
-  const IdSetV = await readIndSet(fdIdV);
-  const IdSetP = await readIndSet(fdIdP);
-  const OpList = await readOpList(fdOpL);
-  const WireList = await readWireList(fdWrL);
-  await fdRS.close();
-  await fdIdV.close();
-  await fdIdP.close();
-  await fdOpL.close();
-  await fdWrL.close();
+    const ParamR1cs = urs.param.r1cs;
+    const curve = urs.param.curve;
+    const G1 = urs.param.curve.G1;
+    const G2 = urs.param.curve.G2;
+    const Fr = urs.param.curve.Fr;
+    curve.Fr.n8;
+    const buffG1 = curve.G1.oneAffine;
+    curve.G2.oneAffine;
+    urs.param.n;
+    urs.param.s_max;
+    urs.param.s_D;
+    await Fr.e(urs.param.omega_x);
+    await Fr.e(urs.param.omega_y);
+    
+    const mPublic = crs.param.mPublic;
+    const mPrivate = crs.param.mPrivate;
+    const NConstWires = 1;
 
-
-  urs.sigmaG = rs.sigmaG;
-  urs.sigmaH = rs.sigmaH;
-  crs.param = rs.crs.param;
-  crs.vk1Uxy1d = rs.crs.vk1Uxy1d;
-  crs.vk1Vxy1d = rs.crs.vk1Vxy1d;
-  crs.vk1Zxy1d = rs.crs.vk1Zxy1d;
-  crs.vk1Axy1d = rs.crs.vk1Axy1d;
-  crs.vk2Vxy1d = rs.crs.vk2Vxy1d;
-
-  const ParamR1cs = urs.param.r1cs;
-  const curve = urs.param.curve;
-  const G1 = urs.param.curve.G1;
-  const G2 = urs.param.curve.G2;
-  const Fr = urs.param.curve.Fr;
-  const buffG1 = curve.G1.oneAffine;
-  const mPublic = crs.param.mPublic;
-  const mPrivate = crs.param.mPrivate;
-  const nConstWires = 1;
-
-  if (!(
-    (mPublic == IdSetV.set.length) && (mPrivate == IdSetP.set.length)
-  )) {
-    throw new Error(
-        `Error in crs file: invalid crs parameters. 
-        mPublic: ${mPublic}, 
-        IdSetV: ${IdSetV.set.length}, 
-        mPrivate: ${mPrivate}, 
-        IdSetP: ${IdSetP.set.length},`,
-    );
-  }
-
-  // list keccak instances
-  const keccakList = [];
-  for (let k=0; k<OpList.length; k++) {
-    const kPrime = OpList[k];
-    if (kPrime == ID_KECCAK) {
-      keccakList.push(k);
+    if(!((mPublic == IdSetV.set.length) && (mPrivate == IdSetP.set.length)))
+    {
+        throw new Error(`Error in crs file: invalid crs parameters. mPublic: ${mPublic}, IdSetV: ${IdSetV.set.length}, mPrivate: ${mPrivate}, IdSetP: ${IdSetP.set.length},`)
     }
-  }
 
-  // / generate instance for each subcircuit
-  const hexKeccakInstance = [];
-  const subInstance = new Array(OpList.length);
-  OpList.forEach((kPrime, index) => {
-    const inputs = JSON.parse(
-        fs.readFileSync(
-            `${dirPath}/instance${instanceId}/Input_opcode${index}.json`,
-            'utf8',
-        ),
-    );
-    const outputs = JSON.parse(
-        fs.readFileSync(
-            `${dirPath}/instance${instanceId}/Output_opcode${index}.json`,
-            'utf8',
-        ),
-    );
-    const instanceKHex = [];
-    for (let i=0; i<nConstWires; i++) {
-      instanceKHex.push('0x01');
+    /// list keccak instances
+    const keccakList = [];
+    for (var k=0; k<OpList.length; k++){
+        let kPrime = OpList[k];
+        if (kPrime == ID_KECCAK){
+            keccakList.push(k);
+        }
     }
-    if (keccakList.indexOf(index)>-1) {
-      instanceKHex.push('0x01');
-    } else {
-      instanceKHex.push(...outputs.out);
+
+    /// generate instance for each subcircuit
+    const hex_keccakInstance = [];
+    let subInstance = new Array(OpList.length);
+    await OpList.forEach((kPrime, index) => {
+		const inputs = JSON.parse(fs.readFileSync(`${dirPath}/instance${instanceId}/Input_opcode${index}.json`, "utf8"));
+        const outputs = JSON.parse(fs.readFileSync(`${dirPath}/instance${instanceId}/Output_opcode${index}.json`, "utf8"));
+        const instance_k_hex = [];
+        for(var i=0; i<NConstWires; i++){
+            instance_k_hex.push('0x01');
+        }
+        if (keccakList.indexOf(index)>-1){
+            instance_k_hex.push('0x01');
+        } else {
+            instance_k_hex.push(...outputs.out);
+        }
+        instance_k_hex.push(...inputs.in);
+        if(instance_k_hex.length != ParamR1cs[kPrime].mPublic+NConstWires){
+            throw new Error(`Error in loading subinstances: wrong instance size`)
+        }
+        if (keccakList.indexOf(index)>-1){
+            let keccakItems = [];
+            keccakItems.push('0x01');
+            keccakItems.push(...outputs.out);
+            keccakItems.push(...inputs.in);
+            hex_keccakInstance.push(keccakItems);
+        }
+        let instance_k = new Array(ParamR1cs[kPrime].mPublic+NConstWires);
+        for(var i=0; i<instance_k.length; i++){
+            instance_k[i] = BigInt(instance_k_hex[i]);
+        }
+        subInstance[index] = instance_k;
+    });
+
+    /// arrange circuit instance accroding to Set_I_V.bin (= IdSetV), which ideally consists of only subcircuit outputs
+    let cInstance = new Array(IdSetV.set.length);
+    for(var i=0; i<IdSetV.set.length; i++){
+        const kPrime = WireList[IdSetV.set[i]][0];
+        const iPrime = WireList[IdSetV.set[i]][1];
+        if(iPrime<NConstWires || iPrime>=NConstWires+ParamR1cs[OpList[kPrime]].mPublic){
+            throw new Error(`Error in arranging circuit instance: containing a private wire`);
+        }
+        // if(iPrime<NConstWires || iPrime>=NConstWires+NOutputWires){
+        //     throw new Error(`Error in arranging circuit instance: containing an input wire`);
+        // }
+        cInstance[i] = subInstance[kPrime][iPrime];
     }
-    instanceKHex.push(...inputs.in);
-    if (instanceKHex.length != ParamR1cs[kPrime].mPublic+nConstWires) {
-      throw new Error(`Error in loading subinstances: wrong instance size`);
+    if (cInstance.length != mPublic){
+        throw new Error('Error in arranging circuit instance: wrong instance size');
     }
-    if (keccakList.indexOf(index)>-1) {
-      const keccakItems = [];
-      keccakItems.push('0x01');
-      keccakItems.push(...outputs.out);
-      keccakItems.push(...inputs.in);
-      hexKeccakInstance.push(keccakItems);
+   
+    
+    /// read proof
+    await binFileUtils__namespace.startReadUniqueSection(fdPrf, sectionsPrf, 2);
+    const vk1_A = await readG1(fdPrf, curve);
+    const vk2_B = await readG2(fdPrf, curve);
+    const vk1_C = await readG1(fdPrf, curve);
+    await binFileUtils__namespace.endReadSection(fdPrf);
+    await fdPrf.close();
+
+    /// Compute term D
+    let EncTime = start();
+    let vk1_D;
+    vk1_D = await G1.timesFr(buffG1, Fr.e(0));
+    for(var i=0; i<mPublic; i++){
+        let term = await G1.timesFr(crs.vk1Zxy1d[i], Fr.e(cInstance[i]));
+        vk1_D = await G1.add(vk1_D, term);
     }
-    const instanceK = new Array(ParamR1cs[kPrime].mPublic+nConstWires);
-    for (let i=0; i<instanceK.length; i++) {
-      instanceK[i] = BigInt(instanceKHex[i]);
+    EncTime = end(EncTime);
+    
+    /// Verify
+    let PairingTime = start();
+    const res = await curve.pairingEq(urs.sigmaG.vk1AlphaV, urs.sigmaH.vk2AlphaU,
+        vk1_D, urs.sigmaH.vk2GammaZ,
+        vk1_C, urs.sigmaH.vk2GammaA,
+        vk1_A,  await G2.neg(vk2_B));
+    PairingTime = end(PairingTime);
+    console.log(`Circuit verification result = ${res}`);
+
+    let HashTime = start();
+    const { keccak256 } = hash__default["default"];
+    let res2 = true;
+    for (var i=0; i<keccakList.length; i++){
+        // keccak has two inputs and one output
+        const hex_expected = hex_keccakInstance[i][1].slice(2);
+        let hex_inputs=[];
+        hex_inputs[0] = hex_keccakInstance[i][2].slice(2);
+        hex_inputs[1] = hex_keccakInstance[i][3].slice(2);
+        const con_hex_in = hex_inputs[0] + hex_inputs[1];
+        const string_input = hexToString(con_hex_in);
+        
+        const hex_hashout = keccak256(string_input);
+        res2 = res2 && (hex_expected == hex_hashout);
     }
-    subInstance[index] = instanceK;
-  });
-
-  // arrange circuit instance accroding to Set_I_V.bin (= IdSetV),
-  // which ideally consists of only subcircuit outputs
-  const cInstance = new Array(IdSetV.set.length);
-  for (let i=0; i<IdSetV.set.length; i++) {
-    const kPrime = WireList[IdSetV.set[i]][0];
-    const iPrime = WireList[IdSetV.set[i]][1];
-    if (
-      iPrime<nConstWires ||
-        iPrime>=nConstWires+ParamR1cs[OpList[kPrime]].mPublic
-    ) {
-      throw new Error(
-          'Error in arranging circuit instance: containing a private wire.',
-      );
+    HashTime = end(HashTime);
+    if (keccakList.length>0){
+        console.log(`Keccak verification result = ${res2}`);
     }
-    cInstance[i] = subInstance[kPrime][iPrime];
-  }
-  if (cInstance.length != mPublic) {
-    throw new Error(
-        'Error in arranging circuit instance: wrong instance size.',
-    );
-  }
 
+    const totalTime = end(startTime);
+    console.log(` `);
+    console.log(`-----Verify Time Analyzer-----`);
+    console.log(`###Total ellapsed time: ${totalTime} [ms]`);
+    console.log(` ##Encryption time: ${EncTime} [ms] (${EncTime/totalTime*100} %)`);
+    console.log(` ##Pairing time: ${PairingTime} [ms] (${PairingTime/totalTime*100} %)`);
+    console.log(` ##Hashing time: ${HashTime} [ms] (${HashTime/totalTime*100} %)`);
 
-  // / read proof
-  await binFileUtils__namespace.startReadUniqueSection(fdPrf, sectionsPrf, 2);
-  const vk1A = await readG1(fdPrf, curve);
-  const vk2B = await readG2(fdPrf, curve);
-  const vk1C = await readG1(fdPrf, curve);
-  await binFileUtils__namespace.endReadSection(fdPrf);
-  await fdPrf.close();
-
-  // / Compute term D
-  let EncTime = start();
-  let vk1D;
-  vk1D = await G1.timesFr(buffG1, Fr.e(0));
-  for (let i=0; i<mPublic; i++) {
-    const term = await G1.timesFr(crs.vk1Zxy1d[i], Fr.e(cInstance[i]));
-    vk1D = await G1.add(vk1D, term);
-  }
-  EncTime = end(EncTime);
-
-  // / Verify
-  let PairingTime = start();
-  const res = await curve.pairingEq(urs.sigmaG.vk1AlphaV, urs.sigmaH.vk2AlphaU,
-      vk1D, urs.sigmaH.vk2GammaZ,
-      vk1C, urs.sigmaH.vk2GammaA,
-      vk1A, await G2.neg(vk2B));
-  PairingTime = end(PairingTime);
-  if (logger) logger.debug(`Circuit verification result = ${res}`);
-
-  let HashTime = start();
-  const {keccak256} = hash__default["default"];
-  let res2 = true;
-  for (let i=0; i<keccakList.length; i++) {
-    // keccak has two inputs and one output
-    const hexExpected = hexKeccakInstance[i][1].slice(2);
-    const hexInputArray=[];
-    hexInputArray[0] = hexKeccakInstance[i][2].slice(2);
-    hexInputArray[1] = hexKeccakInstance[i][3].slice(2);
-    const conHexIn = hexInputArray[0] + hexInputArray[1];
-    const strInput = hexToString(conHexIn);
-
-    const hexHashOut = keccak256(strInput);
-    res2 = res2 && (hexExpected == hexHashOut);
-  }
-  HashTime = end(HashTime);
-  if (keccakList.length>0) {
-    if (logger) logger.debug(`Keccak verification result = ${res2}`);
-  }
-
-  const totalTime = end(startTime);
-  if (logger) {
-    logger.debug('  ');
-    logger.debug('----- Verify Time Analyzer -----');
-    logger.debug(`### Total ellapsed time: ${totalTime} [ms]`);
-    logger.debug(` ## Encryption time: ${EncTime} [ms] (${(EncTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(` ## Pairing time: ${PairingTime} [ms] (${(PairingTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(` ## Hashing time: ${HashTime} [ms] (${(HashTime/totalTime*100).toFixed(3)} %)`);
-  }
-  return res && res2;
-}
-function hexToString(hex) {
-  if (!hex.match(/^[0-9a-fA-F]+$/)) {
-    throw new Error('is not a hex string.');
-  }
-  if (hex.length % 2 !== 0) {
-    hex = '0' + hex;
-  }
-  const bytes = [];
-  for (let n = 0; n < hex.length; n += 2) {
-    const code = parseInt(hex.substr(n, 2), 16);
-    bytes.push(code);
-  }
-  return bytes;
+    function hexToString(hex) {
+        if (!hex.match(/^[0-9a-fA-F]+$/)) {
+          throw new Error('is not a hex string.');
+        }
+        if (hex.length % 2 !== 0) {
+          hex = '0' + hex;
+        }
+        var bytes = [];
+        for (var n = 0; n < hex.length; n += 2) {
+          var code = parseInt(hex.substr(n, 2), 16);
+          bytes.push(code);
+        }
+        return bytes;
+      }
 }
 
-async function buildQAP$1(curveName, sD, minSMax, logger) {
+chai__default["default"].assert;
+
+
+async function buildQAP(curveName, sD, minSMax) {
   const startTime = start();
   let partTime;
-
-  // read debug mode from enviroment variable
-  const TESTFLAG = process.env.TEST_MODE;
-  const assert = chai__default["default"].assert;
   const r1cs = [];
   const sR1cs = [];
 
@@ -3506,7 +2742,7 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
 
   partTime = start();
   for (let i=0; i<sD; i++) {
-    if (logger) logger.debug(`Loading R1CSs...${i+1}/${sD}`);
+    console.log(`Loading R1CSs...${i+1}/${sD}`);
     const r1csIdx = String(i);
     const {
       fd: fdR1cs,
@@ -3526,7 +2762,7 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
     );
     await fdR1cs.close();
   }
-  if (logger) logger.debug(`Loading R1CSs...Done`);
+  console.log(`Loading R1CSs...Done`);
   const r1csTime = end(partTime);
 
   const fdRS = await binFileUtils.createBinFile(
@@ -3542,8 +2778,8 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
   const Fr = curve.Fr;
 
   if (r1cs[0].prime != curve.r) {
-    if (logger) logger.debug('r1cs_prime: ', r1cs[0].prime);
-    if (logger) logger.debug('curve_r: ', curve.r);
+    console.log('r1cs_prime: ', r1cs[0].prime);
+    console.log('curve_r: ', curve.r);
     throw new Error(
         'r1cs curve does not match powers of tau ceremony curve',
     );
@@ -3602,15 +2838,6 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
   const expos = Math.ceil(Math.log2(minSMax));
   const sMax = 2**expos;
   const omegaY = await Fr.exp(Fr.w[Fr.s], ffjavascript.Scalar.exp(2, Fr.s-expos));
-
-  // TODO: chai should not be used for production code
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug(`Running Test 1`);
-    assert(Fr.eq(await Fr.exp(Fr.e(n), primeR), Fr.e(n)));
-    assert(Fr.eq(await Fr.exp(Fr.e(omegaX), n), Fr.one));
-    assert(Fr.eq(await Fr.exp(Fr.e(omegaY), sMax), Fr.one));
-    if (logger) logger.debug(`Test 1 finished`);
-  }
   // End of test code 1 //
 
   // the maximum number of gates in each subcircuit:
@@ -3624,13 +2851,6 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
   // Generator for evaluation points on X and Y
   await binFileUtils.writeBigInt(fdRS, Fr.toObject(omegaX), n8r);
   await binFileUtils.writeBigInt(fdRS, Fr.toObject(omegaY), n8r);
-
-  // Test code 2 //
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug(`Running Test 2`);
-    assert(Fr.eq(omegaX, Fr.e(Fr.toObject(omegaX))));
-    if (logger) logger.debug(`Test 2 finished`);
-  }
   // End of test code 2 //
 
   await binFileUtils.endWriteSection(fdRS);
@@ -3647,17 +2867,17 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
 
   partTime = start();
 
-  if (logger) logger.debug(
+  console.log(
       `Generating Lagrange bases for X with ${n} evaluation points...`,
   );
   const lagrangeBasis = await buildCommonPolys(rs);
-  if (logger) logger.debug(
+  console.log(
       `Generating Lagrange bases for X with ${n} evaluation points...Done`,
   );
 
   let FSTimeAccum = 0;
   for (let k=0; k<sD; k++) {
-    if (logger) logger.debug(`Interpolating ${3*m[k]} QAP polynomials...${k+1}/${sD}`);
+    console.log(`Interpolating ${3*m[k]} QAP polynomials...${k+1}/${sD}`);
     const {
       uX: uX,
       vX: vX,
@@ -3669,7 +2889,7 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
         sR1cs[k],
     );
 
-    if (logger) logger.debug(`File writing the polynomials...`);
+    console.log(`File writing the polynomials...`);
     const FSTime = start();
     const fdQAP = await binFileUtils.createBinFile(
         `${dirPath}/subcircuit${k}.qap`,
@@ -3725,21 +2945,21 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
   const qapTime = end(partTime);
   const totalTime = end(startTime);
 
-  if (logger) {
-    logger.debug(' ');
-    logger.debug('----- Build QAP Time Analyzer -----');
-    logger.debug(`### Total ellapsed time: ${totalTime} [ms]`);
-    logger.debug(` ## R1CS loading time: ${r1csTime} [ms] (${(r1csTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(` ## Total QAP time for ${m.reduce((accu, curr) => accu + curr)} wires: ${qapTime} [ms] (${(qapTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # QAP interpolation time: ${qapTime-FSTimeAccum} [ms] (${((qapTime-FSTimeAccum)/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # QAP file writing time: ${FSTimeAccum} [ms] (${(FSTimeAccum/totalTime*100).toFixed(3)} %)`);
-    logger.debug(` ## Average QAP time per wire with ${n} interpolation points: ${qapTime/m.reduce((accu, curr) => accu + curr)} [ms]`);
-  } 
+  console.log(' ');
+  console.log('-----Build QAP Time Analyzer-----');
+  console.log(`###Total ellapsed time: ${totalTime} [ms]`);
+  console.log(` ##R1CS loading time: ${r1csTime} [ms] (${r1csTime/totalTime*100} %)`);
+  console.log(` ##Total QAP time for ${m.reduce((accu, curr) => accu + curr)} wires: ${qapTime} [ms] (${qapTime/totalTime*100} %)`);
+  console.log(`  #QAP interpolation time: ${qapTime-FSTimeAccum} [ms] (${(qapTime-FSTimeAccum)/totalTime*100} %)`);
+  console.log(`  #QAP file writing time: ${FSTimeAccum} [ms] (${FSTimeAccum/totalTime*100} %)`);
+  console.log(` ##Average QAP time per wire with ${n} interpolation points: ${qapTime/m.reduce((accu, curr) => accu + curr)} [ms]`);
 }
 
-async function buildSingleQAP$1(paramName, id, logger) {
-  const TESTFLAG = process.env.TEST_MODE;
-  const assert = chai__default["default"].assert;
+chai__default["default"].assert;
+
+
+async function buildSingleQAP(paramName, id) {
+
   const QAPName = `QAP${paramName.slice(5)}`;
   fs.mkdir(
       path__default["default"].join(
@@ -3777,10 +2997,10 @@ async function buildSingleQAP$1(paramName, id, logger) {
   const sR1cs = await binFileUtils.readSection(fdR1cs, sectionsR1cs, 2);
   await fdR1cs.close();
 
-  // if (logger) logger.debug('checkpoint0');
+  console.log('checkpoint0');
 
   const curve = param.curve;
-  const Fr = curve.Fr;
+  curve.Fr;
   const r1cs = param.r1cs[id];
   if (r1cs === undefined) {
     throw new Error(
@@ -3790,7 +3010,7 @@ async function buildSingleQAP$1(paramName, id, logger) {
 
   // Write parameters section
   // /////////
-  // if (logger) logger.debug(`checkpoint4`);
+  console.log(`checkpoint4`);
 
   // Group parameters
   const primeR = curve.r;
@@ -3805,26 +3025,10 @@ async function buildSingleQAP$1(paramName, id, logger) {
 
   const sMax = param.sMax;
   const omegaY = param.sMax;
-
-  // Test code 1 // --> DONE
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug(`Running Test 1`);
-    assert(Fr.eq(await Fr.exp(Fr.e(n), primeR), Fr.e(n)));
-    assert(Fr.eq(await Fr.exp(Fr.e(omegaX), n), Fr.one));
-    assert(Fr.eq(await Fr.exp(Fr.e(omegaY), sMax), Fr.one));
-    if (logger) logger.debug(`Test 1 finished`);
-  }
   // End of test code 1 //
 
 
-  // if (logger) logger.debug(`checkpoint5`);
-
-  // Test code 2 //
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug(`Running Test 2`);
-    assert(Fr.eq(omegaX, Fr.e(Fr.toObject(omegaX))));
-    if (logger) logger.debug(`Test 2 finished`);
-  }
+  console.log(`checkpoint5`);
   // End of test code 2 //
 
   // / End of parameters section
@@ -3837,7 +3041,7 @@ async function buildSingleQAP$1(paramName, id, logger) {
   rs.omegaY = omegaY;
   const lagrangeBasis = await buildCommonPolys(rs);
 
-  if (logger) logger.debug(`k: ${id}`);
+  console.log(`k: ${id}`);
   const {
     uX: uX,
     vX: vX,
@@ -3889,128 +3093,14 @@ async function buildSingleQAP$1(paramName, id, logger) {
   await fdQAP.close();
 }
 
-/* eslint-disable no-console */
-const logger = Logger__default["default"].create('UniGro16js', {showTimestamp: false});
-Logger__default["default"].setLogLevel('INFO');
-
-const commands = [
-  {
-    cmd: 'setup [paramName] [RSName] [QAPName] [entropy]',
-    description: 'setup phase',
-    alias: ['st'],
-    options: "-verbose|v",
-    action: setup,
-  },
-  {
-    cmd: 'derive [RSName] [cRSName] [circuitName] [QAPName]',
-    description: 'derive phase',
-    alias: ['dr'],
-    options: "-verbose|v",
-    action: derive,
-  },
-  {
-    cmd: 'prove [cRSName] [proofName] [circuitName] [instanceId] [entropy]',
-    description: 'prove phase',
-    alias: ['pr'],
-    options: "-verbose|v",
-    action: groth16Prove,
-  },
-  {
-    cmd: 'verify [proofName] [cRSName] [circuitName] [instanceId]',
-    description: 'verify phase',
-    alias: ['vr'],
-    options: "-verbose|v",
-    action: groth16Verify,
-  },
-  {
-    cmd: 'qap-all [curveName] [s_D] [min_s_max]',
-    description: 'build all qap',
-    alias: ['qa'],
-    options: "-verbose|v",
-    action: buildQAP,
-  },
-  {
-    cmd: 'qap-single [paramName] [id]',
-    description: 'build a single qap',
-    alias: ['qs'],
-    options: "-verbose|v",
-    action: buildSingleQAP,
-  },
-];
-
-clProcessor(commands).then( (res) => {
-  process.exit(res);
-}, (err) => {
-  logger.error(err);
-  process.exit(1);
+var zkey = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  setup: setup,
+  derive: uniDerive,
+  groth16Prove: groth16Prove,
+  groth16Verify: groth16Verify,
+  buildQAP: buildQAP,
+  buildSingleQAP: buildSingleQAP
 });
 
-
-async function setup(params, options) {
-  const paramName = params[0];
-  const RSName = params[1];
-  const QAPName = params[2];
-  const entropy = params[3];
-
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
-
-  return setup$1(paramName, RSName, QAPName, entropy, logger);
-}
-async function derive(params, options) {
-  const RSName = params[0];
-  const cRSName = params[1];
-  const circuitName = params[2];
-  const QAPName = params[3];
-
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
-
-  return derive$1(RSName, cRSName, circuitName, QAPName, logger);
-}
-async function groth16Prove(params, options) {
-  const cRSName = params[0];
-  const proofName = params[1];
-  const circuitName = params[2];
-  const instanceId = params[3];
-  const entropy = params[4];
-
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
-
-  return groth16Prove$1(cRSName, proofName, circuitName, instanceId, entropy, logger);
-}
-async function groth16Verify(params, options) {
-  const proofName = params[0];
-  const cRSName = params[1];
-  const circuitName = params[2];
-  let instanceId;
-  if (params[3] === undefined) {
-    instanceId = '';
-  } else {
-    instanceId = params[3];
-  }
-
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
-  
-  const isValid = await groth16Verify$1(proofName, cRSName, circuitName, instanceId, logger);
-  if (isValid === true) {
-    console.log('VALID');
-  } else {
-    console.log('INVALID');
-  }
-}
-async function buildQAP(params, options) {
-  const curveName = params[0];
-  const sD = params[1];
-  const minSMax = params[2];
-
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
-
-  return buildQAP$1(curveName, sD, minSMax, logger);
-}
-async function buildSingleQAP(params, options) {
-  const paramName = params[0];
-  const id = params[1];
-
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
-
-  return buildSingleQAP$1(paramName, id, logger);
-}
+exports.zKey = zkey;

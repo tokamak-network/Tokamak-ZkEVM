@@ -15,5 +15,6 @@ export default {
     external: [
         ...Object.keys(pkg.dependencies),
         ...builtin,
+        'chai',
     ]
 };

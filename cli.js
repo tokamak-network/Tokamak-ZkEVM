@@ -1,117 +1,130 @@
 /* eslint-disable no-console */
 
-import clProcessor from "./src/clprocessor.js";
-import * as zkey from "./src/uni_zkey.js";
-import Logger from "logplease";
-const logger = Logger.create("snarkJS", {showTimestamp:false});
-Logger.setLogLevel("INFO");
+import clProcessor from './src/clprocessor.js';
+import * as zkey from './src/zkey.js';
+import Logger from 'logplease';
+const logger = Logger.create('UniGro16js', {showTimestamp: false});
+Logger.setLogLevel('INFO');
 
 const commands = [
-    {
-        cmd: "setup [paramName] [RSName] [QAPName] [entropy]",
-        description: "setup phase",
-        alias: ["st"],
-        action: uniSetup
-    },
-    {
-        cmd: "derive [RSName] [cRSName] [circuitName] [QAPName]",
-        description: "derive phase",
-        alias: ["dr"],
-        action: uniDerive
-    },
-    {
-        cmd: "prove [cRSName] [proofName] [circuitName] [instanceId] [entropy]",
-        description: "prove phase",
-        alias: ["dr"],
-        action: groth16Prove
-    },
-    {
-        cmd: "verify [proofName] [cRSName] [circuitName] [instanceId]",
-        description: "verify phase",
-        alias: ["dr"],
-        action: groth16Verify
-    },
-    {
-        cmd: "QAP_all [curveName] [s_D] [min_s_max]",
-        description: "prephase",
-        alias: ["dr"],
-        action: uniBuildQAP
-    },
-    {
-        cmd: "QAP_single [paramName] [id]",
-        description: "prephase",
-        alias: ["dr"],
-        action: uniBuildQAP_single
-    }
+  {
+    cmd: 'setup [paramName] [RSName] [QAPName] [entropy]',
+    description: 'setup phase',
+    alias: ['st'],
+    options: "-verbose|v",
+    action: setup,
+  },
+  {
+    cmd: 'derive [RSName] [cRSName] [circuitName] [QAPName]',
+    description: 'derive phase',
+    alias: ['dr'],
+    options: "-verbose|v",
+    action: derive,
+  },
+  {
+    cmd: 'prove [cRSName] [proofName] [circuitName] [instanceId] [entropy]',
+    description: 'prove phase',
+    alias: ['pr'],
+    options: "-verbose|v",
+    action: groth16Prove,
+  },
+  {
+    cmd: 'verify [proofName] [cRSName] [circuitName] [instanceId]',
+    description: 'verify phase',
+    alias: ['vr'],
+    options: "-verbose|v",
+    action: groth16Verify,
+  },
+  {
+    cmd: 'qap-all [curveName] [s_D] [min_s_max]',
+    description: 'build all qap',
+    alias: ['qa'],
+    options: "-verbose|v",
+    action: buildQAP,
+  },
+  {
+    cmd: 'qap-single [paramName] [id]',
+    description: 'build a single qap',
+    alias: ['qs'],
+    options: "-verbose|v",
+    action: buildSingleQAP,
+  },
 ];
 
 clProcessor(commands).then( (res) => {
-    process.exit(res);
+  process.exit(res);
 }, (err) => {
-    logger.error(err);
-    process.exit(1);
+  logger.error(err);
+  process.exit(1);
 });
 
 
-// setup [curveName], [s_D], [min_s_max], [r1csName], [RSName], [entropy]
-async function uniSetup(params) {
-    const paramName = params[0];
-    const RSName = params[1];
-    const QAPName = params[2];
-    const entropy = params[3];
+async function setup(params, options) {
+  const paramName = params[0];
+  const RSName = params[1];
+  const QAPName = params[2];
+  const entropy = params[3];
 
-    // console.log(curveName, s_D, min_x_max, r1csName, RSName, entropy)
-    return zkey.uniSetup(paramName, RSName, QAPName, entropy);
+  if (options.verbose) Logger.setLogLevel("DEBUG");
+
+  return zkey.setup(paramName, RSName, QAPName, entropy, logger);
 }
-// derive [RSName] [cRSName] [circuitName] [QAPName]
-async function uniDerive(params) {
-    const RSName = params[0];
-    const cRSName = params[1];
-    const circuitName = params[2];
-    const QAPName = params[3];
+async function derive(params, options) {
+  const RSName = params[0];
+  const cRSName = params[1];
+  const circuitName = params[2];
+  const QAPName = params[3];
 
-    // console.log(RSName, cRSName, IndSetVName, IndSetPName, OpListName)
-    return zkey.uniDerive(RSName, cRSName, circuitName, QAPName);
+  if (options.verbose) Logger.setLogLevel("DEBUG");
+
+  return zkey.derive(RSName, cRSName, circuitName, QAPName, logger);
 }
+async function groth16Prove(params, options) {
+  const cRSName = params[0];
+  const proofName = params[1];
+  const circuitName = params[2];
+  const instanceId = params[3];
+  const entropy = params[4];
 
-async function groth16Prove(params){
-    const cRSName = params[0];
-    const proofName = params[1];
-    const circuitName = params[2];
-    const instanceId = params[3];
-    const entropy = params[4];
+  if (options.verbose) Logger.setLogLevel("DEBUG");
 
-    return zkey.groth16Prove(cRSName, proofName, circuitName, instanceId, entropy)
+  return zkey.groth16Prove(cRSName, proofName, circuitName, instanceId, entropy, logger);
 }
+async function groth16Verify(params, options) {
+  const proofName = params[0];
+  const cRSName = params[1];
+  const circuitName = params[2];
+  let instanceId;
+  if (params[3] === undefined) {
+    instanceId = '';
+  } else {
+    instanceId = params[3];
+  }
 
-async function groth16Verify(params){
-    const proofName = params[0];
-    const cRSName = params[1];
-    const circuitName = params[2];
-    let instanceId;
-    if (params[3] === undefined){
-        instanceId = '';
-    } else{
-        instanceId = params[3];
-    }
-
-
-    return zkey.groth16Verify(proofName, cRSName, circuitName, instanceId)
+  if (options.verbose) Logger.setLogLevel("DEBUG");
+  
+  const isValid = await zkey.groth16Verify(proofName, cRSName, circuitName, instanceId, logger);
+  if (isValid === true) {
+    console.log('VALID')
+  } else {
+    console.log('INVALID')
+  }
 }
+async function buildQAP(params, options) {
+  const curveName = params[0];
+  const sD = params[1];
+  const minSMax = params[2];
 
-async function uniBuildQAP(params){
-    const curveName = params[0];
-    const s_D = params[1];
-    const min_s_max = params[2];
+  if (options.verbose) Logger.setLogLevel("DEBUG");
 
-    return zkey.uniBuildQAP(curveName, s_D, min_s_max)
+  return zkey.buildQAP(curveName, sD, minSMax, logger);
 }
+async function buildSingleQAP(params, options) {
+  const paramName = params[0];
+  const id = params[1];
 
-// QAP_single [paramName] [id]
-async function uniBuildQAP_single(params){
-    const paramName = params[0];
-    const id = params[1];
+  if (options.verbose) Logger.setLogLevel("DEBUG");
 
-    return zkey.uniBuildQAP_single(paramName, id)
+  return zkey.buildSingleQAP(paramName, id, logger);
 }
 

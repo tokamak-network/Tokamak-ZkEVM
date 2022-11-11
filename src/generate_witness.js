@@ -1,10 +1,10 @@
-import builder from './witness_calculator.js'
+import builder from './witness_calculator.cjs'
 import * as fastFile from 'fastfile'
-import { readOpList } from './uni_zkey_utils.js'
+import { readOpList } from './utils/zkey_utils.js'
 import { readFileSync, writeFile, mkdir } from 'fs'
 import path from "path"
 import appRootPath from 'app-root-path'
-// Example: generateWitness('test_transfer')
+
 /**
  * 
  * @param {resource/circuits/서킷명} circuitName 

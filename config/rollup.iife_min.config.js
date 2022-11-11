@@ -5,7 +5,7 @@ export default {
     ...config,
     output: {
         ...config.output,
-        file: "build/snarkjs.min.js",
+        file: "build/unigroth.min.js",
         sourcemap: false,
     },
     plugins: [
