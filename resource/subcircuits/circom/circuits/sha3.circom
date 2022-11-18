@@ -9,5 +9,4 @@ template SHA3 () {
     for (var i=0; i<2; i++){
         out * (in[i] - in[i]) === 0;
     }
-    
 }
