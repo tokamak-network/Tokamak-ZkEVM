@@ -19,5 +19,4 @@ template AddMod () {
   mod.in[1] <== in[2];
   
   out <== mod.out;
-  // sum === div.out * in[2] + out;
 }
