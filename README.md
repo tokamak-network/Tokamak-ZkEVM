@@ -158,9 +158,9 @@ All file names used in the following commands does not include the file name ext
 
 - [A report on performance test](https://github.com/Onther-Tech/UniGro16js/blob/master/Performance.md)
 
-## Paper
+## Technical specification
 
-- will be uploaded.
+- [The technical specification of UniGroth16](https://drive.google.com/file/d/1DTEWbiKalPe3l1ohniP60jlyr-vIUiuH/view?usp=sharing)
 
 ## Contact
 
