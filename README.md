@@ -141,7 +141,7 @@ All file names used in the following commands does not include the file name ext
   11. Enter ```node . verify proof2 crsSchnorr_prove schnorr_prove 2``` to run **verify** for the instance-1-2 of the application-1.
   12. Enter ```node . verify proof crsSchnorr_verify schnorr_verify 1``` to run **verify** for the instance-2-1 of the application-2.
 
-  Since this is under construction, you can set `TESTMODE` environment variable to test or check intermediate results using -v or --verbose.
+  Since this is under construction, you can set `TESTMODE` environment variable to true for testing or check intermediate results using -v or --verbose.
 
 - Summary of input parameters used for the test run
 
