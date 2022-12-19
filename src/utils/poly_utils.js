@@ -262,7 +262,7 @@ export async function subPoly(Fr, coefs1, coefs2) {
   return res;
 }
 
-export async function mulPoly(Fr, coefs1, coefs2) {
+export function mulPoly(Fr, coefs1, coefs2) {
   const N1_X = coefs1.length;
   const N1_Y = coefs1[0].length;
   const N2_X = coefs2.length;
@@ -391,7 +391,7 @@ export async function divPoly(Fr, coefs1, coefs2, objectFlag) {
       }
     }
     quo[diffOrderX][diffOrderY] = scaler;
-    const energy = await mulPoly(Fr, quo, denom);
+    const energy = mulPoly(Fr, quo, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     return {quo, rem};
@@ -444,7 +444,7 @@ export async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
-    const energy = await mulPoly(Fr, quoXY, denom);
+    const energy = mulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -509,7 +509,7 @@ export async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
-    const energy = await mulPoly(Fr, quoXY, denom);
+    const energy = mulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -731,4 +731,66 @@ export async function tensorProduct(Fr, _array1, _array2) {
     product[i] = temprow;
   }
   return product;
+}
+
+
+// TODO: Fr object elements
+export function fftMulPolys(Fr, coefs1, coefs2) {
+
+  // initialize A
+  const realA = ndarray(coefs1);
+  const imgA = ndarray(new Array(coefs1.length));
+  ops.assigns(imgA, Fr.zero);
+  
+  // initialize B
+  const realB = ndarray(coefs2);
+  const imgB = ndarray(new Array(coefs2.length));
+  ops.assigns(imgB, Fr.zero);
+  
+  // calculate degree of the output polynomial
+  const degreeA = realA.shape[0];
+  const degreeB = realB.shape[0];
+  const degreeR = degreeA + degreeB - 1;
+  
+  // make array with size of output degree for both A, B
+  const realC = ndarray(new Array(degreeR));
+  const imgC = ndarray(new Array(degreeR));
+
+  ops.assign(realC.hi(degreeA), realA);
+  ops.assigns(realC.lo(degreeA), Fr.zero);
+  ops.assign(imgC.hi(degreeA), imgA);
+  ops.assigns(imgC.lo(degreeA), Fr.zero);
+
+  const realD = ndarray(new Array(degreeR));
+  const imgD = ndarray(new Array(degreeR));
+
+  ops.assign(realD.hi(degreeB), realB);
+  ops.assigns(realD.lo(degreeB), Fr.zero);
+  ops.assign(imgD.hi(degreeB), imgB);
+  ops.assigns(imgD.lo(degreeB), Fr.zero);
+
+  // fft FIXME: Fr op
+  fft(1, realC, imgC)
+  fft(1, realD, imgD)
+
+  // TODO: multiply the two sample repr. vector 
+  // FIXME: use add and mul defined in Fr
+
+  const a = realC;
+  const b = imgC;
+  const c = realD;
+  const d = imgD;
+
+  const k1 = mulFrArray(c, addFrArray(a, b)); // c * (a + b)
+  
+  realC = subFrArray(k1, mulFrArray(b, addFrArray(c, d))); // k1 - b * (c + d)
+  imgC = addFrArray(k1, mulFrArray(a, subFrArray(d, c)));  // k1 + a * (d - c)
+
+  
+  // TODO: IFFT
+
+
+
+  // TODO: return output coef array
+
 }
