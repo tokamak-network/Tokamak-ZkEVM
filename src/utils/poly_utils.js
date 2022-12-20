@@ -733,64 +733,76 @@ export async function tensorProduct(Fr, _array1, _array2) {
   return product;
 }
 
-
-// TODO: Fr object elements
 export function fftMulPolys(Fr, coefs1, coefs2) {
-
-  // initialize A
-  const realA = ndarray(coefs1);
-  const imgA = ndarray(new Array(coefs1.length));
-  ops.assigns(imgA, Fr.zero);
   
-  // initialize B
-  const realB = ndarray(coefs2);
-  const imgB = ndarray(new Array(coefs2.length));
-  ops.assigns(imgB, Fr.zero);
+  // TODO: copy array
+  // TODO: padding coefs1 and coefs2
+  /**
+   * FIXME: 자동으로 차원 패딩해야 함.
+   * 최고차항 계산해서 총 몇개의 좌표가 필요한지로 패딩해야 함.
+   * 곱했을 때 하나의 변수의 최고차수를 포함하는 2의 제곱수로 패딩하면 됨.
+  */
+
+  // get fft of coefs1
+  // perform fft repective of x
+  const fftOfX1 = []
+  for (let i = 0; i < coefs1.length; i++) {
+    fftOfX1.push(Fr.fft(coefs1[i]))
+  }
   
-  // calculate degree of the output polynomial
-  const degreeA = realA.shape[0];
-  const degreeB = realB.shape[0];
-  const degreeR = degreeA + degreeB - 1;
+  const fftOfXY1 = []
+  // perform fft repective of y
+  for (let i = 0; i < fftOfX1[0].length; i++) {
+    const temp = []
+    for (let j = 0; j < fftOfX1.length; j++) {
+      temp.push(fftOfX1[j][i])
+    }
+    fftOfXY1.push(Fr.fft(temp))
+  }
+
+  // get fft of coefs2
+  // perform fft repective of x
+  const fftOfX2 = []
+  for (let i = 0; i < coefs2.length; i++) {
+    fftOfX2.push(Fr.fft(coefs2[i]))
+  }
   
-  // make array with size of output degree for both A, B
-  const realC = ndarray(new Array(degreeR));
-  const imgC = ndarray(new Array(degreeR));
-
-  ops.assign(realC.hi(degreeA), realA);
-  ops.assigns(realC.lo(degreeA), Fr.zero);
-  ops.assign(imgC.hi(degreeA), imgA);
-  ops.assigns(imgC.lo(degreeA), Fr.zero);
-
-  const realD = ndarray(new Array(degreeR));
-  const imgD = ndarray(new Array(degreeR));
-
-  ops.assign(realD.hi(degreeB), realB);
-  ops.assigns(realD.lo(degreeB), Fr.zero);
-  ops.assign(imgD.hi(degreeB), imgB);
-  ops.assigns(imgD.lo(degreeB), Fr.zero);
-
-  // fft FIXME: Fr op
-  fft(1, realC, imgC)
-  fft(1, realD, imgD)
-
-  // TODO: multiply the two sample repr. vector 
-  // FIXME: use add and mul defined in Fr
-
-  const a = realC;
-  const b = imgC;
-  const c = realD;
-  const d = imgD;
-
-  const k1 = mulFrArray(c, addFrArray(a, b)); // c * (a + b)
-  
-  realC = subFrArray(k1, mulFrArray(b, addFrArray(c, d))); // k1 - b * (c + d)
-  imgC = addFrArray(k1, mulFrArray(a, subFrArray(d, c)));  // k1 + a * (d - c)
-
-  
-  // TODO: IFFT
+  const fftOfXY2 = []
+  // perform fft repective of y
+  for (let i = 0; i < fftOfX2[0].length; i++) {
+    const temp = []
+    for (let j = 0; j < fftOfX2.length; j++) {
+      temp.push(fftOfX2[j][i])
+    }
+    fftOfXY2.push(Fr.fft(temp))
+  }
 
 
+  // FIXME: multiply polynomial
+  if (fftOfXY1.length !== fftOfXY2.length) {
+    return Error('FFTs are not compatible to multiply.')
+  }
+  for (let i = 0; i < fftOfXY1.length; i++) {
+    for (let j = 0; j < fftOfXY1[0].length; j++) {
+      fftOfXY1[i][j] = fftOfXY1[i][j] * fftOfXY2[i][j]
+    }
+  }
 
-  // TODO: return output coef array
+  // perform inverse fft respective of y
+  const ifftXY = []
+  for (let i = 0; i < fftOfXY1.length; i++) {
+    ifftXY.push(Fr.ifft(fftOfXY1[i]))
+  }
 
+  // perform inverse fft repective of x
+  const ifftX = []
+  for (let i = 0; i < ifftXY[0].length; i++) {
+    const temp = []
+    for (let j = 0; j < ifftXY.length; j++) {
+      temp.push(ifftXY[j][i])
+    }
+    ifftX.push(Fr.ifft(temp))
+  }
+
+  return ifftX
 }
