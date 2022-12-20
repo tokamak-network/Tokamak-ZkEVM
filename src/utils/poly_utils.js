@@ -1,4 +1,4 @@
-import {processConstraints} from './zkey_utils.js';
+import { processConstraints } from './zkey_utils.js';
 import * as binFileUtils from '@iden3/binfileutils';
 
 /**
@@ -733,7 +733,7 @@ export async function tensorProduct(Fr, _array1, _array2) {
   return product;
 }
 
-export function fftMulPolys(Fr, coefs1, coefs2) {
+export async function fftMulPolys(Fr, coefs1, coefs2) {
   
   // TODO: copy array
   // TODO: padding coefs1 and coefs2
@@ -747,7 +747,7 @@ export function fftMulPolys(Fr, coefs1, coefs2) {
   // perform fft repective of x
   const fftOfX1 = []
   for (let i = 0; i < coefs1.length; i++) {
-    fftOfX1.push(Fr.fft(coefs1[i]))
+    fftOfX1.push(await Fr.fft(coefs1[i]))
   }
   
   const fftOfXY1 = []
@@ -757,14 +757,14 @@ export function fftMulPolys(Fr, coefs1, coefs2) {
     for (let j = 0; j < fftOfX1.length; j++) {
       temp.push(fftOfX1[j][i])
     }
-    fftOfXY1.push(Fr.fft(temp))
+    fftOfXY1.push(await Fr.fft(temp))
   }
 
   // get fft of coefs2
   // perform fft repective of x
   const fftOfX2 = []
   for (let i = 0; i < coefs2.length; i++) {
-    fftOfX2.push(Fr.fft(coefs2[i]))
+    fftOfX2.push(await Fr.fft(coefs2[i]))
   }
   
   const fftOfXY2 = []
@@ -774,24 +774,24 @@ export function fftMulPolys(Fr, coefs1, coefs2) {
     for (let j = 0; j < fftOfX2.length; j++) {
       temp.push(fftOfX2[j][i])
     }
-    fftOfXY2.push(Fr.fft(temp))
+    fftOfXY2.push(await Fr.fft(temp))
   }
 
 
-  // FIXME: multiply polynomial
+  // multiply polynomial
   if (fftOfXY1.length !== fftOfXY2.length) {
     return Error('FFTs are not compatible to multiply.')
   }
   for (let i = 0; i < fftOfXY1.length; i++) {
     for (let j = 0; j < fftOfXY1[0].length; j++) {
-      fftOfXY1[i][j] = fftOfXY1[i][j] * fftOfXY2[i][j]
+      fftOfXY1[i][j] = Fr.mul(fftOfXY1[i][j], fftOfXY2[i][j])
     }
   }
 
   // perform inverse fft respective of y
   const ifftXY = []
   for (let i = 0; i < fftOfXY1.length; i++) {
-    ifftXY.push(Fr.ifft(fftOfXY1[i]))
+    ifftXY.push(await Fr.ifft(fftOfXY1[i]))
   }
 
   // perform inverse fft repective of x
@@ -801,7 +801,7 @@ export function fftMulPolys(Fr, coefs1, coefs2) {
     for (let j = 0; j < ifftXY.length; j++) {
       temp.push(ifftXY[j][i])
     }
-    ifftX.push(Fr.ifft(temp))
+    ifftX.push(await Fr.ifft(temp))
   }
 
   return ifftX
