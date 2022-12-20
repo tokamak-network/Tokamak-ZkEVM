@@ -740,18 +740,18 @@ export async function fftMulPolys(Fr, coefs1, coefs2) {
   /**
    * FIXME: 자동으로 차원 패딩해야 함.
    * 최고차항 계산해서 총 몇개의 좌표가 필요한지로 패딩해야 함.
-   * 곱했을 때 하나의 변수의 최고차수를 포함하는 2의 제곱수로 패딩하면 됨.
+   * "곱했을 때" 하나의 변수의 최고차수를 포함하는 2의 제곱수로 패딩하면 됨.
   */
 
   // get fft of coefs1
-  // perform fft repective of x
+  // perform fft with respect to x
   const fftOfX1 = []
   for (let i = 0; i < coefs1.length; i++) {
     fftOfX1.push(await Fr.fft(coefs1[i]))
   }
   
   const fftOfXY1 = []
-  // perform fft repective of y
+  // perform fft with respect to y
   for (let i = 0; i < fftOfX1[0].length; i++) {
     const temp = []
     for (let j = 0; j < fftOfX1.length; j++) {
@@ -761,14 +761,14 @@ export async function fftMulPolys(Fr, coefs1, coefs2) {
   }
 
   // get fft of coefs2
-  // perform fft repective of x
+  // perform fft with respect to x
   const fftOfX2 = []
   for (let i = 0; i < coefs2.length; i++) {
     fftOfX2.push(await Fr.fft(coefs2[i]))
   }
   
   const fftOfXY2 = []
-  // perform fft repective of y
+  // perform fft with respect to y
   for (let i = 0; i < fftOfX2[0].length; i++) {
     const temp = []
     for (let j = 0; j < fftOfX2.length; j++) {
@@ -788,13 +788,13 @@ export async function fftMulPolys(Fr, coefs1, coefs2) {
     }
   }
 
-  // perform inverse fft respective of y
+  // perform inverse fft with respect to                                                                                                                                                                                                                                                                                                                                                                      y
   const ifftXY = []
   for (let i = 0; i < fftOfXY1.length; i++) {
     ifftXY.push(await Fr.ifft(fftOfXY1[i]))
   }
 
-  // perform inverse fft repective of x
+  // perform inverse fft with respect to x
   const ifftX = []
   for (let i = 0; i < ifftXY[0].length; i++) {
     const temp = []
