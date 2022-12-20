@@ -738,7 +738,7 @@ export async function fftMulPolys(Fr, coefs1, coefs2) {
   // TODO: copy array
   // TODO: padding coefs1 and coefs2
   /**
-   * FIXME: 자동으로 차원 패딩해야 함.
+   * TODO: 자동으로 차원 패딩해야 함.
    * 최고차항 계산해서 총 몇개의 좌표가 필요한지로 패딩해야 함.
    * "곱했을 때" 하나의 변수의 최고차수를 포함하는 2의 제곱수로 패딩하면 됨.
   */
