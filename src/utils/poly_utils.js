@@ -733,65 +733,111 @@ export async function tensorProduct(Fr, _array1, _array2) {
   return product;
 }
 
+/**
+ * 
+ * @param {number} x : value
+ * @returns {number} : the smallest power of 2 that is greater than x
+ */
+function minPowerOfTwo(x) {
+  return Math.pow(2, Math.round(Math.log(x) / Math.log(2)));
+}
+
+/**
+ * 
+ * @param {Array} matrix 2D Array of nested 1D arrays
+ * @param {Number} targetRowLength outer array length of the return matrix
+ * @param {Number} targetColLength inner array length of the return matrix
+ * @returns matrix with size of expectedRowLength and expectedColLength
+ */
+function paddingMatrix(Fr, matrix, targetRowLength, targetColLength) {
+  if (targetRowLength < matrix.length || targetColLength < matrix[0].length) return
+
+  // padding inner arrays
+  const extraCol = new Array(targetColLength - matrix[0].length).fill(Fr.e(0))
+  for (let i = 0; i < matrix.length; i++) {
+    matrix[i] = matrix[i].concat(extraCol)
+  }
+
+  // padding outer arrays
+  const extraRow = new Array(matrix[0].length).fill(Fr.e(0))
+  const extraRowLength = targetRowLength - matrix.length
+  for (let i = 0; i < extraRowLength; i++) {
+    matrix.push(extraRow)
+  }
+
+  return matrix
+}
+
 export async function fftMulPolys(Fr, coefs1, coefs2) {
   
-  // TODO: copy array
-  // TODO: padding coefs1 and coefs2
-  /**
-   * TODO: 자동으로 차원 패딩해야 함.
-   * 최고차항 계산해서 총 몇개의 좌표가 필요한지로 패딩해야 함.
-   * "곱했을 때" 하나의 변수의 최고차수를 포함하는 2의 제곱수로 패딩하면 됨.
-  */
+  // copy array
+  let coefsA = coefs1.slice(0)
+  let coefsB = coefs2.slice(0)
 
-  // get fft of coefs1
+  // array reduce dimension
+  coefsA = reduceDimPoly(Fr, coefsA)
+  coefsB = reduceDimPoly(Fr, coefsB)
+ 
+  // find the smallest power of 2 that is greater than the multiplication of coefsA and coefsB
+  const xDegree = coefsA.length + coefsB.length - 1
+  const yDegree = coefsA[0].length + coefsB[0].length - 1
+  
+  let minPowerOfTwoForX = minPowerOfTwo(xDegree)
+  let minPowerOfTwoForY = minPowerOfTwo(yDegree)
+  
+  // padding coefsA and coefsB
+  paddingMatrix(Fr, coefsA, minPowerOfTwoForX, minPowerOfTwoForY)
+  paddingMatrix(Fr, coefsB, minPowerOfTwoForX, minPowerOfTwoForY)
+  
+  // get fft of coefsA
   // perform fft with respect to x
-  const fftOfX1 = []
-  for (let i = 0; i < coefs1.length; i++) {
-    fftOfX1.push(await Fr.fft(coefs1[i]))
+  const fftOfXA = []
+  for (let i = 0; i < coefsA.length; i++) {
+    fftOfXA.push(await Fr.fft(coefsA[i]))
   }
   
-  const fftOfXY1 = []
+  const fftOfXYA = []
   // perform fft with respect to y
-  for (let i = 0; i < fftOfX1[0].length; i++) {
+  for (let i = 0; i < fftOfXA[0].length; i++) {
     const temp = []
-    for (let j = 0; j < fftOfX1.length; j++) {
-      temp.push(fftOfX1[j][i])
+    for (let j = 0; j < fftOfXA.length; j++) {
+      temp.push(fftOfXA[j][i])
     }
-    fftOfXY1.push(await Fr.fft(temp))
+    fftOfXYA.push(await Fr.fft(temp))
   }
 
-  // get fft of coefs2
+  // get fft of coefsB
   // perform fft with respect to x
-  const fftOfX2 = []
-  for (let i = 0; i < coefs2.length; i++) {
-    fftOfX2.push(await Fr.fft(coefs2[i]))
+  const fftOfXB = []
+  for (let i = 0; i < coefsB.length; i++) {
+    fftOfXB.push(await Fr.fft(coefsB[i]))
   }
   
-  const fftOfXY2 = []
+  const fftOfXYB = []
   // perform fft with respect to y
-  for (let i = 0; i < fftOfX2[0].length; i++) {
+  for (let i = 0; i < fftOfXB[0].length; i++) {
     const temp = []
-    for (let j = 0; j < fftOfX2.length; j++) {
-      temp.push(fftOfX2[j][i])
+    for (let j = 0; j < fftOfXB.length; j++) {
+      temp.push(fftOfXB[j][i])
     }
-    fftOfXY2.push(await Fr.fft(temp))
+    fftOfXYB.push(await Fr.fft(temp))
   }
 
 
   // multiply polynomial
-  if (fftOfXY1.length !== fftOfXY2.length) {
+  if (fftOfXYA.length !== fftOfXYB.length) {
     return Error('FFTs are not compatible to multiply.')
   }
-  for (let i = 0; i < fftOfXY1.length; i++) {
-    for (let j = 0; j < fftOfXY1[0].length; j++) {
-      fftOfXY1[i][j] = Fr.mul(fftOfXY1[i][j], fftOfXY2[i][j])
+  for (let i = 0; i < fftOfXYA.length; i++) {
+    for (let j = 0; j < fftOfXYA[0].length; j++) {
+      fftOfXYA[i][j] = Fr.mul(fftOfXYA[i][j], fftOfXYA[i][j])
     }
   }
 
   // perform inverse fft with respect to                                                                                                                                                                                                                                                                                                                                                                      y
   const ifftXY = []
-  for (let i = 0; i < fftOfXY1.length; i++) {
-    ifftXY.push(await Fr.ifft(fftOfXY1[i]))
+  for (let i = 0; i < fftOfXYA.length; i++) {
+    ifftXY.push(await Fr.ifft(fftOfXYA[i]))
   }
 
   // perform inverse fft with respect to x
