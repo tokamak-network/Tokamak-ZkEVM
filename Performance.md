@@ -110,7 +110,7 @@ contract transferContract {
 |Time for pairing and hashing|-|-|-|-|0||
 
 # 3. Input Node.js commands to reproduce the results
-- How to use UniGro16js can be found [here](https://github.com/Onther-Tech/UniGro16js/edit/master/README.md)
+- How to use UniGro16js can be found [here](https://github.com/Onther-Tech/UniGro16js/blob/master/README.md)
 - Input commands (Find the values to put in the parameters in square brackets from the table below)
   1. To build source codes, go to the main directory and enter ```npm run buildcli```.
   1. To **compile**, go to the directory ```./resource/subcircuits``` and enter ```./compile.sh``` .
