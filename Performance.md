@@ -7,7 +7,7 @@ This document records the time spent for running the whole UniGro16 protocol.
 - OS: Windows
 
 ## 1.2. EVM system
-- 26 Circom subcircuits for 24 EVM instructions are implemented.
+- 28 Circom subcircuits for 27 EVM instructions are implemented.
 - The subcircuit information of each instruction is as follows,
 
 |Index|Instruction|Opcode|NWires|NOutputs|NInputs|Note|
@@ -38,6 +38,8 @@ This document records the time spent for running the whole UniGro16 protocol.
 |23|SHR-L|0x1c1|19|1|2|A subcircuit of SHR for input value smaller than circom's modulo|
 |24|SHR-H|0x1c2|19|1|2|A subcircuit of SHR for input value greater than circom's modulo|
 |25|SAR|0x1d|286|1|2||
+|26|SIGNEXTEND|0x0b|290|1|2||
+|27|BYTE|0x1a|276|1|2||
 
 ## 1.3. Test EVM Applications
 ### 1.3.1. Schnorr protocol proving algorithm
@@ -122,7 +124,7 @@ contract transferContract {
 
 |Parameters |Schnorr protocol proving algorithm |Ether transfer|
 |:---------:|:---------:|:---------:|
-|s_D        |12|26|
+|s_D        |12|28|
 |s_max      |18|21|
 |rsName     |"rs_18"|"rs_21"|
 |crsName    |"crsSchnorr_prove"|"crsEtherTransfer"|
