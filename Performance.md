@@ -124,7 +124,7 @@ contract transferContract {
 
 |Parameters |Schnorr protocol proving algorithm |Ether transfer|
 |:---------:|:---------:|:---------:|
-|s_D        |12|28|
+|s_D        |12|26|
 |s_max      |18|21|
 |rsName     |"rs_18"|"rs_21"|
 |crsName    |"crsSchnorr_prove"|"crsEtherTransfer"|
