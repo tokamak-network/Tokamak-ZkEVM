@@ -116,7 +116,7 @@ contract transferContract {
   1. To **compile**, go to the directory ```./resource/subcircuits``` and enter ```./compile.sh``` .
   3. Go back to the main directory and enter ```node build/cli.cjs QAP_all bn128 [s_D] [s_max]``` to run **buildQAP**.
   4. Enter ```node build/cli.cjs setup param_[s_D]_[s_max] rs_[s_max] QAP_[s_D]_[s_max] 1``` to run **setup**.
-  5. Enter ```node build/cli.cjs derive rs_[s_D] [crsName] [circuitName] QAP_[s_D]_[s_max]``` to run **derive** for the application-1.
+  5. Enter ```node build/cli.cjs derive rs_[s_max] [crsName] [circuitName] QAP_[s_D]_[s_max]``` to run **derive** for the application-1.
   7. Enter ```node build/cli.cjs prove [crsName] proof [circuitName] 1 1``` to run **prove** for the instance-1-1 of the application-1.
   10. Enter ```node build/cli.cjs verify proof [crsName] [circuitName] 1``` to run **verify** for the instance-1-1 of the application-1.
 
