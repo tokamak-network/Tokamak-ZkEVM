@@ -299,7 +299,7 @@ export default async function groth16Prove(
   }
   await fdQAP.close();
 
-  const temp = await polyUtils.mulPoly(Fr, p1XY, p2XY);
+  const temp = await polyUtils.fftMulPolys(Fr, p1XY, p2XY);
   const pXY = await polyUtils.subPoly(Fr, temp, p3XY);
   pxyTime = timer.end(pxyTime);
 
@@ -350,8 +350,8 @@ export default async function groth16Prove(
       }
     }
     let res = pXY;
-    const temp1 = await polyUtils.mulPoly(Fr, h1XY, tX);
-    const temp2 = await polyUtils.mulPoly(Fr, h2XY, tY);
+    const temp1 = await polyUtils.fftMulPolys(Fr, h1XY, tX);
+    const temp2 = await polyUtils.fftMulPolys(Fr, h2XY, tY);
     res= await polyUtils.subPoly(Fr, res, temp1);
     res= await polyUtils.subPoly(Fr, res, temp2);
     if (!Fr.eq(
@@ -361,7 +361,7 @@ export default async function groth16Prove(
       throw new Error('Error in pXY=h1t+h2t');
     }
 
-    if (logger) logger.debug(`Test 3 finished`);
+    if (logger) logger.debug('Test 3 finished');
   }
   // / End of TEST CODE 3
 
