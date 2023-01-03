@@ -735,8 +735,8 @@ export async function tensorProduct(Fr, _array1, _array2) {
 
 /**
  * 
- * @param {number} x : value
- * @returns {number} : the smallest power of 2 that is greater than x
+ * @param {number} x  value
+ * @returns {number}  the smallest power of 2 that is greater than x
  */
 function minPowerOfTwo(x) {
   return Math.pow(2, Math.round(Math.log(x) / Math.log(2)));
@@ -747,7 +747,6 @@ function minPowerOfTwo(x) {
  * @param {Array} matrix 2D Array of nested 1D arrays
  * @param {Number} targetRowLength outer array length of the return matrix
  * @param {Number} targetColLength inner array length of the return matrix
- * @returns matrix with size of expectedRowLength and expectedColLength
  */
 function paddingMatrix(Fr, matrix, targetRowLength, targetColLength) {
   if (targetRowLength < matrix.length || targetColLength < matrix[0].length) return
@@ -764,10 +763,14 @@ function paddingMatrix(Fr, matrix, targetRowLength, targetColLength) {
   for (let i = 0; i < extraRowLength; i++) {
     matrix.push(extraRow)
   }
-
-  return matrix
 }
-
+/**
+ * 
+ * @param {Fr} Fr   Finite field element of a curve
+ * @param {Array} coefs1  2D nested array of coefficients
+ * @param {Array} coefs2  2D nested array of coefficients
+ * @returns {Array}       2D nested array of coefficients of multiplication
+ */
 export async function fftMulPolys(Fr, coefs1, coefs2) {
   
   // copy array
@@ -823,32 +826,31 @@ export async function fftMulPolys(Fr, coefs1, coefs2) {
     fftOfXYB.push(await Fr.fft(temp))
   }
 
-
   // multiply polynomial
   if (fftOfXYA.length !== fftOfXYB.length) {
     return Error('FFTs are not compatible to multiply.')
   }
   for (let i = 0; i < fftOfXYA.length; i++) {
     for (let j = 0; j < fftOfXYA[0].length; j++) {
-      fftOfXYA[i][j] = Fr.mul(fftOfXYA[i][j], fftOfXYA[i][j])
+      fftOfXYA[i][j] = Fr.mul(fftOfXYA[i][j], fftOfXYB[i][j])
     }
   }
-
-  // perform inverse fft with respect to                                                                                                                                                                                                                                                                                                                                                                      y
-  const ifftXY = []
-  for (let i = 0; i < fftOfXYA.length; i++) {
-    ifftXY.push(await Fr.ifft(fftOfXYA[i]))
-  }
-
+  
   // perform inverse fft with respect to x
   const ifftX = []
-  for (let i = 0; i < ifftXY[0].length; i++) {
-    const temp = []
-    for (let j = 0; j < ifftXY.length; j++) {
-      temp.push(ifftXY[j][i])
-    }
-    ifftX.push(await Fr.ifft(temp))
+  for (let i = 0; i < fftOfXYA.length; i++) {
+    ifftX.push(await Fr.ifft(fftOfXYA[i]))
   }
 
-  return ifftX
+  // perform inverse fft with respect to y
+  const coefsC = []
+  for (let i = 0; i < ifftX[0].length; i++) {
+    const temp = []
+    for (let j = 0; j < ifftX.length; j++) {
+      temp.push(ifftX[j][i])
+    }
+    coefsC.push(await Fr.ifft(temp))
+  }
+
+  return coefsC
 }
