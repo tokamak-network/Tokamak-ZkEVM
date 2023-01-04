@@ -1003,7 +1003,7 @@ async function subPoly(Fr, coefs1, coefs2) {
   return res;
 }
 
-async function mulPoly(Fr, coefs1, coefs2) {
+function mulPoly(Fr, coefs1, coefs2) {
   const N1_X = coefs1.length;
   const N1_Y = coefs1[0].length;
   const N2_X = coefs2.length;
@@ -1115,7 +1115,7 @@ async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
-    const energy = await mulPoly(Fr, quoXY, denom);
+    const energy = mulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -1180,7 +1180,7 @@ async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
-    const energy = await mulPoly(Fr, quoXY, denom);
+    const energy = mulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -1402,6 +1402,128 @@ async function tensorProduct(Fr, _array1, _array2) {
     product[i] = temprow;
   }
   return product;
+}
+
+/**
+ * 
+ * @param {number} x  value
+ * @returns {number}  the smallest power of 2 that is greater than x
+ */
+function minPowerOfTwo(x) {
+  return Math.pow(2, Math.round(Math.log(x) / Math.log(2)));
+}
+
+/**
+ * 
+ * @param {Array} matrix 2D Array of nested 1D arrays
+ * @param {Number} targetRowLength outer array length of the return matrix
+ * @param {Number} targetColLength inner array length of the return matrix
+ */
+function paddingMatrix(Fr, matrix, targetRowLength, targetColLength) {
+  if (targetRowLength < matrix.length || targetColLength < matrix[0].length) return
+
+  // padding inner arrays
+  const extraCol = new Array(targetColLength - matrix[0].length).fill(Fr.e(0));
+  for (let i = 0; i < matrix.length; i++) {
+    matrix[i] = matrix[i].concat(extraCol);
+  }
+
+  // padding outer arrays
+  const extraRow = new Array(matrix[0].length).fill(Fr.e(0));
+  const extraRowLength = targetRowLength - matrix.length;
+  for (let i = 0; i < extraRowLength; i++) {
+    matrix.push(extraRow);
+  }
+}
+/**
+ * 
+ * @param {Fr} Fr   Finite field element of a curve
+ * @param {Array} coefs1  2D nested array of coefficients
+ * @param {Array} coefs2  2D nested array of coefficients
+ * @returns {Array}       2D nested array of coefficients of multiplication
+ */
+async function fftMulPolys(Fr, coefs1, coefs2) {
+  
+  // copy array
+  let coefsA = coefs1.slice(0);
+  let coefsB = coefs2.slice(0);
+
+  // array reduce dimension
+  coefsA = reduceDimPoly(Fr, coefsA);
+  coefsB = reduceDimPoly(Fr, coefsB);
+ 
+  // find the smallest power of 2 that is greater than the multiplication of coefsA and coefsB
+  const xDegree = coefsA.length + coefsB.length - 1;
+  const yDegree = coefsA[0].length + coefsB[0].length - 1;
+  
+  let minPowerOfTwoForX = minPowerOfTwo(xDegree);
+  let minPowerOfTwoForY = minPowerOfTwo(yDegree);
+  
+  // padding coefsA and coefsB
+  paddingMatrix(Fr, coefsA, minPowerOfTwoForX, minPowerOfTwoForY);
+  paddingMatrix(Fr, coefsB, minPowerOfTwoForX, minPowerOfTwoForY);
+  
+  // get fft of coefsA
+  // perform fft with respect to x
+  const fftOfXA = [];
+  for (let i = 0; i < coefsA.length; i++) {
+    fftOfXA.push(await Fr.fft(coefsA[i]));
+  }
+  
+  const fftOfXYA = [];
+  // perform fft with respect to y
+  for (let i = 0; i < fftOfXA[0].length; i++) {
+    const temp = [];
+    for (let j = 0; j < fftOfXA.length; j++) {
+      temp.push(fftOfXA[j][i]);
+    }
+    fftOfXYA.push(await Fr.fft(temp));
+  }
+
+  // get fft of coefsB
+  // perform fft with respect to x
+  const fftOfXB = [];
+  for (let i = 0; i < coefsB.length; i++) {
+    fftOfXB.push(await Fr.fft(coefsB[i]));
+  }
+  
+  const fftOfXYB = [];
+  // perform fft with respect to y
+  for (let i = 0; i < fftOfXB[0].length; i++) {
+    const temp = [];
+    for (let j = 0; j < fftOfXB.length; j++) {
+      temp.push(fftOfXB[j][i]);
+    }
+    fftOfXYB.push(await Fr.fft(temp));
+  }
+
+  // multiply polynomial
+  if (fftOfXYA.length !== fftOfXYB.length) {
+    return Error('FFTs are not compatible to multiply.')
+  }
+  for (let i = 0; i < fftOfXYA.length; i++) {
+    for (let j = 0; j < fftOfXYA[0].length; j++) {
+      fftOfXYA[i][j] = Fr.mul(fftOfXYA[i][j], fftOfXYB[i][j]);
+    }
+  }
+  
+  // perform inverse fft with respect to x
+  const ifftX = [];
+  for (let i = 0; i < fftOfXYA.length; i++) {
+    ifftX.push(await Fr.ifft(fftOfXYA[i]));
+  }
+
+  // perform inverse fft with respect to y
+  const coefsC = [];
+  for (let i = 0; i < ifftX[0].length; i++) {
+    const temp = [];
+    for (let j = 0; j < ifftX.length; j++) {
+      temp.push(ifftX[j][i]);
+    }
+    coefsC.push(await Fr.ifft(temp));
+  }
+
+  return coefsC
 }
 
 async function setup$1(
@@ -2927,7 +3049,7 @@ async function groth16Prove$1(
   }
   await fdQAP.close();
 
-  const temp = await mulPoly(Fr, p1XY, p2XY);
+  const temp = await fftMulPolys(Fr, p1XY, p2XY);
   const pXY = await subPoly(Fr, temp, p3XY);
   pxyTime = end(pxyTime);
 
@@ -2978,8 +3100,8 @@ async function groth16Prove$1(
       }
     }
     let res = pXY;
-    const temp1 = await mulPoly(Fr, h1XY, tX);
-    const temp2 = await mulPoly(Fr, h2XY, tY);
+    const temp1 = await fftMulPolys(Fr, h1XY, tX);
+    const temp2 = await fftMulPolys(Fr, h2XY, tY);
     res= await subPoly(Fr, res, temp1);
     res= await subPoly(Fr, res, temp2);
     if (!Fr.eq(
@@ -2989,7 +3111,7 @@ async function groth16Prove$1(
       throw new Error('Error in pXY=h1t+h2t');
     }
 
-    if (logger) logger.debug(`Test 3 finished`);
+    if (logger) logger.debug('Test 3 finished');
   }
   // / End of TEST CODE 3
 
