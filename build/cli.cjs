@@ -2938,7 +2938,7 @@ async function groth16Prove$1(
   await fdQAP.close();
 
   // FIXME: pXY has unexpected values
-  const temp = mulPoly(Fr, p1XY, p2XY);
+  const temp = await mulPoly(Fr, p1XY, p2XY);
   const pXY = await subPoly(Fr, temp, p3XY);
   console.log(pXY);
 
@@ -2949,6 +2949,7 @@ async function groth16Prove$1(
   let PolDivTime = start();
   const {res: h1XY, finalrem: rem1} = await divPolyByX(Fr, pXY, tX);
   if (logger) logger.debug(`  Finding h2(X,Y)...`);
+  // FIXME: 
   const {res: h2XY, finalrem: rem2} = await divPolyByY(Fr, rem1, tY);
   PolDivTime = end(PolDivTime);
   qapSolveTime = end(qapSolveTime);
