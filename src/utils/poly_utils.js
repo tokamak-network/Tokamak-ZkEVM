@@ -1,6 +1,5 @@
 import {processConstraints} from './zkey_utils.js';
 import * as binFileUtils from '@iden3/binfileutils';
-import { DEFAULTS } from '@rollup/plugin-node-resolve';
 
 /**
  *
@@ -392,6 +391,9 @@ export async function divPoly(Fr, coefs1, coefs2, objectFlag) {
       }
     }
     quo[diffOrderX][diffOrderY] = scaler;
+    // console.log(`quo row: ${quo.length}, col: ${quo[0].length}`)
+    // console.log(`denom row: ${denom.length}, col: ${denom[0].length}`)
+    // FIXME:
     const energy = mulPoly(Fr, quo, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
@@ -444,8 +446,14 @@ export async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
           await Fr.inv(deHighCoef),
       );
     }
-
+    
+    // FIXME: 
+    // console.log(`quo row: ${quoXY.length}, col: ${quoXY[0].length}`)
+    // console.log(`denom row: ${denom.length}, col: ${denom[0].length}`)
+    
     const energy = mulPoly(Fr, quoXY, denom);
+    // console.log(energy)
+    // console.log(`energy row: ${energy.length} col: ${energy[0].length}`)
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -510,7 +518,12 @@ export async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
+    // console.log(`quoXY row: ${quoXY.length} col: ${quoXY[0].length}`)
+    // console.log(`denom row: ${denom.length} col: ${denom[0].length}`)
+
+    // FIXME:
     const energy = mulPoly(Fr, quoXY, denom);
+    // console.log(`energy row: ${energy.length} col: ${energy[0].length}`)
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
