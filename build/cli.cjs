@@ -835,9 +835,9 @@ async function buildCommonPolys(rs) {
 }
 
 /**
- * 
+ *
  * @param {*} coefs a matrix of Fr elements
- * @returns 
+ * @returns
  */
 function _polyCheck(coefs) {
   let numVars = 0;
@@ -879,11 +879,11 @@ async function evalPoly(Fr, coefs, x, y) {
 /**
  * Elemetwise multiplication of the coefficients
  * of a polynomial along with a directed variable with a filtering vector
- * @param {*} Fr 
- * @param {*} coefs1 
- * @param {*} vect 
+ * @param {*} Fr
+ * @param {*} coefs1
+ * @param {*} vect
  * @param {*} dir Y:X
- * @returns 
+ * @returns
  */
 async function filterPoly(Fr, coefs1, vect, dir) {
   const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
@@ -915,11 +915,11 @@ async function filterPoly(Fr, coefs1, vect, dir) {
 }
 
 /**
- * 
- * @param {*} Fr 
- * @param {*} coefs 
+ *
+ * @param {*} Fr
+ * @param {*} coefs
  * @param {*} scaler scaler in Fr
- * @returns 
+ * @returns
  */
 async function scalePoly(Fr, coefs, scaler) {
   const nSlotX = coefs.length;
@@ -1114,8 +1114,14 @@ async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
           await Fr.inv(deHighCoef),
       );
     }
-
+    
+    // FIXME: 
+    // console.log(`quo row: ${quoXY.length}, col: ${quoXY[0].length}`)
+    // console.log(`denom row: ${denom.length}, col: ${denom[0].length}`)
+    
     const energy = mulPoly(Fr, quoXY, denom);
+    // console.log(energy)
+    // console.log(`energy row: ${energy.length} col: ${energy[0].length}`)
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -1180,7 +1186,12 @@ async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
+    // console.log(`quoXY row: ${quoXY.length} col: ${quoXY[0].length}`)
+    // console.log(`denom row: ${denom.length} col: ${denom[0].length}`)
+
+    // FIXME:
     const energy = mulPoly(Fr, quoXY, denom);
+    // console.log(`energy row: ${energy.length} col: ${energy[0].length}`)
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -1199,11 +1210,11 @@ async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
 }
 
 /**
- * 
- * @param {*} Fr 
- * @param {*} coefs 
- * @param {*} dir 
- * @returns output order is the highest order in dictionary order
+ *
+ * @param {*} Fr
+ * @param {*} coefs
+ * @param {*} dir
+ * @return output order is the highest order in dictionary order
  */
 function _findOrder(Fr, coefs, dir) {
   const N_X = coefs.length;
@@ -1236,10 +1247,10 @@ function _findOrder(Fr, coefs, dir) {
   return {xId, yId, coef};
 }
 /**
- * 
- * @param {*} Fr 
- * @param {*} coefs 
- * @returns highest orders of respective variables
+ *
+ * @param {*} Fr
+ * @param {*} coefs
+ * @return highest orders of respective variables
  */
 function _orderPoly(Fr, coefs) {
   coefs = _autoTransFromObject(Fr, coefs);
@@ -1385,14 +1396,13 @@ async function readCircuitQAP(
 }
 
 /**
- * 
- * @param {*} Fr 
+ *
+ * @param {*} Fr
  * @param {*} _array1 m-by-1 matrix in Fr
  * @param {*} _array2 1-by-n matrix in Fr
- * @returns 
+ * @returns
  */
 async function tensorProduct(Fr, _array1, _array2) {
-
   const product = new Array(_array1.length);
   for (let i = 0; i < _array1.length; i++) {
     const temprow = new Array(_array2[0].length);
@@ -1402,128 +1412,6 @@ async function tensorProduct(Fr, _array1, _array2) {
     product[i] = temprow;
   }
   return product;
-}
-
-/**
- * 
- * @param {number} x  value
- * @returns {number}  the smallest power of 2 that is greater than x
- */
-function minPowerOfTwo(x) {
-  return Math.pow(2, Math.round(Math.log(x) / Math.log(2)));
-}
-
-/**
- * 
- * @param {Array} matrix 2D Array of nested 1D arrays
- * @param {Number} targetRowLength outer array length of the return matrix
- * @param {Number} targetColLength inner array length of the return matrix
- */
-function paddingMatrix(Fr, matrix, targetRowLength, targetColLength) {
-  if (targetRowLength < matrix.length || targetColLength < matrix[0].length) return
-
-  // padding inner arrays
-  const extraCol = new Array(targetColLength - matrix[0].length).fill(Fr.e(0));
-  for (let i = 0; i < matrix.length; i++) {
-    matrix[i] = matrix[i].concat(extraCol);
-  }
-
-  // padding outer arrays
-  const extraRow = new Array(matrix[0].length).fill(Fr.e(0));
-  const extraRowLength = targetRowLength - matrix.length;
-  for (let i = 0; i < extraRowLength; i++) {
-    matrix.push(extraRow);
-  }
-}
-/**
- * 
- * @param {Fr} Fr   Finite field element of a curve
- * @param {Array} coefs1  2D nested array of coefficients
- * @param {Array} coefs2  2D nested array of coefficients
- * @returns {Array}       2D nested array of coefficients of multiplication
- */
-async function fftMulPolys(Fr, coefs1, coefs2) {
-  
-  // copy array
-  let coefsA = coefs1.slice(0);
-  let coefsB = coefs2.slice(0);
-
-  // array reduce dimension
-  coefsA = reduceDimPoly(Fr, coefsA);
-  coefsB = reduceDimPoly(Fr, coefsB);
- 
-  // find the smallest power of 2 that is greater than the multiplication of coefsA and coefsB
-  const xDegree = coefsA.length + coefsB.length - 1;
-  const yDegree = coefsA[0].length + coefsB[0].length - 1;
-  
-  let minPowerOfTwoForX = minPowerOfTwo(xDegree);
-  let minPowerOfTwoForY = minPowerOfTwo(yDegree);
-  
-  // padding coefsA and coefsB
-  paddingMatrix(Fr, coefsA, minPowerOfTwoForX, minPowerOfTwoForY);
-  paddingMatrix(Fr, coefsB, minPowerOfTwoForX, minPowerOfTwoForY);
-  
-  // get fft of coefsA
-  // perform fft with respect to x
-  const fftOfXA = [];
-  for (let i = 0; i < coefsA.length; i++) {
-    fftOfXA.push(await Fr.fft(coefsA[i]));
-  }
-  
-  const fftOfXYA = [];
-  // perform fft with respect to y
-  for (let i = 0; i < fftOfXA[0].length; i++) {
-    const temp = [];
-    for (let j = 0; j < fftOfXA.length; j++) {
-      temp.push(fftOfXA[j][i]);
-    }
-    fftOfXYA.push(await Fr.fft(temp));
-  }
-
-  // get fft of coefsB
-  // perform fft with respect to x
-  const fftOfXB = [];
-  for (let i = 0; i < coefsB.length; i++) {
-    fftOfXB.push(await Fr.fft(coefsB[i]));
-  }
-  
-  const fftOfXYB = [];
-  // perform fft with respect to y
-  for (let i = 0; i < fftOfXB[0].length; i++) {
-    const temp = [];
-    for (let j = 0; j < fftOfXB.length; j++) {
-      temp.push(fftOfXB[j][i]);
-    }
-    fftOfXYB.push(await Fr.fft(temp));
-  }
-
-  // multiply polynomial
-  if (fftOfXYA.length !== fftOfXYB.length) {
-    return Error('FFTs are not compatible to multiply.')
-  }
-  for (let i = 0; i < fftOfXYA.length; i++) {
-    for (let j = 0; j < fftOfXYA[0].length; j++) {
-      fftOfXYA[i][j] = Fr.mul(fftOfXYA[i][j], fftOfXYB[i][j]);
-    }
-  }
-  
-  // perform inverse fft with respect to x
-  const ifftX = [];
-  for (let i = 0; i < fftOfXYA.length; i++) {
-    ifftX.push(await Fr.ifft(fftOfXYA[i]));
-  }
-
-  // perform inverse fft with respect to y
-  const coefsC = [];
-  for (let i = 0; i < ifftX[0].length; i++) {
-    const temp = [];
-    for (let j = 0; j < ifftX.length; j++) {
-      temp.push(ifftX[j][i]);
-    }
-    coefsC.push(await Fr.ifft(temp));
-  }
-
-  return coefsC
 }
 
 async function setup$1(
@@ -1543,7 +1431,7 @@ async function setup$1(
 
   const TESTFLAG = process.env.TEST_MODE;
   const assert = chai__default["default"].assert;
-  if (logger) logger.debug(`TESTMODE = ${TESTFLAG}`);
+  if (logger) logger.debug(`TEST_MODE = ${TESTFLAG}`);
 
   fs.mkdir(
     path__default["default"].join(
@@ -3049,8 +2937,11 @@ async function groth16Prove$1(
   }
   await fdQAP.close();
 
-  const temp = await fftMulPolys(Fr, p1XY, p2XY);
+  // FIXME: pXY has unexpected values
+  const temp = mulPoly(Fr, p1XY, p2XY);
   const pXY = await subPoly(Fr, temp, p3XY);
+  console.log(pXY);
+
   pxyTime = end(pxyTime);
 
   // / compute H
@@ -3062,9 +2953,11 @@ async function groth16Prove$1(
   PolDivTime = end(PolDivTime);
   qapSolveTime = end(qapSolveTime);
   if (logger) logger.debug(`Solving QAP...Done`);
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug(`rem: ${rem2}`);
-  }
+
+  console.log(`rem: ${rem2}`);
+  // if (TESTFLAG === 'true') {
+    // if (logger) logger.debug(`rem: ${rem2}`);
+  // }
 
   if (TESTFLAG === 'true') {
     // if (logger) logger.debug(`rem2: ${polyUtils._transToObject(Fr, rem2)}`)
@@ -3100,8 +2993,8 @@ async function groth16Prove$1(
       }
     }
     let res = pXY;
-    const temp1 = await fftMulPolys(Fr, h1XY, tX);
-    const temp2 = await fftMulPolys(Fr, h2XY, tY);
+    const temp1 = mulPoly(Fr, h1XY, tX);
+    const temp2 = mulPoly(Fr, h2XY, tY);
     res= await subPoly(Fr, res, temp1);
     res= await subPoly(Fr, res, temp2);
     if (!Fr.eq(
@@ -3111,7 +3004,7 @@ async function groth16Prove$1(
       throw new Error('Error in pXY=h1t+h2t');
     }
 
-    if (logger) logger.debug('Test 3 finished');
+    if (logger) logger.debug(`Test 3 finished`);
   }
   // / End of TEST CODE 3
 
