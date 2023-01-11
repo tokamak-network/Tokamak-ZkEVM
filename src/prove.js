@@ -300,7 +300,7 @@ export default async function groth16Prove(
   await fdQAP.close();
 
   // FIXME: pXY has unexpected values
-  const temp = polyUtils.mulPoly(Fr, p1XY, p2XY);
+  const temp = await polyUtils.fftMulPoly(Fr, p1XY, p2XY);
   const pXY = await polyUtils.subPoly(Fr, temp, p3XY);
   console.log(pXY)
 
@@ -356,8 +356,8 @@ export default async function groth16Prove(
       }
     }
     let res = pXY;
-    const temp1 = polyUtils.mulPoly(Fr, h1XY, tX);
-    const temp2 = polyUtils.mulPoly(Fr, h2XY, tY);
+    const temp1 = await polyUtils.fftMulPoly(Fr, h1XY, tX);
+    const temp2 = await polyUtils.fftMulPoly(Fr, h2XY, tY);
     res= await polyUtils.subPoly(Fr, res, temp1);
     res= await polyUtils.subPoly(Fr, res, temp2);
     if (!Fr.eq(
