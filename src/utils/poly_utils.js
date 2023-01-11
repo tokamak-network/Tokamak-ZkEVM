@@ -832,14 +832,14 @@ function checkDim (array) {
  * @param {Array} coefs2 A nested 2D array
  * @returns {Array} A  nested 2D array of multiplied polynomial coeffients 
  */
-export async function fftMulPolys(Fr, coefs1, coefs2) {
+export async function fftMulPoly(Fr, coefs1, coefs2) {
   // check the shape of coefs
   const shape1 = checkDim(coefs1);
   const shape2 = checkDim(coefs2);
 
   // call fft2d if they both are 2d arrays
   if (shape1 === DIMENSION.Matrix && shape2 === DIMENSION.Matrix) {
-    return await _fft2dMulPolys(Fr, coefs1, coefs2);
+    return await _fft2dMulPoly(Fr, coefs1, coefs2);
   }
   
   let coefsA = coefs1;
@@ -862,7 +862,7 @@ export async function fftMulPolys(Fr, coefs1, coefs2) {
 
   for (let i = 0; i < coefsA.length; i++) {
 
-    result.push(await _fft1dMulPolys(Fr, coefsA[i], coefsB[0]))
+    result.push(await _fft1dMulPoly(Fr, coefsA[i], coefsB[0]))
   }
 
   if (isColumnVector) return transpose(result);
@@ -876,7 +876,7 @@ export async function fftMulPolys(Fr, coefs1, coefs2) {
  * @param {Array} coefs2  2D nested array of coefficients
  * @return {Array}       2D nested array of coefficients of multiplication
  */
-async function _fft2dMulPolys(Fr, coefs1, coefs2) {
+async function _fft2dMulPoly(Fr, coefs1, coefs2) {
   // copy array
   let coefsA = coefs1.slice(0);
   let coefsB = coefs2.slice(0);
