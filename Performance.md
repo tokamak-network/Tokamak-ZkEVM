@@ -7,7 +7,7 @@ This document records the time spent for running the whole UniGro16 protocol.
 - OS: Windows
 
 ## 1.2. EVM system
-- 26 Circom subcircuits for 24 EVM instructions are implemented.
+- 28 Circom subcircuits for 27 EVM instructions are implemented.
 - The subcircuit information of each instruction is as follows,
 
 |Index|Instruction|Opcode|NWires|NOutputs|NInputs|Note|
@@ -38,6 +38,8 @@ This document records the time spent for running the whole UniGro16 protocol.
 |23|SHR-L|0x1c1|19|1|2|A subcircuit of SHR for input value smaller than circom's modulo|
 |24|SHR-H|0x1c2|19|1|2|A subcircuit of SHR for input value greater than circom's modulo|
 |25|SAR|0x1d|286|1|2||
+|26|SIGNEXTEND|0x0b|290|1|2||
+|27|BYTE|0x1a|276|1|2||
 
 ## 1.3. Test EVM Applications
 ### 1.3.1. Schnorr protocol proving algorithm
@@ -108,13 +110,13 @@ contract transferContract {
 |Time for pairing and hashing|-|-|-|-|0||
 
 # 3. Input Node.js commands to reproduce the results
-- How to use UniGro16js can be found [here](https://github.com/Onther-Tech/UniGro16js/edit/master/README.md)
+- How to use UniGro16js can be found [here](https://github.com/Onther-Tech/UniGro16js/blob/master/README.md)
 - Input commands (Find the values to put in the parameters in square brackets from the table below)
   1. To build source codes, go to the main directory and enter ```npm run buildcli```.
   1. To **compile**, go to the directory ```./resource/subcircuits``` and enter ```./compile.sh``` .
   3. Go back to the main directory and enter ```node build/cli.cjs QAP_all bn128 [s_D] [s_max]``` to run **buildQAP**.
   4. Enter ```node build/cli.cjs setup param_[s_D]_[s_max] rs_[s_max] QAP_[s_D]_[s_max] 1``` to run **setup**.
-  5. Enter ```node build/cli.cjs derive rs_[s_D] [crsName] [circuitName] QAP_[s_D]_[s_max]``` to run **derive** for the application-1.
+  5. Enter ```node build/cli.cjs derive rs_[s_max] [crsName] [circuitName] QAP_[s_D]_[s_max]``` to run **derive** for the application-1.
   7. Enter ```node build/cli.cjs prove [crsName] proof [circuitName] 1 1``` to run **prove** for the instance-1-1 of the application-1.
   10. Enter ```node build/cli.cjs verify proof [crsName] [circuitName] 1``` to run **verify** for the instance-1-1 of the application-1.
 
