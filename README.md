@@ -80,7 +80,7 @@ All file names used in the following commands does not include the file name ext
 - **compile**
   - Be sure that the input [circom scripts](https://github.com/Onther-Tech/circom-ethereum-opcodes/blob/main/README.md) are placed in ```./resource/subcircuits/circom/[instruction name]\_test.circom```.
   - Go to the directory ```./resource/subcircuits```.
-  - Enter the command ```./compile```.
+  - Enter the command ```./compile.sh```.
   - Find the output EVM information in ```./resource/subcircuits/wire_list.json```, where the index for each instruction is numbered.
   - Find the output R1CSs in ```./resources/subcircuits/R1CS/subcircuit#.r1cs``` for all indices # of instructions upto sD-1.
   - Find the output wasms ```./resources/subcircuits/wasm/subcircuit#.wasm``` for all indices # of instructions upto sD-1.
