@@ -30,7 +30,7 @@ export default async function setup(
 
   const TESTFLAG = process.env.TEST_MODE;
   const assert = chai.assert;
-  if (logger) logger.debug(`TESTMODE = ${TESTFLAG}`);
+  if (logger) logger.debug(`TEST_MODE = ${TESTFLAG}`);
 
   mkdir(
     path.join(

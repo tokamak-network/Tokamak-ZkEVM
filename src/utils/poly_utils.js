@@ -1,4 +1,4 @@
-import { processConstraints } from './zkey_utils.js';
+import {processConstraints} from './zkey_utils.js';
 import * as binFileUtils from '@iden3/binfileutils';
 
 /**
@@ -94,9 +94,9 @@ export async function buildCommonPolys(rs) {
 }
 
 /**
- * 
+ *
  * @param {*} coefs a matrix of Fr elements
- * @returns 
+ * @returns
  */
 function _polyCheck(coefs) {
   let numVars = 0;
@@ -138,11 +138,11 @@ export async function evalPoly(Fr, coefs, x, y) {
 /**
  * Elemetwise multiplication of the coefficients
  * of a polynomial along with a directed variable with a filtering vector
- * @param {*} Fr 
- * @param {*} coefs1 
- * @param {*} vect 
+ * @param {*} Fr
+ * @param {*} coefs1
+ * @param {*} vect
  * @param {*} dir Y:X
- * @returns 
+ * @returns
  */
 export async function filterPoly(Fr, coefs1, vect, dir) {
   const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
@@ -174,11 +174,11 @@ export async function filterPoly(Fr, coefs1, vect, dir) {
 }
 
 /**
- * 
- * @param {*} Fr 
- * @param {*} coefs 
+ *
+ * @param {*} Fr
+ * @param {*} coefs
  * @param {*} scaler scaler in Fr
- * @returns 
+ * @returns
  */
 export async function scalePoly(Fr, coefs, scaler) {
   const nSlotX = coefs.length;
@@ -391,7 +391,8 @@ export async function divPoly(Fr, coefs1, coefs2, objectFlag) {
       }
     }
     quo[diffOrderX][diffOrderY] = scaler;
-    const energy = mulPoly(Fr, quo, denom);
+
+    const energy = await fftMulPoly(Fr, quo, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     return {quo, rem};
@@ -444,7 +445,7 @@ export async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
-    const energy = mulPoly(Fr, quoXY, denom);
+    const energy = await fftMulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -509,7 +510,7 @@ export async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
-    const energy = mulPoly(Fr, quoXY, denom);
+    const energy = await fftMulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -528,11 +529,11 @@ export async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
 }
 
 /**
- * 
- * @param {*} Fr 
- * @param {*} coefs 
- * @param {*} dir 
- * @returns output order is the highest order in dictionary order
+ *
+ * @param {*} Fr
+ * @param {*} coefs
+ * @param {*} dir
+ * @return output order is the highest order in dictionary order
  */
 function _findOrder(Fr, coefs, dir) {
   const N_X = coefs.length;
@@ -565,10 +566,10 @@ function _findOrder(Fr, coefs, dir) {
   return {xId, yId, coef};
 }
 /**
- * 
- * @param {*} Fr 
- * @param {*} coefs 
- * @returns highest orders of respective variables
+ *
+ * @param {*} Fr
+ * @param {*} coefs
+ * @return highest orders of respective variables
  */
 export function _orderPoly(Fr, coefs) {
   coefs = _autoTransFromObject(Fr, coefs);
@@ -714,14 +715,13 @@ export async function readCircuitQAP(
 }
 
 /**
- * 
- * @param {*} Fr 
+ *
+ * @param {*} Fr
  * @param {*} _array1 m-by-1 matrix in Fr
  * @param {*} _array2 1-by-n matrix in Fr
- * @returns 
+ * @returns
  */
 export async function tensorProduct(Fr, _array1, _array2) {
-
   const product = new Array(_array1.length);
   for (let i = 0; i < _array1.length; i++) {
     const temprow = new Array(_array2[0].length);
@@ -734,123 +734,267 @@ export async function tensorProduct(Fr, _array1, _array2) {
 }
 
 /**
- * 
+ *
  * @param {number} x  value
- * @returns {number}  the smallest power of 2 that is greater than x
+ * @return {number}  the smallest power of 2 that is greater than x
  */
 function minPowerOfTwo(x) {
-  return Math.pow(2, Math.round(Math.log(x) / Math.log(2)));
+  return Math.pow(2, Math.ceil(Math.log(x)/Math.log(2)));
 }
 
 /**
- * 
- * @param {Array} matrix 2D Array of nested 1D arrays
+ * @param {Fr}     Fr     Fr of a curve
+ * @param {Array}  matrix 2D Array of nested 1D arrays
  * @param {Number} targetRowLength outer array length of the return matrix
  * @param {Number} targetColLength inner array length of the return matrix
  */
 function paddingMatrix(Fr, matrix, targetRowLength, targetColLength) {
-  if (targetRowLength < matrix.length || targetColLength < matrix[0].length) return
+  if (targetRowLength < matrix.length &&
+    targetColLength < matrix[0].length) return;
 
   // padding inner arrays
-  const extraCol = new Array(targetColLength - matrix[0].length).fill(Fr.e(0))
+  const extraColLength = targetColLength - matrix[0].length
   for (let i = 0; i < matrix.length; i++) {
-    matrix[i] = matrix[i].concat(extraCol)
+    const extraCol = new Array(extraColLength).fill(Fr.e(0));
+    matrix[i] = matrix[i].concat(extraCol);
   }
 
   // padding outer arrays
-  const extraRow = new Array(matrix[0].length).fill(Fr.e(0))
-  const extraRowLength = targetRowLength - matrix.length
+  const extraRowLength = targetRowLength - matrix.length;
   for (let i = 0; i < extraRowLength; i++) {
-    matrix.push(extraRow)
+    const extraRow = new Array(matrix[0].length).fill(Fr.e(0));
+    matrix.push(extraRow);
   }
 }
+
+function paddingArray(Fr, array, targetLength) {
+  if (targetLength < array.length) return;
+
+  // padding inner arrays
+  const length = targetLength - array.length
+  for (let i = 0; i < length; i++) {
+    array.push(Fr.e(0))
+  }
+}
+
 /**
  * 
+ * @param {Array} array a nested 2D array
+ * @returns {Array} a transposed nested 2D array
+ */
+function transpose(array) {
+  return array.reduce(
+    (result, row) => row.map((_, i) => [...(result[i] || []), row[i]]),
+    []
+  )
+}
+
+const DIMENSION = {
+  'Matrix': 0,
+  'RowVector': 1,
+  'ColVector': -1
+}
+
+/**
+ * 
+ * @param {Array} array A nested 2D array
+ * @returns {Number} A DIMENSION enum value
+ */
+function checkDim (array) {
+  const row = array.length;
+  const col = array[0].length;
+
+  // if (row > 1 && col > 1) return DIMENSION.Matrix;
+
+  if (row === 1) return DIMENSION.RowVector;
+  if (col === 1) return DIMENSION.ColVector;
+
+  return DIMENSION.Matrix;
+}
+
+/**
+ * 
+ * @param {Fr} Fr A curve's Fr
+ * @param {Array} coefs1 A nested 2D array
+ * @param {Array} coefs2 A nested 2D array
+ * @returns {Array} A  nested 2D array of multiplied polynomial coeffients 
+ */
+export async function fftMulPoly(Fr, coefs1, coefs2) {
+  // check the shape of coefs
+  const shape1 = checkDim(coefs1);
+  const shape2 = checkDim(coefs2);
+
+  // call fft2d if they both are 2d arrays
+  if (shape1 === DIMENSION.Matrix && shape2 === DIMENSION.Matrix) {
+    return await _fft2dMulPoly(Fr, coefs1, coefs2);
+  }
+  // call fft1d multiple times looping through column element 
+  // if one of them is 1d array
+  let coefsA = coefs1;
+  let coefsB = coefs2;
+
+  if (shape1 !== shape2) {
+    if (shape2 === DIMENSION.Matrix) {
+      [coefsA, coefsB] = [coefs2, coefs1];
+    }  
+    // transpose array if it has column-wise array
+    const isColumnVector = shape2 === DIMENSION.ColVector;
+    if (isColumnVector) {
+      coefsA = transpose(coefsA);
+      coefsB = transpose(coefsB);
+    }
+    coefsA = reduceDimPoly(Fr, coefsA)
+  
+    // call fft1d looping through the 2d coef array
+    const result = [];
+  
+    for (let i = 0; i < coefsA.length; i++) {
+      result.push(await _fft1dMulPoly(Fr, coefsA[i], coefsB[0]))
+    }
+    if (isColumnVector) return transpose(result);
+    return result;
+  }
+  // call fft1d once if both are 1d arrays of the same shape
+  
+  // transpose array if it has column-wise array
+  const isColumnVector = shape1 === DIMENSION.ColVector;
+  if (isColumnVector) {
+    coefsA = transpose(coefsA);
+    coefsB = transpose(coefsB);
+  }
+  if (isColumnVector) return transpose(await _fft1dMulPoly(Fr, coefsA[0], coefsB[0]));
+  return await _fft1dMulPoly(Fr, coefsA[0], coefsB[0]);
+}
+
+/**
+ *
  * @param {Fr} Fr   Finite field element of a curve
  * @param {Array} coefs1  2D nested array of coefficients
  * @param {Array} coefs2  2D nested array of coefficients
- * @returns {Array}       2D nested array of coefficients of multiplication
+ * @return {Array}       2D nested array of coefficients of multiplication
  */
-export async function fftMulPolys(Fr, coefs1, coefs2) {
-  
+async function _fft2dMulPoly(Fr, coefs1, coefs2) {
   // copy array
-  let coefsA = coefs1.slice(0)
-  let coefsB = coefs2.slice(0)
+  let coefsA = coefs1.slice(0);
+  let coefsB = coefs2.slice(0);
 
   // array reduce dimension
-  coefsA = reduceDimPoly(Fr, coefsA)
-  coefsB = reduceDimPoly(Fr, coefsB)
- 
-  // find the smallest power of 2 that is greater than the multiplication of coefsA and coefsB
-  const xDegree = coefsA.length + coefsB.length - 1
-  const yDegree = coefsA[0].length + coefsB[0].length - 1
-  
-  let minPowerOfTwoForX = minPowerOfTwo(xDegree)
-  let minPowerOfTwoForY = minPowerOfTwo(yDegree)
-  
+  coefsA = reduceDimPoly(Fr, coefsA);
+  coefsB = reduceDimPoly(Fr, coefsB);
+
+  // find the smallest power of 2
+  // that is greater than the multiplication of coefsA and coefsB
+  const xDegree = coefsA.length + coefsB.length - 1;
+  const yDegree = coefsA[0].length + coefsB[0].length - 1;
+
+  const minPowerOfTwoForX = minPowerOfTwo(xDegree);
+  const minPowerOfTwoForY = minPowerOfTwo(yDegree);
+
   // padding coefsA and coefsB
-  paddingMatrix(Fr, coefsA, minPowerOfTwoForX, minPowerOfTwoForY)
-  paddingMatrix(Fr, coefsB, minPowerOfTwoForX, minPowerOfTwoForY)
-  
+  paddingMatrix(Fr, coefsA, minPowerOfTwoForX, minPowerOfTwoForY);
+  paddingMatrix(Fr, coefsB, minPowerOfTwoForX, minPowerOfTwoForY);
+
   // get fft of coefsA
   // perform fft with respect to x
-  const fftOfXA = []
+  const fftOfXA = [];
   for (let i = 0; i < coefsA.length; i++) {
-    fftOfXA.push(await Fr.fft(coefsA[i]))
+    fftOfXA.push(await Fr.fft(coefsA[i]));
   }
-  
-  const fftOfXYA = []
+
+  const fftOfXYA = [];
   // perform fft with respect to y
   for (let i = 0; i < fftOfXA[0].length; i++) {
-    const temp = []
+    const temp = [];
     for (let j = 0; j < fftOfXA.length; j++) {
-      temp.push(fftOfXA[j][i])
+      temp.push(fftOfXA[j][i]);
     }
-    fftOfXYA.push(await Fr.fft(temp))
+    fftOfXYA.push(await Fr.fft(temp));
   }
 
   // get fft of coefsB
   // perform fft with respect to x
-  const fftOfXB = []
+  const fftOfXB = [];
   for (let i = 0; i < coefsB.length; i++) {
-    fftOfXB.push(await Fr.fft(coefsB[i]))
-  }
-  
-  const fftOfXYB = []
-  // perform fft with respect to y
-  for (let i = 0; i < fftOfXB[0].length; i++) {
-    const temp = []
-    for (let j = 0; j < fftOfXB.length; j++) {
-      temp.push(fftOfXB[j][i])
-    }
-    fftOfXYB.push(await Fr.fft(temp))
+    fftOfXB.push(await Fr.fft(coefsB[i]));
   }
 
-  // multiply polynomial
+  const fftOfXYB = [];
+  // perform fft with respect to y
+  for (let i = 0; i < fftOfXB[0].length; i++) {
+    const temp = [];
+    for (let j = 0; j < fftOfXB.length; j++) {
+      temp.push(fftOfXB[j][i]);
+    }
+    fftOfXYB.push(await Fr.fft(temp));
+  }
+
+  // multiply each points from coefs1 and coefs2
   if (fftOfXYA.length !== fftOfXYB.length) {
-    return Error('FFTs are not compatible to multiply.')
+    return Error('FFTs are not compatible to multiply.');
   }
   for (let i = 0; i < fftOfXYA.length; i++) {
     for (let j = 0; j < fftOfXYA[0].length; j++) {
-      fftOfXYA[i][j] = Fr.mul(fftOfXYA[i][j], fftOfXYB[i][j])
+      fftOfXYA[i][j] = Fr.mul(fftOfXYA[i][j], fftOfXYB[i][j]);
     }
   }
-  
+
   // perform inverse fft with respect to x
-  const ifftX = []
+  const ifftX = [];
   for (let i = 0; i < fftOfXYA.length; i++) {
-    ifftX.push(await Fr.ifft(fftOfXYA[i]))
+    ifftX.push(await Fr.ifft(fftOfXYA[i]));
   }
 
   // perform inverse fft with respect to y
-  const coefsC = []
+  const coefsC = [];
   for (let i = 0; i < ifftX[0].length; i++) {
-    const temp = []
+    const temp = [];
     for (let j = 0; j < ifftX.length; j++) {
-      temp.push(ifftX[j][i])
+      temp.push(ifftX[j][i]);
     }
-    coefsC.push(await Fr.ifft(temp))
+    coefsC.push(await Fr.ifft(temp));
   }
 
-  return coefsC
+  return coefsC;
+}
+
+/**
+ * 
+ * @param {Fr} Fr A curve element, Fr
+ * @param {Array} coefs1 A 1D array of coefficients of x
+ * @param {Array} coefs2 A 1D array of coefficients of x
+ * @returns {Array} A 1D array of coefficients of x
+ */
+async function _fft1dMulPoly(Fr, coefs1, coefs2) {
+  // copy array
+  let coefsA = coefs1.slice(0);
+  let coefsB = coefs2.slice(0);
+
+  // reduce dimension of the vector; the array have been reduced outside of the function
+  while(Fr.eq(coefsB[coefsB.length - 1], Fr.e(0))) coefsB.pop();
+
+  // find the smallest power of 2
+  // that is greater than the multiplication of coefsA and coefsB
+  const xDegree = coefsA.length + coefsB.length - 1;
+  const minPowerOfTwoForX = minPowerOfTwo(xDegree);
+
+  // padding coefsA and coefsB
+  paddingArray(Fr, coefsA, minPowerOfTwoForX);
+  paddingArray(Fr, coefsB, minPowerOfTwoForX);
+
+  // get fft of coefsA
+  const fftOfXA = await Fr.fft(coefsA);
+
+  // get fft of coefsB
+  const fftOfXB = await Fr.fft(coefsB);
+
+  // multiply each points from coefs1 and coefs2
+  if (fftOfXA.length !== fftOfXB.length) {
+    return Error('FFTs are not compatible to multiply.');
+  }
+  for (let i = 0; i < fftOfXA.length; i++) {
+    fftOfXA[i] = Fr.mul(fftOfXA[i], fftOfXB[i]);
+  }
+
+  // perform inverse fft with respect to x
+  return await Fr.ifft(fftOfXA);
 }

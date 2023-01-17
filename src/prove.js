@@ -299,8 +299,11 @@ export default async function groth16Prove(
   }
   await fdQAP.close();
 
-  const temp = await polyUtils.fftMulPolys(Fr, p1XY, p2XY);
+  // FIXME: pXY has unexpected values
+  const temp = await polyUtils.fftMulPoly(Fr, p1XY, p2XY);
   const pXY = await polyUtils.subPoly(Fr, temp, p3XY);
+  console.log(pXY)
+
   pxyTime = timer.end(pxyTime);
 
   // / compute H
@@ -308,13 +311,16 @@ export default async function groth16Prove(
   let PolDivTime = timer.start();
   const {res: h1XY, finalrem: rem1} = await polyUtils.divPolyByX(Fr, pXY, tX);
   if (logger) logger.debug(`  Finding h2(X,Y)...`);
+  // FIXME: 
   const {res: h2XY, finalrem: rem2} = await polyUtils.divPolyByY(Fr, rem1, tY);
   PolDivTime = timer.end(PolDivTime);
   qapSolveTime = timer.end(qapSolveTime);
   if (logger) logger.debug(`Solving QAP...Done`);
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug(`rem: ${rem2}`);
-  }
+
+  console.log(`rem: ${rem2}`)
+  // if (TESTFLAG === 'true') {
+    // if (logger) logger.debug(`rem: ${rem2}`);
+  // }
 
   if (TESTFLAG === 'true') {
     // if (logger) logger.debug(`rem2: ${polyUtils._transToObject(Fr, rem2)}`)
@@ -350,8 +356,8 @@ export default async function groth16Prove(
       }
     }
     let res = pXY;
-    const temp1 = await polyUtils.fftMulPolys(Fr, h1XY, tX);
-    const temp2 = await polyUtils.fftMulPolys(Fr, h2XY, tY);
+    const temp1 = await polyUtils.fftMulPoly(Fr, h1XY, tX);
+    const temp2 = await polyUtils.fftMulPoly(Fr, h2XY, tY);
     res= await polyUtils.subPoly(Fr, res, temp1);
     res= await polyUtils.subPoly(Fr, res, temp2);
     if (!Fr.eq(
@@ -361,7 +367,7 @@ export default async function groth16Prove(
       throw new Error('Error in pXY=h1t+h2t');
     }
 
-    if (logger) logger.debug('Test 3 finished');
+    if (logger) logger.debug(`Test 3 finished`);
   }
   // / End of TEST CODE 3
 

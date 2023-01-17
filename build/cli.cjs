@@ -835,9 +835,9 @@ async function buildCommonPolys(rs) {
 }
 
 /**
- * 
+ *
  * @param {*} coefs a matrix of Fr elements
- * @returns 
+ * @returns
  */
 function _polyCheck(coefs) {
   let numVars = 0;
@@ -879,11 +879,11 @@ async function evalPoly(Fr, coefs, x, y) {
 /**
  * Elemetwise multiplication of the coefficients
  * of a polynomial along with a directed variable with a filtering vector
- * @param {*} Fr 
- * @param {*} coefs1 
- * @param {*} vect 
+ * @param {*} Fr
+ * @param {*} coefs1
+ * @param {*} vect
  * @param {*} dir Y:X
- * @returns 
+ * @returns
  */
 async function filterPoly(Fr, coefs1, vect, dir) {
   const {N_X: N1_X, N_Y: N1_Y} = _polyCheck(coefs1);
@@ -915,11 +915,11 @@ async function filterPoly(Fr, coefs1, vect, dir) {
 }
 
 /**
- * 
- * @param {*} Fr 
- * @param {*} coefs 
+ *
+ * @param {*} Fr
+ * @param {*} coefs
  * @param {*} scaler scaler in Fr
- * @returns 
+ * @returns
  */
 async function scalePoly(Fr, coefs, scaler) {
   const nSlotX = coefs.length;
@@ -1003,7 +1003,7 @@ async function subPoly(Fr, coefs1, coefs2) {
   return res;
 }
 
-async function mulPoly(Fr, coefs1, coefs2) {
+function mulPoly(Fr, coefs1, coefs2) {
   const N1_X = coefs1.length;
   const N1_Y = coefs1[0].length;
   const N2_X = coefs2.length;
@@ -1114,8 +1114,14 @@ async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
           await Fr.inv(deHighCoef),
       );
     }
-
-    const energy = await mulPoly(Fr, quoXY, denom);
+    
+    // FIXME: 
+    // console.log(`quo row: ${quoXY.length}, col: ${quoXY[0].length}`)
+    // console.log(`denom row: ${denom.length}, col: ${denom[0].length}`)
+    
+    const energy = mulPoly(Fr, quoXY, denom);
+    // console.log(energy)
+    // console.log(`energy row: ${energy.length} col: ${energy[0].length}`)
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -1180,7 +1186,12 @@ async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
-    const energy = await mulPoly(Fr, quoXY, denom);
+    // console.log(`quoXY row: ${quoXY.length} col: ${quoXY[0].length}`)
+    // console.log(`denom row: ${denom.length} col: ${denom[0].length}`)
+
+    // FIXME:
+    const energy = mulPoly(Fr, quoXY, denom);
+    // console.log(`energy row: ${energy.length} col: ${energy[0].length}`)
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -1199,11 +1210,11 @@ async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
 }
 
 /**
- * 
- * @param {*} Fr 
- * @param {*} coefs 
- * @param {*} dir 
- * @returns output order is the highest order in dictionary order
+ *
+ * @param {*} Fr
+ * @param {*} coefs
+ * @param {*} dir
+ * @return output order is the highest order in dictionary order
  */
 function _findOrder(Fr, coefs, dir) {
   const N_X = coefs.length;
@@ -1236,10 +1247,10 @@ function _findOrder(Fr, coefs, dir) {
   return {xId, yId, coef};
 }
 /**
- * 
- * @param {*} Fr 
- * @param {*} coefs 
- * @returns highest orders of respective variables
+ *
+ * @param {*} Fr
+ * @param {*} coefs
+ * @return highest orders of respective variables
  */
 function _orderPoly(Fr, coefs) {
   coefs = _autoTransFromObject(Fr, coefs);
@@ -1385,14 +1396,13 @@ async function readCircuitQAP(
 }
 
 /**
- * 
- * @param {*} Fr 
+ *
+ * @param {*} Fr
  * @param {*} _array1 m-by-1 matrix in Fr
  * @param {*} _array2 1-by-n matrix in Fr
- * @returns 
+ * @returns
  */
 async function tensorProduct(Fr, _array1, _array2) {
-
   const product = new Array(_array1.length);
   for (let i = 0; i < _array1.length; i++) {
     const temprow = new Array(_array2[0].length);
@@ -1421,7 +1431,7 @@ async function setup$1(
 
   const TESTFLAG = process.env.TEST_MODE;
   const assert = chai__default["default"].assert;
-  if (logger) logger.debug(`TESTMODE = ${TESTFLAG}`);
+  if (logger) logger.debug(`TEST_MODE = ${TESTFLAG}`);
 
   fs.mkdir(
     path__default["default"].join(
@@ -2927,8 +2937,11 @@ async function groth16Prove$1(
   }
   await fdQAP.close();
 
+  // FIXME: pXY has unexpected values
   const temp = await mulPoly(Fr, p1XY, p2XY);
   const pXY = await subPoly(Fr, temp, p3XY);
+  console.log(pXY);
+
   pxyTime = end(pxyTime);
 
   // / compute H
@@ -2936,13 +2949,16 @@ async function groth16Prove$1(
   let PolDivTime = start();
   const {res: h1XY, finalrem: rem1} = await divPolyByX(Fr, pXY, tX);
   if (logger) logger.debug(`  Finding h2(X,Y)...`);
+  // FIXME: 
   const {res: h2XY, finalrem: rem2} = await divPolyByY(Fr, rem1, tY);
   PolDivTime = end(PolDivTime);
   qapSolveTime = end(qapSolveTime);
   if (logger) logger.debug(`Solving QAP...Done`);
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug(`rem: ${rem2}`);
-  }
+
+  console.log(`rem: ${rem2}`);
+  // if (TESTFLAG === 'true') {
+    // if (logger) logger.debug(`rem: ${rem2}`);
+  // }
 
   if (TESTFLAG === 'true') {
     // if (logger) logger.debug(`rem2: ${polyUtils._transToObject(Fr, rem2)}`)
@@ -2978,8 +2994,8 @@ async function groth16Prove$1(
       }
     }
     let res = pXY;
-    const temp1 = await mulPoly(Fr, h1XY, tX);
-    const temp2 = await mulPoly(Fr, h2XY, tY);
+    const temp1 = mulPoly(Fr, h1XY, tX);
+    const temp2 = mulPoly(Fr, h2XY, tY);
     res= await subPoly(Fr, res, temp1);
     res= await subPoly(Fr, res, temp2);
     if (!Fr.eq(
