@@ -302,7 +302,7 @@ export default async function groth16Prove(
   // FIXME: pXY has unexpected values
   const temp = await polyUtils.fftMulPoly(Fr, p1XY, p2XY);
   const pXY = await polyUtils.subPoly(Fr, temp, p3XY);
-  console.log(pXY)
+  // console.log(pXY)
 
   pxyTime = timer.end(pxyTime);
 
@@ -317,7 +317,7 @@ export default async function groth16Prove(
   qapSolveTime = timer.end(qapSolveTime);
   if (logger) logger.debug(`Solving QAP...Done`);
 
-  console.log(`rem: ${rem2}`)
+  // console.log(`rem: ${rem2}`)
   // if (TESTFLAG === 'true') {
     // if (logger) logger.debug(`rem: ${rem2}`);
   // }
