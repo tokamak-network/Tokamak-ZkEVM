@@ -391,10 +391,9 @@ export async function divPoly(Fr, coefs1, coefs2, objectFlag) {
       }
     }
     quo[diffOrderX][diffOrderY] = scaler;
-    // console.log(`quo row: ${quo.length}, col: ${quo[0].length}`)
-    // console.log(`denom row: ${denom.length}, col: ${denom[0].length}`)
+
     // FIXME:
-    const energy = mulPoly(Fr, quo, denom);
+    const energy = await fftMulPoly(Fr, quo, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     return {quo, rem};
@@ -447,13 +446,8 @@ export async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
       );
     }
     
-    // FIXME: 
-    // console.log(`quo row: ${quoXY.length}, col: ${quoXY[0].length}`)
-    // console.log(`denom row: ${denom.length}, col: ${denom[0].length}`)
-    
-    const energy = mulPoly(Fr, quoXY, denom);
-    // console.log(energy)
-    // console.log(`energy row: ${energy.length} col: ${energy[0].length}`)
+    // FIXME:    
+    const energy = await fftMulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -518,12 +512,8 @@ export async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
-    // console.log(`quoXY row: ${quoXY.length} col: ${quoXY[0].length}`)
-    // console.log(`denom row: ${denom.length} col: ${denom[0].length}`)
-
     // FIXME:
-    const energy = mulPoly(Fr, quoXY, denom);
-    // console.log(`energy row: ${energy.length} col: ${energy[0].length}`)
+    const energy = await fftMulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -841,32 +831,42 @@ export async function fftMulPoly(Fr, coefs1, coefs2) {
   if (shape1 === DIMENSION.Matrix && shape2 === DIMENSION.Matrix) {
     return await _fft2dMulPoly(Fr, coefs1, coefs2);
   }
-  
+  // call fft1d multiple times looping through column element 
+  // if one of them is 1d array
   let coefsA = coefs1;
   let coefsB = coefs2;
-  if (shape2 === DIMENSION.Matrix) {
-    [coefsA, coefsB] = [coefs2, coefs1];
-  }
 
+  if (shape1 !== shape2) {
+    if (shape2 === DIMENSION.Matrix) {
+      [coefsA, coefsB] = [coefs2, coefs1];
+    }  
+    // transpose array if it has column-wise array
+    const isColumnVector = shape2 === DIMENSION.ColVector;
+    if (isColumnVector) {
+      coefsA = transpose(coefsA);
+      coefsB = transpose(coefsB);
+    }
+    coefsA = reduceDimPoly(Fr, coefsA)
+  
+    // call fft1d looping through the 2d coef array
+    const result = [];
+  
+    for (let i = 0; i < coefsA.length; i++) {
+      result.push(await _fft1dMulPoly(Fr, coefsA[i], coefsB[0]))
+    }
+    if (isColumnVector) return transpose(result);
+    return result;
+  }
+  // call fft1d once if both are 1d arrays of the same shape
+  
   // transpose array if it has column-wise array
-  const isColumnVector = (shape1 + shape2) < 0;
+  const isColumnVector = shape1 === DIMENSION.ColVector;
   if (isColumnVector) {
     coefsA = transpose(coefsA);
     coefsB = transpose(coefsB);
   }
-
-  coefsA = reduceDimPoly(Fr, coefsA)
-
-  // call fft1d looping through the 2d coef array
-  const result = [];
-
-  for (let i = 0; i < coefsA.length; i++) {
-
-    result.push(await _fft1dMulPoly(Fr, coefsA[i], coefsB[0]))
-  }
-
-  if (isColumnVector) return transpose(result);
-  return result;
+  if (isColumnVector) return transpose(await _fft1dMulPoly(Fr, coefsA[0], coefsB[0]));
+  return await _fft1dMulPoly(Fr, coefsA[0], coefsB[0]);
 }
 
 /**
@@ -967,7 +967,7 @@ async function _fft2dMulPoly(Fr, coefs1, coefs2) {
  * @param {Array} coefs2 A 1D array of coefficients of x
  * @returns {Array} A 1D array of coefficients of x
  */
-async function _fft1dMulPolys(Fr, coefs1, coefs2) {
+async function _fft1dMulPoly(Fr, coefs1, coefs2) {
   // copy array
   let coefsA = coefs1.slice(0);
   let coefsB = coefs2.slice(0);
