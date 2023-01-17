@@ -392,7 +392,6 @@ export async function divPoly(Fr, coefs1, coefs2, objectFlag) {
     }
     quo[diffOrderX][diffOrderY] = scaler;
 
-    // FIXME:
     const energy = await fftMulPoly(Fr, quo, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
@@ -445,8 +444,7 @@ export async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
           await Fr.inv(deHighCoef),
       );
     }
-    
-    // FIXME:    
+
     const energy = await fftMulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
@@ -512,7 +510,6 @@ export async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
-    // FIXME:
     const energy = await fftMulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
