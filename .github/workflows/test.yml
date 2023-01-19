@@ -34,7 +34,7 @@ jobs:
             echo "{path}" >> $GITHUB_PATH
             cd resource/subcircuits
             ./compile
-            cd $GITHUB_PATH
+            cd ../..
     
     - name: build QAP
       run : node . qap-all bn128 12 18
