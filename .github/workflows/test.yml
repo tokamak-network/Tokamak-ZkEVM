@@ -19,6 +19,8 @@ jobs:
             cargo build --release
             cargo install --path circom
             circom --help
+            cd ..
+            pwd
     
     - name: checkout
       uses: actions/checkout@v3
