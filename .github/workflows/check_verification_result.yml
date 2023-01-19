@@ -1,3 +1,4 @@
+name: test
 on:
   pull_request:
   push:
@@ -8,10 +9,22 @@ jobs:
     name: Check the Schnorr proving algorithm circuit
     runs-on: ubuntu-latest
     steps:
+    
+    - name: install circom
+      run : |
+            curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
+            git clone https://github.com/iden3/circom.git
+            cd circom
+            cargo build --release
+            cargo install --path circom
+            circom --help
+    
     - name: checkout
       uses: actions/checkout@v3
+
     - name: install dependencies
       run : npm install
+      
     - name: build
       run : npm run buildcli
       
