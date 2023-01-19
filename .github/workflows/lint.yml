@@ -1,0 +1,16 @@
+name: Lint
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+jobs:
+  eslint_check:
+    name: ESLint Checking
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: npm install
+      run: npm install
+    - name: eslint
+      run: npx eslint src/*.js
