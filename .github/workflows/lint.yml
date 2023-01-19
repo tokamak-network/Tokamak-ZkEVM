@@ -2,7 +2,6 @@ name: Lint
 on: [push]
 jobs:
   eslint_check:
-    name: Prepare action
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
