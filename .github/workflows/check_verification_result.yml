@@ -1,0 +1,39 @@
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+jobs:
+  check-test-circuit:
+    name: Check the Schnorr proving algorithm circuit
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v3
+    - name: install dependencies
+      run : npm install
+    - name: build
+      run : npm run buildcli
+      
+    - name: compile the subcircuits
+      run : |
+            echo "{path}" >> $GITHUB_PATH
+            cd resource/subcircuits
+            ./compile
+            cd $GITHUB_PATH
+    
+    - name: build QAP
+      run : node . qap-all bn128 12 18
+    
+    - name: setup
+      run : node . setup param_12_18 rs_18 QAP_12_18 1
+    
+    - name: derive
+      run : node . derive rs_18 crsSchnorr_prove schnorr_prove QAP_12_18
+      
+    - name: prove
+      run : node . prove crsSchnorr_prove proof1 schnorr_prove 1 1
+      
+    - name: verify
+      run : node . verify proof1 crsSchnorr_prove schnorr_prove 1
+    
