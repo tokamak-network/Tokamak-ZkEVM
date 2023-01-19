@@ -5,5 +5,6 @@ jobs:
     name: Prepare action
     runs-on: ubuntu-latest
     steps:
-      - name: eslint
-        run: npx eslint src/*.js
+    - uses: actions/checkout@v2
+    - name: eslint
+      run: npx eslint src/*.js
