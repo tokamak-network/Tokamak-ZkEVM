@@ -1,4 +1,4 @@
-import { mulPoly, fftMulPolys } from '../src/utils/poly_utils.js'
+import { mulPoly, fftMulPoly } from '../src/utils/poly_utils.js'
 import { getCurveFromName } from '../src/curves.js'
 
 const curve = await getCurveFromName('BN128')
@@ -18,15 +18,15 @@ const a = [
 //   [Fr.e(2), Fr.e(0)],
 //   [Fr.e(0), Fr.e(0)]
 // ]
-// const b = [
-//   [Fr.e(1)], 
-//   [Fr.e(1)],
-//   [Fr.e(0)],
-//   [Fr.e(10)]
-// ]
 const b = [
-  [Fr.e(1), Fr.e(0), Fr.e(1), Fr.e(0), Fr.e(0), Fr.e(0)]
+  [Fr.e(1)], 
+  [Fr.e(1)],
+  [Fr.e(0)],
+  [Fr.e(10)]
 ]
+// const b = [
+//   [Fr.e(1), Fr.e(0), Fr.e(1), Fr.e(0), Fr.e(0), Fr.e(0)]
+// ]
 
 // const result = await _fft1dMulPolys(
 //   Fr, 
@@ -37,7 +37,7 @@ const b = [
 // )
 // console.log(result)
 
-const expect = await fftMulPolys(Fr, b, a)
+const expect = await fftMulPoly(Fr, b, a)
 const answer = mulPoly(Fr, a, b)
 
 
