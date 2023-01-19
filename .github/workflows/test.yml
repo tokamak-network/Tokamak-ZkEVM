@@ -8,6 +8,8 @@ jobs:
   check-test-circuit:
     name: Check the Schnorr proving algorithm circuit
     runs-on: ubuntu-latest
+    env: 
+      TEST_MODE: true
     steps:
     
     - name: install circom
@@ -33,23 +35,22 @@ jobs:
       
     - name: compile the subcircuits
       run : |
-            echo "{path}" >> $GITHUB_PATH
             cd resource/subcircuits
             ./compile
             cd ../..
     
     - name: build QAP
-      run : node . qap-all bn128 12 18
+      run : node . qap-all bn128 12 18 -v
     
     - name: setup
-      run : node . setup param_12_18 rs_18 QAP_12_18 1
+      run : node . setup param_12_18 rs_18 QAP_12_18 1 -v 
     
     - name: derive
-      run : node . derive rs_18 crsSchnorr_prove schnorr_prove QAP_12_18
+      run : node . derive rs_18 crsSchnorr_prove schnorr_prove QAP_12_18 -v 
       
     - name: prove
-      run : node . prove crsSchnorr_prove proof1 schnorr_prove 1 1
+      run : node . prove crsSchnorr_prove proof1 schnorr_prove 1 1 -v
       
     - name: verify
-      run : node . verify proof1 crsSchnorr_prove schnorr_prove 1
+      run : node . verify proof1 crsSchnorr_prove schnorr_prove 1 -v
     
