@@ -56,6 +56,6 @@ jobs:
       uses: GuillaumeFalourd/assert-command-line-output@v2.1
       with:
         command_line: node . verify proof1 crsSchnorr_prove schnorr_prove 1 -v
-        contains: VALID
+        contains: INVALID
 #         expected_result: FAILED
 
