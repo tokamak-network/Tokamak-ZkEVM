@@ -86,10 +86,10 @@ contract transferContract {
 
 |Results (in secs)|BuildQAP|Setup|Derive|Prove|Verify|Note|
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
-|Overall time|6.2|11.9|7.89|12.32|0.9||
-|Time for EC exponentiations|-|4.15|5.25|1.67|0||
-|Time for polynomial arithmetics w/o division|0|-|0.48|2.97|-||
-|Time for polynomial division|-|-|-|6.08|-|FFT is not applied for now|
+|Overall time|6.2|11.9|7.89|11.58|0.9||
+|Time for EC exponentiations|-|4.15|5.25|1.67|0|Pippenger's algorithm is not applied|
+|Time for polynomial arithmetics w/o division|0|-|0.48|0.82|-||
+|Time for polynomial division|-|-|-|7.55|-||
 |Time for storage access|5.66|0.79|0.88|0.84|0||
 |Time for pairing and hashing|-|-|-|-|0||
 
@@ -102,10 +102,10 @@ contract transferContract {
 
 |Results (in mins)|BuildQAP|Setup|Derive|Prove|Verify|Note|
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
-|Overall time|47 secs|5.61|8.12|5.04 hours|0.9 secs||
-|Time for EC exponentiations|-|4.67|1.92|25.20 secs|0||
-|Time for polynomial arithmetics w/o division|24.5 secs|-|2.15|10.78|-||
-|Time for polynomial division|-|-|-|4.80 hours|-|FFT is not applied for now|
+|Overall time|47 secs|5.61|8.12|17.92|0.9 secs||
+|Time for EC exponentiations|-|4.67|1.92|25.20 secs|0|Pippenger's algorithm is not applied|
+|Time for polynomial arithmetics w/o division|24.5 secs|-|2.15|2.50|-||
+|Time for polynomial division|-|-|-|11.74|-||
 |Time for storage access|22.05 secs|46.59 secs|3.90|3.02|0||
 |Time for pairing and hashing|-|-|-|-|0||
 
@@ -114,11 +114,11 @@ contract transferContract {
 - Input commands (Find the values to put in the parameters in square brackets from the table below)
   1. To build source codes, go to the main directory and enter ```npm run buildcli```.
   1. To **compile**, go to the directory ```./resource/subcircuits``` and enter ```./compile.sh``` .
-  3. Go back to the main directory and enter ```node build/cli.cjs QAP_all bn128 [s_D] [s_max]``` to run **buildQAP**.
-  4. Enter ```node build/cli.cjs setup param_[s_D]_[s_max] rs_[s_max] QAP_[s_D]_[s_max] 1``` to run **setup**.
-  5. Enter ```node build/cli.cjs derive rs_[s_max] [crsName] [circuitName] QAP_[s_D]_[s_max]``` to run **derive** for the application-1.
-  7. Enter ```node build/cli.cjs prove [crsName] proof [circuitName] 1 1``` to run **prove** for the instance-1-1 of the application-1.
-  10. Enter ```node build/cli.cjs verify proof [crsName] [circuitName] 1``` to run **verify** for the instance-1-1 of the application-1.
+  3. Go back to the main directory and enter ```node . qap-all bn128 [s_D] [s_max]``` to run **buildQAP**.
+  4. Enter ```node . setup param_[s_D]_[s_max] rs_[s_max] QAP_[s_D]_[s_max] 1``` to run **setup**.
+  5. Enter ```node . derive rs_[s_max] [crsName] [circuitName] QAP_[s_D]_[s_max]``` to run **derive** for the application-1.
+  7. Enter ```node . prove [crsName] proof [circuitName] 1 1``` to run **prove** for the instance-1-1 of the application-1.
+  10. Enter ```node . verify proof [crsName] [circuitName] 1``` to run **verify** for the instance-1-1 of the application-1.
 
 - Parameters
 
@@ -131,4 +131,4 @@ contract transferContract {
 |circuitName|"schnorr_prove"|"test_transfer"|
 
 # 4. Concluding remark
-Proving Ether transfer is unrealistically time consuming for now, since FFT is not applied in polynomial multiplications and divisions. Since the prove algorithm of our protocol is ALMOST identical with the original Groth16's with the only difference in circuit parameters, we expect that the proving speed will be improved as fast as the original one, when FFT and the optimization on accessing files are applied.
+Since the computation complexity of prove algorithm of our protocol is similar to the original Groth16's, we expect that the proving speed will be improved as fast as the original one such as Mina protocol's GPU implementation.
