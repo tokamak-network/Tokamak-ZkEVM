@@ -1,0 +1,66 @@
+name: Circuit Test
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+jobs:
+  check-test-circuit:
+    name: Check the Schnorr proving algorithm circuit
+    runs-on: ubuntu-latest
+    env: 
+      TEST_MODE: true
+    steps:
+    
+    - name: install circom
+      run : |
+            curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh -s -- -y
+            source "$HOME/.cargo/env"
+            curl -LO https://github.com/iden3/circom/archive/refs/tags/v2.0.5.zip
+            unzip v2.0.5.zip && cd circom-2.0.5
+            cargo build --release
+            cargo install --path circom
+            circom --help
+            cd ..
+            pwd
+    
+    - name: checkout
+      uses: actions/checkout@v3
+
+    - name: install dependencies
+      run : npm install
+      
+    - name: compile the subcircuits
+      run : |
+            cd resource/subcircuits
+            ./compile.sh
+            cd ../..
+  
+    - name: build
+      run : npm run buildcli
+    
+    - name: build QAP
+      run : node . qap-all bn128 12 18 -v
+    
+    - name: setup
+      run : node . setup param_12_18 rs_18 QAP_12_18 1 -v 
+    
+    - name: derive
+      run : node . derive rs_18 crsSchnorr_prove schnorr_prove QAP_12_18 -v 
+      
+    - name: prove
+      run : node . prove crsSchnorr_prove proof1 schnorr_prove 1 1 -v
+      
+    - name: verify
+      run : |
+            node . verify proof1 crsSchnorr_prove schnorr_prove 1 > output.txt
+            cat output.txt
+            echo "VALID" > expect.txt
+    
+    - name: check the final result
+      uses: GuillaumeFalourd/diff-action@v1
+      with:
+        first_file_path: output.txt
+        second_file_path: expect.txt
+        expected_result: PASSED
+
