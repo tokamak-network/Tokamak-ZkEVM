@@ -52,10 +52,15 @@ jobs:
       run : node . prove crsSchnorr_prove proof1 schnorr_prove 1 1 -v
       
     - name: verify
-#       run : node . verify proof1 crsSchnorr_prove schnorr_prove 1 -v
-      uses: GuillaumeFalourd/assert-command-line-output@v2.1
+      run : |
+            node . verify proof1 crsSchnorr_prove schnorr_prove 1 > output.txt
+            cat output.txt
+            echo "VALID" > expect.txt
+    
+    - name: check the final result
+      uses: GuillaumeFalourd/diff-action@v1
       with:
-        command_line: node . verify proof1 crsSchnorr_prove schnorr_prove 1 -v
-        contains: INVALID
-#         expected_result: FAILED
+        first_file_path: output.txt
+        second_file_path: expect.txt
+        expected_result: PASSED
 
