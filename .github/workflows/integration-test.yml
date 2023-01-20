@@ -62,5 +62,5 @@ jobs:
       with:
         first_file_path: output.txt
         second_file_path: expect.txt
-        expected_result: FAILED
+        expected_result: PASSED
 
