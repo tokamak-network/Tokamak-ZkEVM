@@ -17,7 +17,7 @@ jobs:
             curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh -s -- -y
             source "$HOME/.cargo/env"
             curl -LO https://github.com/iden3/circom/archive/refs/tags/v2.0.5.zip
-            unzip v2.0.5.zip && cd v2.0.5
+            unzip v2.0.5.zip && cd circom-2.0.5
             cargo build --release
             cargo install --path circom
             circom --help
