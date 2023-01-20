@@ -52,5 +52,10 @@ jobs:
       run : node . prove crsSchnorr_prove proof1 schnorr_prove 1 1 -v
       
     - name: verify
-      run : node . verify proof1 crsSchnorr_prove schnorr_prove 1 -v
-    
+#       run : node . verify proof1 crsSchnorr_prove schnorr_prove 1 -v
+      uses: GuillaumeFalourd/assert-command-line-output@v2.1
+      with:
+        command_line: node . verify proof1 crsSchnorr_prove schnorr_prove 1 -v
+        contains: INVALID
+        expected_result: FAILED
+
