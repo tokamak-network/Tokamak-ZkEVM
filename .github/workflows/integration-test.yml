@@ -33,7 +33,7 @@ jobs:
     - name: compile the subcircuits
       run : |
             cd resource/subcircuits
-            ./compile
+            ./compile.sh
             cd ../..
   
     - name: build
