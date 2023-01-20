@@ -16,8 +16,8 @@ jobs:
       run : |
             curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh -s -- -y
             source "$HOME/.cargo/env"
-            git clone https://github.com/iden3/circom.git
-            cd circom
+            curl -LO https://github.com/iden3/circom/archive/refs/tags/v2.0.5.zip
+            unzip v2.0.5.zip && cd v2.0.5
             cargo build --release
             cargo install --path circom
             circom --help
@@ -30,14 +30,14 @@ jobs:
     - name: install dependencies
       run : npm install
       
-    - name: build
-      run : npm run buildcli
-      
     - name: compile the subcircuits
       run : |
             cd resource/subcircuits
             ./compile
             cd ../..
+  
+    - name: build
+      run : npm run buildcli
     
     - name: build QAP
       run : node . qap-all bn128 12 18 -v
