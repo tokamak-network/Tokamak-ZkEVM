@@ -11,30 +11,22 @@ jobs:
     env: 
       TEST_MODE: true
     steps:
-    
-    - name: install circom
-      run : |
-            curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh -s -- -y
-            source "$HOME/.cargo/env"
-            curl -LO https://github.com/iden3/circom/archive/refs/tags/v2.0.5.zip
-            unzip v2.0.5.zip && cd circom-2.0.5
-            cargo build --release
-            cargo install --path circom
-            circom --help
-            cd ..
-            pwd
-    
     - name: checkout
       uses: actions/checkout@v3
-
+      
     - name: install dependencies
       run : npm install
       
-    - name: compile the subcircuits
-      run : |
-            cd resource/subcircuits
-            ./compile.sh
-            cd ../..
+    - name: install circom
+      uses: addnab/docker-run-action@v3
+      with:
+        image: pleiadex/amd64-circom:2.0.5
+        shell: bash
+        options: -v ${{ github.workspace }}:/var/workspace
+        run: |
+              source "$HOME/.cargo/env"
+              cd /var/workspace/resource/subcircuits
+              ./compile.sh
   
     - name: build
       run : npm run buildcli
@@ -53,14 +45,13 @@ jobs:
       
     - name: verify
       run : |
-            node . verify proof1 crsSchnorr_prove schnorr_prove 1 > output.txt
-            cat output.txt
-            echo "VALID" > expect.txt
+            node . verify proof1 crsSchnorr_prove schnorr_prove 1 | tee output
+            echo "VALID" > expect
     
     - name: check the final result
       uses: GuillaumeFalourd/diff-action@v1
       with:
-        first_file_path: output.txt
-        second_file_path: expect.txt
+        first_file_path: output
+        second_file_path: expect
         expected_result: PASSED
 
