@@ -25,10 +25,10 @@ jobs:
         options: -v ${{ github.workspace }}:/var/workspace
         run: |
               source "$HOME/.cargo/env"
-              ./compile.sh
+              resource/subcircuits/compile.sh
   
-    # - name: build
-    #   run : npm run buildcli
+    - name: build
+      run : npm run buildcli
     
     - name: build QAP
       run : node cli.js qap-all bn128 12 18 -v
