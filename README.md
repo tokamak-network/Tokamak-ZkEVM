@@ -213,7 +213,7 @@ $ node .
   
   4. **Derive**
 
-      A. Select the following options for application-1.
+      a. Select the following options for application-1.
 
       - Which circuit will you use? `[Workspace]/UniGro16js/resource/circuits/schnorr_prove`
 
@@ -223,7 +223,7 @@ $ node .
 
       - What is the name of the circuit-specific reference string file? `crs_schnorr_prove`
 
-      B. Select the following options for application-2
+      b. Select the following options for application-2
 
       - Which circuit will you use? `[Workspace]/UniGro16js/resource/circuits/schnorr_verify`
 
@@ -235,7 +235,7 @@ $ node .
 
   5. **Prove**
 
-      A. Select the following options for the instance-1-1 of the application-1.
+      a. Select the following options for the instance-1-1 of the application-1.
 
       - Which circuit-specific reference string will you use? `[Workspace]/UniGro16js/resource/circuits/schnorr_prove/crs_schnorr_prove.crs`
 
@@ -245,7 +245,7 @@ $ node .
 
       - What is the name of the proof? `proof1`
   
-      B. Select the following options for the instance-1-2 of the application-1.
+      b. Select the following options for the instance-1-2 of the application-1.
 
       - Which circuit-specific reference string will you use? `[Workspace]/UniGro16js/resource/circuits/schnorr_prove/crs_schnorr_prove.crs`
 
@@ -255,7 +255,7 @@ $ node .
 
       - What is the name of the proof? `proof2`
 
-      C. Select the following options for the instance-2-1 of the application-2.
+      c. Select the following options for the instance-2-1 of the application-2.
 
       - Which circuit-specific reference string will you use? `[Workspace]/UniGro16js/resource/circuits/schnorr_verify/crsSchnorr_verify.crs`
 
@@ -267,7 +267,7 @@ $ node .
 
   6. **Verify**
 
-      A. Select the following options for the instance-1-1 of the application-1.
+      a. Select the following options for the instance-1-1 of the application-1.
 
       - Which circuit-specific reference string will you use? `[Workspace]/UniGro16js/resource/circuits/schnorr_prove/crs_schnorr_prove.crs`
 
@@ -275,9 +275,9 @@ $ node .
 
       - What is the index of the instance of the circuit? `1`
 
-      -Which proof will you use? `[Workspace]/UniGro16js/resource/circuits/schnorr_prove/proof1.proof`
+      - Which proof will you use? `[Workspace]/UniGro16js/resource/circuits/schnorr_prove/proof1.proof`
   
-      B. Select the following options for the instance-1-2 of the application-1.
+      b. Select the following options for the instance-1-2 of the application-1.
 
       - Which circuit-specific reference string will you use? `[Workspace]/UniGro16js/resource/circuits/schnorr_prove/crs_schnorr_prove.crs`
 
@@ -287,7 +287,7 @@ $ node .
 
       - Which proof will you use? `[Workspace]/UniGro16js/resource/circuits/schnorr_prove/proof2.proof`
 
-      C. Select the following options for the instance-2-1 of the application-2.
+      c. Select the following options for the instance-2-1 of the application-2.
 
       - Which circuit-specific reference string will you use? `[Workspace]/UniGro16js/resource/circuits/schnorr_verify/crsSchnorr_verify.crs`
 
