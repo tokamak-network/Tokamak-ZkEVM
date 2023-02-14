@@ -27,8 +27,8 @@ jobs:
               source "$HOME/.cargo/env"
               resource/subcircuits/compile.sh
   
-    - name: build
-      run : npm run buildcli
+    # - name: build
+    #   run : npm run buildcli
     
     - name: build QAP
       run : node cli.js qap-all bn128 12 18 -v
