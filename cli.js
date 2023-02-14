@@ -8,7 +8,7 @@ Logger.setLogLevel('INFO');
 
 const commands = [
   {
-    cmd: 'setup [paramName] [RSName] [QAPName] [entropy]',
+    cmd: 'setup [paramName] [RSName] [QAPName]',
     description: 'setup phase',
     alias: ['st'],
     options: "-verbose|v",
@@ -22,7 +22,7 @@ const commands = [
     action: derive,
   },
   {
-    cmd: 'prove [cRSName] [proofName] [circuitName] [instanceId] [entropy]',
+    cmd: 'prove [cRSName] [proofName] [circuitName] [instanceId]',
     description: 'prove phase',
     alias: ['pr'],
     options: "-verbose|v",
@@ -58,58 +58,6 @@ clProcessor(commands).then( (res) => {
   process.exit(1);
 });
 
-
-async function setup(params, options) {
-  const paramName = params[0];
-  const RSName = params[1];
-  const QAPName = params[2];
-  const entropy = params[3];
-
-  if (options.verbose) Logger.setLogLevel("DEBUG");
-
-  return zkey.setup(paramName, RSName, QAPName, entropy, logger);
-}
-async function derive(params, options) {
-  const RSName = params[0];
-  const cRSName = params[1];
-  const circuitName = params[2];
-  const QAPName = params[3];
-
-  if (options.verbose) Logger.setLogLevel("DEBUG");
-
-  return zkey.derive(RSName, cRSName, circuitName, QAPName, logger);
-}
-async function groth16Prove(params, options) {
-  const cRSName = params[0];
-  const proofName = params[1];
-  const circuitName = params[2];
-  const instanceId = params[3];
-  const entropy = params[4];
-
-  if (options.verbose) Logger.setLogLevel("DEBUG");
-
-  return zkey.groth16Prove(cRSName, proofName, circuitName, instanceId, entropy, logger);
-}
-async function groth16Verify(params, options) {
-  const proofName = params[0];
-  const cRSName = params[1];
-  const circuitName = params[2];
-  let instanceId;
-  if (params[3] === undefined) {
-    instanceId = '';
-  } else {
-    instanceId = params[3];
-  }
-
-  if (options.verbose) Logger.setLogLevel("DEBUG");
-  
-  const isValid = await zkey.groth16Verify(proofName, cRSName, circuitName, instanceId, logger);
-  if (isValid === true) {
-    console.log('VALID')
-  } else {
-    console.log('INVALID')
-  }
-}
 async function buildQAP(params, options) {
   const curveName = params[0];
   const sD = params[1];
@@ -126,4 +74,48 @@ async function buildSingleQAP(params, options) {
   if (options.verbose) Logger.setLogLevel("DEBUG");
 
   return zkey.buildSingleQAP(paramName, id, logger);
+}
+async function setup(params, options) {
+  const paramName = params[0];
+  const RSName = params[1];
+  const QAPName = params[2];
+
+  if (options.verbose) Logger.setLogLevel("DEBUG");
+
+  return zkey.setup(paramName, RSName, QAPName, logger);
+}
+async function derive(params, options) {
+  const RSName = params[0];
+  const cRSName = params[1];
+  const circuitName = params[2];
+  const QAPName = params[3];
+
+  if (options.verbose) Logger.setLogLevel("DEBUG");
+
+  return zkey.derive(RSName, cRSName, circuitName, QAPName, logger);
+}
+async function groth16Prove(params, options) {
+  const cRSName = params[0];
+  const proofName = params[1];
+  const circuitName = params[2];
+  const instanceId = params[3];
+
+  if (options.verbose) Logger.setLogLevel("DEBUG");
+
+  return zkey.groth16Prove(cRSName, proofName, circuitName, instanceId, logger);
+}
+async function groth16Verify(params, options) {
+  const proofName = params[0];
+  const cRSName = params[1];
+  const circuitName = params[2];
+  const instanceId = params[3] || '1';
+
+  if (options.verbose) Logger.setLogLevel("DEBUG");
+  
+  const isValid = await zkey.groth16Verify(proofName, cRSName, circuitName, instanceId, logger);
+  if (isValid === true) {
+    console.log('VALID')
+  } else {
+    console.log('INVALID')
+  }
 }
