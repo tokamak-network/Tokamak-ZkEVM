@@ -1,5 +1,5 @@
 import * as curves from './curves.js';
-import * as polyUtils from './utils/poly_utils';
+import * as polyUtils from './utils/poly_utils.js';
 import chai from 'chai';
 import {readR1csHeader} from 'r1csfile';
 import {
@@ -135,7 +135,7 @@ export default async function buildQAP(curveName, sD, minSMax, logger) {
   const sMax = 2**expos;
   const omegaY = await Fr.exp(Fr.w[Fr.s], Scalar.exp(2, Fr.s-expos));
 
-  // TODO: chai should not be used for production code
+  // FIXME: chai should not be used for production code
   if (TESTFLAG === 'true') {
     if (logger) logger.debug(`Running Test 1`);
     assert(Fr.eq(await Fr.exp(Fr.e(n), primeR), Fr.e(n)));
@@ -157,7 +157,7 @@ export default async function buildQAP(curveName, sD, minSMax, logger) {
   await writeBigInt(fdRS, Fr.toObject(omegaX), n8r);
   await writeBigInt(fdRS, Fr.toObject(omegaY), n8r);
 
-  // Test code 2 //
+  // FIXME: Test code 2 //
   if (TESTFLAG === 'true') {
     if (logger) logger.debug(`Running Test 2`);
     assert(Fr.eq(omegaX, Fr.e(Fr.toObject(omegaX))));
@@ -267,4 +267,5 @@ export default async function buildQAP(curveName, sD, minSMax, logger) {
     logger.debug(`  # QAP file writing time: ${FSTimeAccum} [ms] (${(FSTimeAccum/totalTime*100).toFixed(3)} %)`);
     logger.debug(` ## Average QAP time per wire with ${n} interpolation points: ${qapTime/m.reduce((accu, curr) => accu + curr)} [ms]`);
   } 
+  process.exit(0);
 }

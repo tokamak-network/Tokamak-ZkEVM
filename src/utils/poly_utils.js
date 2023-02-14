@@ -601,12 +601,12 @@ export function reduceDimPoly(Fr, coefs) {
   }
 }
 
-export async function readQAP(QAPName, k, m, n, n8r) {
+export async function readQAP(qapDirPath, k, m, n, n8r) {
   const {
     fd: fdQAP,
     sections: sectionsQAP,
   } = await binFileUtils.readBinFile(
-      `resource/subcircuits/${QAPName}/subcircuit${k}.qap`,
+      `${qapDirPath}/subcircuit${k}.qap`,
       'qapp',
       1,
       1<<22,

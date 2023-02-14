@@ -14,10 +14,9 @@ import * as timer from './utils/timer.js';
 import * as polyUtils from './utils/poly_utils.js';
 
 export default async function setup(
-  paramName, 
-  rsName, 
-  qapName, 
-  entropy, 
+  parameterFile, 
+  universalReferenceStringFileName, 
+  qapDirPath, 
   logger
 ) {
   const startTime = timer.start();
@@ -41,7 +40,7 @@ export default async function setup(
     fd: fdParam,
     sections: sectionsParam,
   } = await readBinFile(
-      `resource/subcircuits/${paramName}.dat`,
+      parameterFile,
       'zkey',
       2,
       1<<25,
@@ -51,7 +50,7 @@ export default async function setup(
   const sD = param.sD;
 
   const fdRS = await createBinFile(
-      `resource/universal_rs/${rsName}.urs`,
+    `resource/universal_rs/${universalReferenceStringFileName}.urs`,
       'zkey',
       1,
       4 + sD,
@@ -96,7 +95,7 @@ export default async function setup(
   const numKeys = 6; // the number of keys in tau
   const rng = new Array(numKeys);
   for (let i = 0; i < numKeys; i++) {
-    rng[i] = await misc.getRandomRng(entropy + i);
+    rng[i] = await misc.getRandomRng(i + 1);
   }
   const tau = createTauKey(Fr, rng);
 
@@ -116,6 +115,8 @@ export default async function setup(
   await zkeyUtils.writeG1(fdRS, curve, vk1GammaA);
   let x=tau.x;
   let y=tau.y;
+
+  // FIXME: for testing
   if (TESTFLAG === 'true') {
     x = Fr.e(13);
     y = Fr.e(23);
@@ -224,7 +225,7 @@ export default async function setup(
       uX: uX,
       vX: vX,
       wX: wX,
-    } = await polyUtils.readQAP(qapName, k, m[k], n, n8r);
+    } = await polyUtils.readQAP(qapDirPath, k, m[k], n, n8r);
     qapTimeAccum += timer.end(qapTimeStart);
 
     const _ux = new Array(m[k]);
@@ -268,7 +269,7 @@ export default async function setup(
       }
     }
 
-    // Test code 4//
+    // FIXME: Test code 4//
     // To test [z^(k)_i(x)]_G and [a^(k)_i(x)]_G in sigmaG
     if (TESTFLAG === 'true') {
       if (logger) logger.debug(`Running Test 4`);
@@ -384,7 +385,7 @@ export default async function setup(
   }
   const thetaTime = timer.end(partTime);
 
-  // Test code 5//
+  // FIXME: Test code 5//
   // k==6 --> MOD subcircuit,
   // c2 mod c3 = c1 <==> c4*c3+c1 = c2 <==> c4*c3 = -c1+c2
   if (TESTFLAG === 'true') {
@@ -422,6 +423,7 @@ export default async function setup(
     logger.debug(`  # Encryption time: ${EncTimeAccum2} [ms] (${((EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
     logger.debug(`  # File writing time: ${thetaTime - qapTimeAccum - EncTimeAccum2} [ms] (${((thetaTime - qapTimeAccum - EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
   }
+  process.exit(0);
 
 
   function createTauKey(Field, rng) {

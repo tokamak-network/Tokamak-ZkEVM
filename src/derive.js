@@ -10,9 +10,9 @@ import * as fastFile from 'fastfile';
 import * as timer from './utils/timer.js';
 
 export default async function derive(
-  rsName, 
-  cRSName, 
-  circuitName, 
+  referenceStringFile, 
+  circuitReferenceString, 
+  circuitDirectory, 
   qapName, 
   logger
 ) {
@@ -25,15 +25,14 @@ export default async function derive(
   let QAPWriteTimeStart;
   let QAPWriteTimeAccum = 0;
 
-  // const TESTFLAG = process.env.TEST_MODE;
-  const dirPath = `resource/circuits/${circuitName}`;
+  const dirPath = circuitDirectory;
 
   const URS = 0;
   const {
     fd: fdRS,
     sections: sectionsRS,
   } = await binFileUtils.readBinFile(
-      `resource/universal_rs/${rsName}.urs`,
+      referenceStringFile,
       'zkey',
       2,
       1<<25,
@@ -74,7 +73,7 @@ export default async function derive(
   await fdOpL.close();
 
   const fdcRS = await createBinFile(
-      `${dirPath}/${cRSName}.crs`,
+      `${dirPath}/${circuitReferenceString}.crs`,
       'zkey',
       1,
       5,
@@ -415,7 +414,7 @@ export default async function derive(
   await fdQAP.close();
   qapTime = timer.end(qapTime);
   if (logger) logger.debug('Deriving QAP...Done');
-  if (logger) logger.debug('  ');
+  if (logger) logger.debug('\n');
 
   const totalTime = timer.end(startTime);
   if (logger) {
@@ -430,6 +429,7 @@ export default async function derive(
     logger.debug(`  # Polynomial multiplication time: ${PolTimeAccum} [ms] (${(PolTimeAccum/totalTime*100).toFixed(3)} %)`);
     logger.debug(`  # File writing time: ${QAPWriteTimeAccum} [ms] (${(QAPWriteTimeAccum/totalTime*100).toFixed(3)} %)`);
   }
+  process.exit(0);
 
 
   async function mulFrInG1(point, fieldval) {

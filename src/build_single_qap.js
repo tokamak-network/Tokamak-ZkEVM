@@ -83,7 +83,7 @@ export default async function buildSingleQAP(paramName, id, logger) {
   const sMax = param.sMax;
   const omegaY = param.sMax;
 
-  // Test code 1 // --> DONE
+  // FIXME: Test code 1 // --> DONE
   if (TESTFLAG === 'true') {
     if (logger) logger.debug(`Running Test 1`);
     assert(Fr.eq(await Fr.exp(Fr.e(n), primeR), Fr.e(n)));
@@ -96,7 +96,7 @@ export default async function buildSingleQAP(paramName, id, logger) {
 
   // if (logger) logger.debug(`checkpoint5`);
 
-  // Test code 2 //
+  // FIXME:  Test code 2 //
   if (TESTFLAG === 'true') {
     if (logger) logger.debug(`Running Test 2`);
     assert(Fr.eq(omegaX, Fr.e(Fr.toObject(omegaX))));
