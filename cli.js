@@ -127,4 +127,3 @@ async function buildSingleQAP(params, options) {
 
   return zkey.buildSingleQAP(paramName, id, logger);
 }
-
