@@ -27,24 +27,24 @@ jobs:
               source "$HOME/.cargo/env"
               ./compile.sh
   
-    - name: build
-      run : npm run buildcli
+    # - name: build
+    #   run : npm run buildcli
     
     - name: build QAP
-      run : node . qap-all bn128 12 18 -v
+      run : node cli.js qap-all bn128 12 18 -v
     
     - name: setup
-      run : node . setup param_12_18 rs_18 QAP_12_18 1 -v 
+      run : node cli.js setup param_12_18 rs_18 QAP_12_18 1 -v 
     
     - name: derive
-      run : node . derive rs_18 crsSchnorr_prove schnorr_prove QAP_12_18 -v 
+      run : node cli.js derive rs_18 crsSchnorr_prove schnorr_prove QAP_12_18 -v 
       
     - name: prove
-      run : node . prove crsSchnorr_prove proof1 schnorr_prove 1 1 -v
+      run : node cli.js prove crsSchnorr_prove proof1 schnorr_prove 1 1 -v
       
     - name: verify
       run : |
-            node . verify proof1 crsSchnorr_prove schnorr_prove 1 | tee output
+            node cli.js verify proof1 crsSchnorr_prove schnorr_prove 1 | tee output
             echo "VALID" > expect
     
     - name: check the final result
