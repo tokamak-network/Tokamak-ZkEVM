@@ -49,7 +49,7 @@ fs.readFile('./temp.txt', 'utf8', function(err, data) {
     if (err) {
       console.log('Error occurs while writing a file.', err)
     } else {
-      console.log('Successfully written.')
+      console.log('subcircuit_info.json has been successfully updated.')
     }
   })
 })
