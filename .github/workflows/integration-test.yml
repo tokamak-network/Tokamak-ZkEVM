@@ -53,6 +53,7 @@ jobs:
             node cli.js verify resource/circuits/schnorr_prove/proof2.proof resource/circuits/schnorr_prove/crsSchnorr_prove.crs resource/circuits/schnorr_prove 2 -v    | tee output2
             node cli.js verify resource/circuits/schnorr_verify/proof.proof resource/circuits/schnorr_verify/crsSchnorr_verify.crs resource/circuits/schnorr_verify 1 -v | tee output3
             echo "VALID" > expect
+
     
     - name: check the final results
       run : |
@@ -62,4 +63,3 @@ jobs:
                 exit 1
               fi
             done
-
