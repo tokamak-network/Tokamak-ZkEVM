@@ -5,13 +5,9 @@ import { readFileSync, writeFile, mkdir } from 'fs'
 import path from "path"
 import appRootPath from 'app-root-path'
 
-/**
- * 
- * @param {resource/circuits/서킷명} circuitName 
- */
-export default async function generateWitness(circuitName, instanceId){
+export default async function generateWitness(circuitDirectory, instanceId){
 
-  const dirPath = `${appRootPath.path}/resource/circuits/${circuitName}`
+  const dirPath = circuitDirectory
 	const fdOpL = await fastFile.readExisting(`${dirPath}/OpList.bin`, 1<<25, 1<<23)
   const opList = await readOpList(fdOpL)
 	await fdOpL.close()

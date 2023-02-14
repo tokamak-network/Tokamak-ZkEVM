@@ -5,7 +5,7 @@ import commonjs from '@rollup/plugin-commonjs';
 const pkg = JSON.parse(fs.readFileSync("./package.json"));
 
 export default {
-    input: "cli.js",
+    input: "interactive-cli.js",
     output: {
         file: "build/cli.cjs",
         format: "cjs",

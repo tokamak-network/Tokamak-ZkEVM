@@ -6,25 +6,23 @@ import hash from 'js-sha3';
 import * as timer from './utils/timer.js';
 
 export default async function groth16Verify(
-    proofName,
-    cRSName,
-    circuitName,
+    proofFile,
+    circuitReferenceStringFile,
+    circuitDirectory,
     instanceId,
     logger
 ) {
   const startTime = timer.start();
-
-  // const TESTFLAG = process.env.TEST_MODE;
   const ID_KECCAK = 5;
 
-  const dirPath = `resource/circuits/${circuitName}`;
+  const dirPath = circuitDirectory;
   const CRS = 1;
 
   const {
     fd: fdRS,
     sections: sectionsRS,
   } = await binFileUtils.readBinFile(
-      `${dirPath}/${cRSName}.crs`,
+      circuitReferenceStringFile,
       'zkey',
       2,
       1<<25,
@@ -54,7 +52,7 @@ export default async function groth16Verify(
     fd: fdPrf,
     sections: sectionsPrf,
   } = await binFileUtils.readBinFile(
-      `${dirPath}/${proofName}.proof`,
+      proofFile,
       'prof',
       2,
       1<<22,
@@ -238,7 +236,13 @@ export default async function groth16Verify(
     logger.debug(` ## Pairing time: ${PairingTime} [ms] (${(PairingTime/totalTime*100).toFixed(3)} %)`);
     logger.debug(` ## Hashing time: ${HashTime} [ms] (${(HashTime/totalTime*100).toFixed(3)} %)`);
   }
-  return res && res2;
+  if (res && res2) {
+    console.log('VALID');
+  } else {
+    console.log('INVALID');
+  }
+  process.exit(0);
+  // return res && res2;
 }
 function hexToString(hex) {
   if (!hex.match(/^[0-9a-fA-F]+$/)) {

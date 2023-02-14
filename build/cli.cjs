@@ -2,20 +2,25 @@
 
 'use strict';
 
+var glob = require('glob');
 var path = require('path');
-var fs = require('fs');
-var url = require('url');
+var isValidFilename = require('valid-filename');
+var fuzzy = require('fuzzy');
+var inquirer = require('inquirer');
+var inquirerPrompt = require('inquirer-autocomplete-prompt');
 var Blake2b = require('blake2b-wasm');
 var readline = require('readline');
 var ffjavascript = require('ffjavascript');
 var crypto = require('crypto');
 var binFileUtils = require('@iden3/binfileutils');
 var chai = require('chai');
+var fs = require('fs');
 var fastFile = require('fastfile');
 var appRootPath = require('app-root-path');
 var hash = require('js-sha3');
 var r1csfile = require('r1csfile');
 var Logger = require('logplease');
+var child_process = require('child_process');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -37,9 +42,12 @@ function _interopNamespace(e) {
   return Object.freeze(n);
 }
 
+var glob__default = /*#__PURE__*/_interopDefaultLegacy(glob);
 var path__default = /*#__PURE__*/_interopDefaultLegacy(path);
-var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs);
-var url__default = /*#__PURE__*/_interopDefaultLegacy(url);
+var isValidFilename__default = /*#__PURE__*/_interopDefaultLegacy(isValidFilename);
+var fuzzy__default = /*#__PURE__*/_interopDefaultLegacy(fuzzy);
+var inquirer__default = /*#__PURE__*/_interopDefaultLegacy(inquirer);
+var inquirerPrompt__default = /*#__PURE__*/_interopDefaultLegacy(inquirerPrompt);
 var Blake2b__default = /*#__PURE__*/_interopDefaultLegacy(Blake2b);
 var readline__default = /*#__PURE__*/_interopDefaultLegacy(readline);
 var crypto__default = /*#__PURE__*/_interopDefaultLegacy(crypto);
@@ -49,261 +57,6 @@ var fastFile__namespace = /*#__PURE__*/_interopNamespace(fastFile);
 var appRootPath__default = /*#__PURE__*/_interopDefaultLegacy(appRootPath);
 var hash__default = /*#__PURE__*/_interopDefaultLegacy(hash);
 var Logger__default = /*#__PURE__*/_interopDefaultLegacy(Logger);
-
-const __dirname$1 = path__default["default"].dirname(url__default["default"].fileURLToPath((typeof document === 'undefined' ? new (require('u' + 'rl').URL)('file:' + __filename).href : (document.currentScript && document.currentScript.src || new URL('cli.cjs', document.baseURI).href))));
-
-let pkgS;
-try {
-  pkgS = fs__default["default"].readFileSync(path__default["default"].join(__dirname$1, 'package.json'));
-} catch (err) {
-  pkgS = fs__default["default"].readFileSync(path__default["default"].join(__dirname$1, '..', 'package.json'));
-}
-
-const pkg = JSON.parse(pkgS);
-const version = pkg.version;
-const selectedCommand = null;
-
-async function clProcessor(commands) {
-  const cl = [];
-  const argv = {};
-  for (let i=2; i<process.argv.length; i++) {
-    if (process.argv[i][0] == '-') {
-      let S = process.argv[i];
-      while (S[0] == '-') S = S.slice(1);
-      const arr = S.split('=');
-      if (arr.length > 1) {
-        argv[arr[0]] = arr.slice(1).join('=');
-      } else {
-        argv[arr[0]] = true;
-      }
-    } else {
-      cl.push(process.argv[i]);
-    }
-  }
-  for (let i=0; i<commands.length; i++) {
-    const cmd = commands[i];
-    const m = calculateMatch(commands[i], cl);
-    let res;
-    if (m) {
-      if ((argv.h) || (argv.help)) {
-        helpCmd(cmd);
-        return;
-      }
-      if (areParamsValid(cmd.cmd, m)) {
-        if (cmd.options) {
-          const options = getOptions(cmd.options);
-          res = await cmd.action(m, options);
-        } else {
-          res = await cmd.action(m, {});
-        }
-      } else {
-        if (m.length>0) console.log('Invalid number of parameters');
-        helpCmd(cmd);
-        return 99;
-      }
-      return res;
-    }
-  }
-  if (cl.length>0) console.log('Invalid command');
-  helpAll();
-  return 99;
-
-  function calculateMatch(cmd, cl) {
-    const alias = [];
-    const m = parseLine(cmd.cmd);
-    alias.push(m);
-    if (cmd.alias) {
-      if (Array.isArray(cmd.alias)) {
-        for (let i=0; i<cmd.alias.length; i++) {
-          const a = parseLine(cmd.alias[i]);
-          alias.push({
-            cmd: a.cmd,
-            params: m.params,
-          });
-        }
-      } else {
-        const a = parseLine(cmd.alias);
-        alias.push({
-          cmd: a.cmd,
-          params: m.params,
-        });
-      }
-    }
-    for (let i=0; i<cl.length; i++) {
-      for (let j=0; j<alias.length; j++) {
-        const w = alias[j].cmd.shift();
-        if (cl[i].toUpperCase() == w.toUpperCase()) {
-          if (alias[j].cmd.length == 0) {
-            return buildRemaining(alias[j].params, cl.slice(i+1));
-          }
-        } else {
-          alias.splice(j, 1);
-          j--;
-        }
-      }
-    }
-    return null;
-
-
-    function buildRemaining(defParams, cl) {
-      const res = [];
-      let p=0;
-      for (let i=0; i<defParams.length; i++) {
-        if (defParams[i][0]=='-') {
-          res.push(getOption(defParams[i]).val);
-        } else {
-          if (p<cl.length) {
-            res.push(cl[p++]);
-          } else {
-            res.push(null);
-          }
-        }
-      }
-      while (p<cl.length) {
-        res.push(cl[p++]);
-      }
-      return res;
-    }
-  }
-
-  function parseLine(l) {
-    const words = l.match(/(\S+)/g);
-    for (let i=0; i<words.length; i++) {
-      if ( (words[i][0] == '<') ||
-                 (words[i][0] == '[') ||
-                 (words[i][0] == '-')) {
-        return {
-          cmd: words.slice(0, i),
-          params: words.slice(i),
-        };
-      }
-    }
-    return {
-      cmd: words,
-      params: [],
-    };
-  }
-
-
-  function getOption(o) {
-    const arr1 = o.slice(1).split(':');
-    const arr2 = arr1[0].split('|');
-    for (let i = 0; i<arr2.length; i++) {
-      if (argv[arr2[i]]) {
-        return {
-          key: arr2[0],
-          val: argv[arr2[i]],
-        };
-      }
-    }
-    return {
-      key: arr2[0],
-      val: (arr1.length >1) ? arr1[1] : null,
-    };
-  }
-
-
-  function areParamsValid(cmd, params) {
-    while ((params.length)&&(!params[params.length-1])) params.pop();
-    const pl = parseLine(cmd);
-    if (params.length > pl.params.length) return false;
-    let minParams = pl.params.length;
-    while ((minParams>0)&&(pl.params[minParams-1][0] == '[')) minParams --;
-    if (params.length < minParams) return false;
-
-    for (let i=0; (i< pl.params.length)&&(pl.params[i][0]=='<'); i++) {
-      if (typeof params[i] == 'undefined') return false;
-    }
-    return true;
-  }
-
-  function getOptions(options) {
-    const res = {};
-    const opts = options.match(/(\S+)/g);
-    for (let i=0; i<opts.length; i++) {
-      const o = getOption(opts[i]);
-      res[o.key] = o.val;
-    }
-    return res;
-  }
-
-  function printVersion() {
-    console.log('unigroth@'+version);
-  }
-
-  function epilog() {
-    console.log(`         Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
-    Everyone is permitted to copy and distribute verbatim copies
-    of this license document, but changing it is not allowed.; see the COPYING file in the official
-        repo directory at  https://github.com/Onther-Tech/UniGro16js `);
-  }
-
-  function helpAll() {
-    printVersion();
-    epilog();
-    console.log('');
-    console.log('Usage:');
-    console.log('        unigroth <full command> ...  <options>');
-    console.log('   or   unigroth <shorcut> ...  <options>');
-    console.log('');
-    console.log('Type unigroth <command> --help to get more information for that command');
-    console.log('');
-    console.log('Full Command                  Description');
-    console.log('============                  =================');
-    for (let i=0; i<commands.length; i++) {
-      const cmd = commands[i];
-      let S = '';
-      const pl = parseLine(cmd.cmd);
-      S += pl.cmd.join(' ');
-      while (S.length<30) S = S+' ';
-      S += cmd.description;
-      console.log(S);
-      S = '     Usage:  unigroth ';
-      if (cmd.alias) {
-        if (Array.isArray(cmd.alias)) {
-          S += cmd.alias[0];
-        } else {
-          S += cmd.alias;
-        }
-      } else {
-        S += pl.cmd.join(' ');
-      }
-      S += ' ' + pl.params.join(' ');
-      console.log(S);
-    }
-  }
-
-  function helpCmd(cmd) {
-    if (typeof cmd == 'undefined') cmd = selectedCommand;
-    if (typeof cmd == 'undefined') return helpAll();
-    printVersion();
-    epilog();
-    console.log('');
-    if (cmd.longDescription) {
-      console.log(cmd.longDescription);
-    } else {
-      console.log(cmd.description);
-    }
-    console.log('Usage: ');
-    console.log('        unigroth '+ cmd.cmd);
-    const pl = parseLine(cmd.cmd);
-    let S = '   or   unigroth ';
-    if (cmd.alias) {
-      if (Array.isArray(cmd.alias)) {
-        S += cmd.alias[0];
-      } else {
-        S += cmd.alias;
-      }
-    } else {
-      S += pl.cmd.join(' ');
-    }
-    S += ' ' + pl.params.join(' ');
-    console.log(S);
-
-
-    console.log('');
-  }
-}
 
 /* global window */
 
@@ -1003,40 +756,6 @@ async function subPoly(Fr, coefs1, coefs2) {
   return res;
 }
 
-function mulPoly(Fr, coefs1, coefs2) {
-  const N1_X = coefs1.length;
-  const N1_Y = coefs1[0].length;
-  const N2_X = coefs2.length;
-  const N2_Y = coefs2[0].length;
-
-  const N3_X = N1_X + N2_X - 1;
-  const N3_Y = N1_Y + N2_Y - 1;
-
-  // coefs1 = _autoTransFromObject(Fr, coefs1)
-  // coefs2 = _autoTransFromObject(Fr, coefs2)
-
-  const res = new Array(N3_X);
-  for (let i = 0; i < N3_X; i++) {
-    const xmin = Math.max(0, i - (N2_X - 1));
-    const xmax = Math.min(i, N1_X - 1);
-    const temprow = new Array(N3_Y);
-    for (let j = 0; j < N3_Y; j++) {
-      let sum = Fr.zero;
-      const ymin = Math.max(0, j - (N2_Y - 1));
-      const ymax = Math.min(j, N1_Y - 1);
-      for (let k = xmin; k <= xmax; k++) {
-        for (let l = ymin; l <= ymax; l++) {
-          const term = Fr.mul(coefs1[k][l], coefs2[i-k][j-l]);
-          sum = Fr.add(sum, term);
-          temprow[j] = sum;
-        }
-      }
-    }
-    res[i] = temprow;
-  }
-  return res;
-}
-
 function _transToObject(Fr, coefs) {
   if ( (typeof coefs[0][0] == 'bigint') || (coefs[0][0] === undefined) ) {
     return coefs;
@@ -1114,14 +833,8 @@ async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
           await Fr.inv(deHighCoef),
       );
     }
-    
-    // FIXME: 
-    // console.log(`quo row: ${quoXY.length}, col: ${quoXY[0].length}`)
-    // console.log(`denom row: ${denom.length}, col: ${denom[0].length}`)
-    
-    const energy = mulPoly(Fr, quoXY, denom);
-    // console.log(energy)
-    // console.log(`energy row: ${energy.length} col: ${energy[0].length}`)
+
+    const energy = await fftMulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -1186,12 +899,7 @@ async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
       );
     }
 
-    // console.log(`quoXY row: ${quoXY.length} col: ${quoXY[0].length}`)
-    // console.log(`denom row: ${denom.length} col: ${denom[0].length}`)
-
-    // FIXME:
-    const energy = mulPoly(Fr, quoXY, denom);
-    // console.log(`energy row: ${energy.length} col: ${energy[0].length}`)
+    const energy = await fftMulPoly(Fr, quoXY, denom);
     const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
 
     res = await addPoly(Fr, res, quoXY);
@@ -1282,12 +990,12 @@ function reduceDimPoly(Fr, coefs) {
   }
 }
 
-async function readQAP(QAPName, k, m, n, n8r) {
+async function readQAP(qapDirPath, k, m, n, n8r) {
   const {
     fd: fdQAP,
     sections: sectionsQAP,
   } = await binFileUtils__namespace.readBinFile(
-      `resource/subcircuits/${QAPName}/subcircuit${k}.qap`,
+      `${qapDirPath}/subcircuit${k}.qap`,
       'qapp',
       1,
       1<<22,
@@ -1414,11 +1122,276 @@ async function tensorProduct(Fr, _array1, _array2) {
   return product;
 }
 
+/**
+ *
+ * @param {number} x  value
+ * @return {number}  the smallest power of 2 that is greater than x
+ */
+function minPowerOfTwo(x) {
+  return Math.pow(2, Math.ceil(Math.log(x)/Math.log(2)));
+}
+
+/**
+ * @param {Fr}     Fr     Fr of a curve
+ * @param {Array}  matrix 2D Array of nested 1D arrays
+ * @param {Number} targetRowLength outer array length of the return matrix
+ * @param {Number} targetColLength inner array length of the return matrix
+ */
+function paddingMatrix(Fr, matrix, targetRowLength, targetColLength) {
+  if (targetRowLength < matrix.length &&
+    targetColLength < matrix[0].length) return;
+
+  // padding inner arrays
+  const extraColLength = targetColLength - matrix[0].length;
+  for (let i = 0; i < matrix.length; i++) {
+    const extraCol = new Array(extraColLength).fill(Fr.e(0));
+    matrix[i] = matrix[i].concat(extraCol);
+  }
+
+  // padding outer arrays
+  const extraRowLength = targetRowLength - matrix.length;
+  for (let i = 0; i < extraRowLength; i++) {
+    const extraRow = new Array(matrix[0].length).fill(Fr.e(0));
+    matrix.push(extraRow);
+  }
+}
+
+function paddingArray(Fr, array, targetLength) {
+  if (targetLength < array.length) return;
+
+  // padding inner arrays
+  const length = targetLength - array.length;
+  for (let i = 0; i < length; i++) {
+    array.push(Fr.e(0));
+  }
+}
+
+/**
+ * 
+ * @param {Array} array a nested 2D array
+ * @returns {Array} a transposed nested 2D array
+ */
+function transpose(array) {
+  return array.reduce(
+    (result, row) => row.map((_, i) => [...(result[i] || []), row[i]]),
+    []
+  )
+}
+
+const DIMENSION = {
+  'Matrix': 0,
+  'RowVector': 1,
+  'ColVector': -1
+};
+
+/**
+ * 
+ * @param {Array} array A nested 2D array
+ * @returns {Number} A DIMENSION enum value
+ */
+function checkDim (array) {
+  const row = array.length;
+  const col = array[0].length;
+
+  // if (row > 1 && col > 1) return DIMENSION.Matrix;
+
+  if (row === 1) return DIMENSION.RowVector;
+  if (col === 1) return DIMENSION.ColVector;
+
+  return DIMENSION.Matrix;
+}
+
+/**
+ * 
+ * @param {Fr} Fr A curve's Fr
+ * @param {Array} coefs1 A nested 2D array
+ * @param {Array} coefs2 A nested 2D array
+ * @returns {Array} A  nested 2D array of multiplied polynomial coeffients 
+ */
+async function fftMulPoly(Fr, coefs1, coefs2) {
+  // check the shape of coefs
+  const shape1 = checkDim(coefs1);
+  const shape2 = checkDim(coefs2);
+
+  // call fft2d if they both are 2d arrays
+  if (shape1 === DIMENSION.Matrix && shape2 === DIMENSION.Matrix) {
+    return await _fft2dMulPoly(Fr, coefs1, coefs2);
+  }
+  // call fft1d multiple times looping through column element 
+  // if one of them is 1d array
+  let coefsA = coefs1;
+  let coefsB = coefs2;
+
+  if (shape1 !== shape2) {
+    if (shape2 === DIMENSION.Matrix) {
+      [coefsA, coefsB] = [coefs2, coefs1];
+    }  
+    // transpose array if it has column-wise array
+    const isColumnVector = shape2 === DIMENSION.ColVector;
+    if (isColumnVector) {
+      coefsA = transpose(coefsA);
+      coefsB = transpose(coefsB);
+    }
+    coefsA = reduceDimPoly(Fr, coefsA);
+  
+    // call fft1d looping through the 2d coef array
+    const result = [];
+  
+    for (let i = 0; i < coefsA.length; i++) {
+      result.push(await _fft1dMulPoly(Fr, coefsA[i], coefsB[0]));
+    }
+    if (isColumnVector) return transpose(result);
+    return result;
+  }
+  // call fft1d once if both are 1d arrays of the same shape
+  
+  // transpose array if it has column-wise array
+  const isColumnVector = shape1 === DIMENSION.ColVector;
+  if (isColumnVector) {
+    coefsA = transpose(coefsA);
+    coefsB = transpose(coefsB);
+  }
+  if (isColumnVector) return transpose(await _fft1dMulPoly(Fr, coefsA[0], coefsB[0]));
+  return await _fft1dMulPoly(Fr, coefsA[0], coefsB[0]);
+}
+
+/**
+ *
+ * @param {Fr} Fr   Finite field element of a curve
+ * @param {Array} coefs1  2D nested array of coefficients
+ * @param {Array} coefs2  2D nested array of coefficients
+ * @return {Array}       2D nested array of coefficients of multiplication
+ */
+async function _fft2dMulPoly(Fr, coefs1, coefs2) {
+  // copy array
+  let coefsA = coefs1.slice(0);
+  let coefsB = coefs2.slice(0);
+
+  // array reduce dimension
+  coefsA = reduceDimPoly(Fr, coefsA);
+  coefsB = reduceDimPoly(Fr, coefsB);
+
+  // find the smallest power of 2
+  // that is greater than the multiplication of coefsA and coefsB
+  const xDegree = coefsA.length + coefsB.length - 1;
+  const yDegree = coefsA[0].length + coefsB[0].length - 1;
+
+  const minPowerOfTwoForX = minPowerOfTwo(xDegree);
+  const minPowerOfTwoForY = minPowerOfTwo(yDegree);
+
+  // padding coefsA and coefsB
+  paddingMatrix(Fr, coefsA, minPowerOfTwoForX, minPowerOfTwoForY);
+  paddingMatrix(Fr, coefsB, minPowerOfTwoForX, minPowerOfTwoForY);
+
+  // get fft of coefsA
+  // perform fft with respect to x
+  const fftOfXA = [];
+  for (let i = 0; i < coefsA.length; i++) {
+    fftOfXA.push(await Fr.fft(coefsA[i]));
+  }
+
+  const fftOfXYA = [];
+  // perform fft with respect to y
+  for (let i = 0; i < fftOfXA[0].length; i++) {
+    const temp = [];
+    for (let j = 0; j < fftOfXA.length; j++) {
+      temp.push(fftOfXA[j][i]);
+    }
+    fftOfXYA.push(await Fr.fft(temp));
+  }
+
+  // get fft of coefsB
+  // perform fft with respect to x
+  const fftOfXB = [];
+  for (let i = 0; i < coefsB.length; i++) {
+    fftOfXB.push(await Fr.fft(coefsB[i]));
+  }
+
+  const fftOfXYB = [];
+  // perform fft with respect to y
+  for (let i = 0; i < fftOfXB[0].length; i++) {
+    const temp = [];
+    for (let j = 0; j < fftOfXB.length; j++) {
+      temp.push(fftOfXB[j][i]);
+    }
+    fftOfXYB.push(await Fr.fft(temp));
+  }
+
+  // multiply each points from coefs1 and coefs2
+  if (fftOfXYA.length !== fftOfXYB.length) {
+    return Error('FFTs are not compatible to multiply.');
+  }
+  for (let i = 0; i < fftOfXYA.length; i++) {
+    for (let j = 0; j < fftOfXYA[0].length; j++) {
+      fftOfXYA[i][j] = Fr.mul(fftOfXYA[i][j], fftOfXYB[i][j]);
+    }
+  }
+
+  // perform inverse fft with respect to x
+  const ifftX = [];
+  for (let i = 0; i < fftOfXYA.length; i++) {
+    ifftX.push(await Fr.ifft(fftOfXYA[i]));
+  }
+
+  // perform inverse fft with respect to y
+  const coefsC = [];
+  for (let i = 0; i < ifftX[0].length; i++) {
+    const temp = [];
+    for (let j = 0; j < ifftX.length; j++) {
+      temp.push(ifftX[j][i]);
+    }
+    coefsC.push(await Fr.ifft(temp));
+  }
+
+  return coefsC;
+}
+
+/**
+ * 
+ * @param {Fr} Fr A curve element, Fr
+ * @param {Array} coefs1 A 1D array of coefficients of x
+ * @param {Array} coefs2 A 1D array of coefficients of x
+ * @returns {Array} A 1D array of coefficients of x
+ */
+async function _fft1dMulPoly(Fr, coefs1, coefs2) {
+  // copy array
+  let coefsA = coefs1.slice(0);
+  let coefsB = coefs2.slice(0);
+
+  // reduce dimension of the vector; the array have been reduced outside of the function
+  while(Fr.eq(coefsB[coefsB.length - 1], Fr.e(0))) coefsB.pop();
+
+  // find the smallest power of 2
+  // that is greater than the multiplication of coefsA and coefsB
+  const xDegree = coefsA.length + coefsB.length - 1;
+  const minPowerOfTwoForX = minPowerOfTwo(xDegree);
+
+  // padding coefsA and coefsB
+  paddingArray(Fr, coefsA, minPowerOfTwoForX);
+  paddingArray(Fr, coefsB, minPowerOfTwoForX);
+
+  // get fft of coefsA
+  const fftOfXA = await Fr.fft(coefsA);
+
+  // get fft of coefsB
+  const fftOfXB = await Fr.fft(coefsB);
+
+  // multiply each points from coefs1 and coefs2
+  if (fftOfXA.length !== fftOfXB.length) {
+    return Error('FFTs are not compatible to multiply.');
+  }
+  for (let i = 0; i < fftOfXA.length; i++) {
+    fftOfXA[i] = Fr.mul(fftOfXA[i], fftOfXB[i]);
+  }
+
+  // perform inverse fft with respect to x
+  return await Fr.ifft(fftOfXA);
+}
+
 async function setup$1(
-  paramName, 
-  rsName, 
-  qapName, 
-  entropy, 
+  parameterFile, 
+  universalReferenceStringFileName, 
+  qapDirPath, 
   logger
 ) {
   const startTime = start();
@@ -1442,7 +1415,7 @@ async function setup$1(
     fd: fdParam,
     sections: sectionsParam,
   } = await binFileUtils.readBinFile(
-      `resource/subcircuits/${paramName}.dat`,
+      parameterFile,
       'zkey',
       2,
       1<<25,
@@ -1452,7 +1425,7 @@ async function setup$1(
   const sD = param.sD;
 
   const fdRS = await binFileUtils.createBinFile(
-      `resource/universal_rs/${rsName}.urs`,
+    `resource/universal_rs/${universalReferenceStringFileName}.urs`,
       'zkey',
       1,
       4 + sD,
@@ -1497,7 +1470,7 @@ async function setup$1(
   const numKeys = 6; // the number of keys in tau
   const rng = new Array(numKeys);
   for (let i = 0; i < numKeys; i++) {
-    rng[i] = await getRandomRng(entropy + i);
+    rng[i] = await getRandomRng(i + 1);
   }
   const tau = createTauKey(Fr, rng);
 
@@ -1517,6 +1490,8 @@ async function setup$1(
   await writeG1(fdRS, curve, vk1GammaA);
   let x=tau.x;
   let y=tau.y;
+
+  // FIXME: for testing
   if (TESTFLAG === 'true') {
     x = Fr.e(13);
     y = Fr.e(23);
@@ -1625,7 +1600,7 @@ async function setup$1(
       uX: uX,
       vX: vX,
       wX: wX,
-    } = await readQAP(qapName, k, m[k], n, n8r);
+    } = await readQAP(qapDirPath, k, m[k], n, n8r);
     qapTimeAccum += end(qapTimeStart);
 
     const _ux = new Array(m[k]);
@@ -1669,7 +1644,7 @@ async function setup$1(
       }
     }
 
-    // Test code 4//
+    // FIXME: Test code 4//
     // To test [z^(k)_i(x)]_G and [a^(k)_i(x)]_G in sigmaG
     if (TESTFLAG === 'true') {
       if (logger) logger.debug(`Running Test 4`);
@@ -1785,7 +1760,7 @@ async function setup$1(
   }
   const thetaTime = end(partTime);
 
-  // Test code 5//
+  // FIXME: Test code 5//
   // k==6 --> MOD subcircuit,
   // c2 mod c3 = c1 <==> c4*c3+c1 = c2 <==> c4*c3 = -c1+c2
   if (TESTFLAG === 'true') {
@@ -1823,6 +1798,7 @@ async function setup$1(
     logger.debug(`  # Encryption time: ${EncTimeAccum2} [ms] (${((EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
     logger.debug(`  # File writing time: ${thetaTime - qapTimeAccum - EncTimeAccum2} [ms] (${((thetaTime - qapTimeAccum - EncTimeAccum2)/totalTime*100).toFixed(3)} %)`);
   }
+  process.exit(0);
 
 
   function createTauKey(Field, rng) {
@@ -1843,9 +1819,9 @@ async function setup$1(
 }
 
 async function derive$1(
-  rsName, 
-  cRSName, 
-  circuitName, 
+  referenceStringFile, 
+  circuitReferenceString, 
+  circuitDirectory, 
   qapName, 
   logger
 ) {
@@ -1858,15 +1834,14 @@ async function derive$1(
   let QAPWriteTimeStart;
   let QAPWriteTimeAccum = 0;
 
-  // const TESTFLAG = process.env.TEST_MODE;
-  const dirPath = `resource/circuits/${circuitName}`;
+  const dirPath = circuitDirectory;
 
   const URS = 0;
   const {
     fd: fdRS,
     sections: sectionsRS,
   } = await binFileUtils__namespace.readBinFile(
-      `resource/universal_rs/${rsName}.urs`,
+      referenceStringFile,
       'zkey',
       2,
       1<<25,
@@ -1907,7 +1882,7 @@ async function derive$1(
   await fdOpL.close();
 
   const fdcRS = await binFileUtils.createBinFile(
-      `${dirPath}/${cRSName}.crs`,
+      `${dirPath}/${circuitReferenceString}.crs`,
       'zkey',
       1,
       5,
@@ -2248,7 +2223,7 @@ async function derive$1(
   await fdQAP.close();
   qapTime = end(qapTime);
   if (logger) logger.debug('Deriving QAP...Done');
-  if (logger) logger.debug('  ');
+  if (logger) logger.debug('\n');
 
   const totalTime = end(startTime);
   if (logger) {
@@ -2263,6 +2238,7 @@ async function derive$1(
     logger.debug(`  # Polynomial multiplication time: ${PolTimeAccum} [ms] (${(PolTimeAccum/totalTime*100).toFixed(3)} %)`);
     logger.debug(`  # File writing time: ${QAPWriteTimeAccum} [ms] (${(QAPWriteTimeAccum/totalTime*100).toFixed(3)} %)`);
   }
+  process.exit(0);
 
 
   async function mulFrInG1(point, fieldval) {
@@ -2621,13 +2597,9 @@ function fnvHash(str) {
     return shash;
 }
 
-/**
- * 
- * @param {resource/circuits/서킷명} circuitName 
- */
-async function generateWitness(circuitName, instanceId){
+async function generateWitness(circuitDirectory, instanceId){
 
-  const dirPath = `${appRootPath__default["default"].path}/resource/circuits/${circuitName}`;
+  const dirPath = circuitDirectory;
 	const fdOpL = await fastFile__namespace.readExisting(`${dirPath}/OpList.bin`, 1<<25, 1<<23);
   const opList = await readOpList(fdOpL);
 	await fdOpL.close();
@@ -2645,12 +2617,11 @@ async function generateWitness(circuitName, instanceId){
 	}
 }
 
-async function groth16Prove$1(
-    cRSName,
+async function groth16Prove(
+    circuitReferenceString,
     proofName,
     circuitName,
     instanceId,
-    entropy,
     logger
 ) {
   const startTime = start();
@@ -2659,7 +2630,7 @@ async function groth16Prove$1(
   let qapLoadTimeStart;
   let qapLoadTimeAccum = 0;
 
-  const dirPath = `resource/circuits/${circuitName}`;
+  const dirPath = circuitName;
   const TESTFLAG = process.env.TEST_MODE;
   const CRS = 1;
 
@@ -2669,7 +2640,7 @@ async function groth16Prove$1(
     fd: fdRS,
     sections: sectionsRS,
   } = await binFileUtils__namespace.readBinFile(
-      `${dirPath}/${cRSName}.crs`,
+      circuitReferenceString,
       'zkey',
       2,
       1<<25,
@@ -2787,7 +2758,7 @@ async function groth16Prove$1(
     wtns.push(wtnsK);
   }
 
-  // / TEST CODE 2
+  // TEST CODE 2
   if (TESTFLAG === 'true') {
     if (logger) logger.debug(`Running test 2`);
     const sR1cs = [];
@@ -2902,7 +2873,7 @@ async function groth16Prove$1(
     fd: fdQAP,
     sections: sectionsQAP,
   } = await binFileUtils__namespace.readBinFile(
-      `resource/circuits/${circuitName}/circuitQAP.qap`,
+      `${circuitName}/circuitQAP.qap`,
       'qapp',
       1,
       1<<22,
@@ -2937,25 +2908,22 @@ async function groth16Prove$1(
   }
   await fdQAP.close();
 
-  // FIXME: pXY has unexpected values
-  const temp = await mulPoly(Fr, p1XY, p2XY);
+  const temp = await fftMulPoly(Fr, p1XY, p2XY);
   const pXY = await subPoly(Fr, temp, p3XY);
-  console.log(pXY);
-
   pxyTime = end(pxyTime);
 
-  // / compute H
+  // compute H
   if (logger) logger.debug(`  Finding h1(X,Y)...`);
   let PolDivTime = start();
   const {res: h1XY, finalrem: rem1} = await divPolyByX(Fr, pXY, tX);
   if (logger) logger.debug(`  Finding h2(X,Y)...`);
-  // FIXME: 
+
   const {res: h2XY, finalrem: rem2} = await divPolyByY(Fr, rem1, tY);
   PolDivTime = end(PolDivTime);
   qapSolveTime = end(qapSolveTime);
   if (logger) logger.debug(`Solving QAP...Done`);
 
-  console.log(`rem: ${rem2}`);
+  // console.log(`rem: ${rem2}`)
   // if (TESTFLAG === 'true') {
     // if (logger) logger.debug(`rem: ${rem2}`);
   // }
@@ -2994,8 +2962,8 @@ async function groth16Prove$1(
       }
     }
     let res = pXY;
-    const temp1 = mulPoly(Fr, h1XY, tX);
-    const temp2 = mulPoly(Fr, h2XY, tY);
+    const temp1 = await fftMulPoly(Fr, h1XY, tX);
+    const temp2 = await fftMulPoly(Fr, h2XY, tY);
     res= await subPoly(Fr, res, temp1);
     res= await subPoly(Fr, res, temp2);
     if (!Fr.eq(
@@ -3010,8 +2978,8 @@ async function groth16Prove$1(
   // / End of TEST CODE 3
 
   // Generate r and s
-  const rawr = await getRandomRng(entropy);
-  const raws = await getRandomRng(entropy+1);
+  const rawr = await getRandomRng(1);
+  const raws = await getRandomRng(2);
   const r = Fr.fromRng(rawr);
   const s = Fr.fromRng(raws);
 
@@ -3238,6 +3206,7 @@ async function groth16Prove$1(
     logger.debug(` ## Time for generating proofs with m=${m}, n=${n}, sMax=${sMax}: ${provingTime} [ms] (${(provingTime/totalTime*100).toFixed(3)} %)`);
     logger.debug(`  # Encryption time: ${EncTimeAccum} [ms] (${(EncTimeAccum/totalTime*100).toFixed(3)} %)`);
   } 
+  process.exit(0);
 
   async function mulFrInG1(point, fieldval) {
     EncTimeStart = start();
@@ -3253,26 +3222,24 @@ async function groth16Prove$1(
   }
 }
 
-async function groth16Verify$1(
-    proofName,
-    cRSName,
-    circuitName,
+async function groth16Verify(
+    proofFile,
+    circuitReferenceStringFile,
+    circuitDirectory,
     instanceId,
     logger
 ) {
   const startTime = start();
-
-  // const TESTFLAG = process.env.TEST_MODE;
   const ID_KECCAK = 5;
 
-  const dirPath = `resource/circuits/${circuitName}`;
+  const dirPath = circuitDirectory;
   const CRS = 1;
 
   const {
     fd: fdRS,
     sections: sectionsRS,
   } = await binFileUtils__namespace.readBinFile(
-      `${dirPath}/${cRSName}.crs`,
+      circuitReferenceStringFile,
       'zkey',
       2,
       1<<25,
@@ -3302,7 +3269,7 @@ async function groth16Verify$1(
     fd: fdPrf,
     sections: sectionsPrf,
   } = await binFileUtils__namespace.readBinFile(
-      `${dirPath}/${proofName}.proof`,
+      proofFile,
       'prof',
       2,
       1<<22,
@@ -3486,7 +3453,13 @@ async function groth16Verify$1(
     logger.debug(` ## Pairing time: ${PairingTime} [ms] (${(PairingTime/totalTime*100).toFixed(3)} %)`);
     logger.debug(` ## Hashing time: ${HashTime} [ms] (${(HashTime/totalTime*100).toFixed(3)} %)`);
   }
-  return res && res2;
+  if (res && res2) {
+    console.log('VALID');
+  } else {
+    console.log('INVALID');
+  }
+  process.exit(0);
+  // return res && res2;
 }
 function hexToString(hex) {
   if (!hex.match(/^[0-9a-fA-F]+$/)) {
@@ -3619,7 +3592,7 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
   const sMax = 2**expos;
   const omegaY = await Fr.exp(Fr.w[Fr.s], ffjavascript.Scalar.exp(2, Fr.s-expos));
 
-  // TODO: chai should not be used for production code
+  // FIXME: chai should not be used for production code
   if (TESTFLAG === 'true') {
     if (logger) logger.debug(`Running Test 1`);
     assert(Fr.eq(await Fr.exp(Fr.e(n), primeR), Fr.e(n)));
@@ -3641,7 +3614,7 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
   await binFileUtils.writeBigInt(fdRS, Fr.toObject(omegaX), n8r);
   await binFileUtils.writeBigInt(fdRS, Fr.toObject(omegaY), n8r);
 
-  // Test code 2 //
+  // FIXME: Test code 2 //
   if (TESTFLAG === 'true') {
     if (logger) logger.debug(`Running Test 2`);
     assert(Fr.eq(omegaX, Fr.e(Fr.toObject(omegaX))));
@@ -3751,282 +3724,425 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
     logger.debug(`  # QAP file writing time: ${FSTimeAccum} [ms] (${(FSTimeAccum/totalTime*100).toFixed(3)} %)`);
     logger.debug(` ## Average QAP time per wire with ${n} interpolation points: ${qapTime/m.reduce((accu, curr) => accu + curr)} [ms]`);
   } 
-}
-
-async function buildSingleQAP$1(paramName, id, logger) {
-  const TESTFLAG = process.env.TEST_MODE;
-  const assert = chai__default["default"].assert;
-  const QAPName = `QAP${paramName.slice(5)}`;
-  fs.mkdir(
-      path__default["default"].join(
-          `resource/subcircuits`,
-          QAPName,
-      ),
-      (err) => {},
-  );
-  const dirPath = `resource/subcircuits/` + QAPName;
-
-  const {
-    fd: fdParam,
-    sections: sectionsParam,
-  } = await binFileUtils.readBinFile(
-      `resource/subcircuits/${paramName}.dat`,
-      'zkey',
-      2,
-      1<<25,
-      1<<23,
-  );
-  const param = await readRSParams(fdParam, sectionsParam);
-  await fdParam.close();
-
-  const r1csIdx = String(id);
-  const {
-    fd: fdR1cs,
-    sections: sectionsR1cs,
-  } = await binFileUtils.readBinFile(
-      'resource/subcircuits/r1cs/subcircuit'+r1csIdx+'.r1cs',
-      'r1cs',
-      2,
-      1<<22,
-      1<<24,
-  );
-  const sR1cs = await binFileUtils.readSection(fdR1cs, sectionsR1cs, 2);
-  await fdR1cs.close();
-
-  // if (logger) logger.debug('checkpoint0');
-
-  const curve = param.curve;
-  const Fr = curve.Fr;
-  const r1cs = param.r1cs[id];
-  if (r1cs === undefined) {
-    throw new Error(
-        `Parameters in ${paramName}.dat do not support Subcircuit${id}.`,
-    );
-  }
-
-  // Write parameters section
-  // /////////
-  // if (logger) logger.debug(`checkpoint4`);
-
-  // Group parameters
-  const primeR = curve.r;
-  const n8r = (Math.floor( (ffjavascript.Scalar.bitLength(primeR) - 1) / 64) +1)*8;
-
-  const mK = r1cs.m;
-
-  // QAP constants
-  const n = param.n;
-
-  const omegaX = param.omegaX;
-
-  const sMax = param.sMax;
-  const omegaY = param.sMax;
-
-  // Test code 1 // --> DONE
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug(`Running Test 1`);
-    assert(Fr.eq(await Fr.exp(Fr.e(n), primeR), Fr.e(n)));
-    assert(Fr.eq(await Fr.exp(Fr.e(omegaX), n), Fr.one));
-    assert(Fr.eq(await Fr.exp(Fr.e(omegaY), sMax), Fr.one));
-    if (logger) logger.debug(`Test 1 finished`);
-  }
-  // End of test code 1 //
-
-
-  // if (logger) logger.debug(`checkpoint5`);
-
-  // Test code 2 //
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug(`Running Test 2`);
-    assert(Fr.eq(omegaX, Fr.e(Fr.toObject(omegaX))));
-    if (logger) logger.debug(`Test 2 finished`);
-  }
-  // End of test code 2 //
-
-  // / End of parameters section
-
-  const rs={};
-  rs.curve = curve;
-  rs.n = n;
-  rs.sMax = sMax;
-  rs.omegaX = omegaX;
-  rs.omegaY = omegaY;
-  const lagrangeBasis = await buildCommonPolys(rs);
-
-  if (logger) logger.debug(`k: ${id}`);
-  const {
-    uX: uX,
-    vX: vX,
-    wX: wX,
-  } = await buildR1csPolys(
-      curve,
-      lagrangeBasis,
-      r1cs,
-      sR1cs);
-  const fdQAP = await binFileUtils.createBinFile(
-      `${dirPath}/subcircuit${id}.qap`,
-      'qapp',
-      1,
-      2,
-      1<<22,
-      1<<24,
-  );
-
-  await binFileUtils.startWriteSection(fdQAP, 1);
-  await fdQAP.writeULE32(1); // Groth
-  await binFileUtils.endWriteSection(fdQAP);
-
-  await binFileUtils.startWriteSection(fdQAP, 2);
-  for (let i=0; i<mK; i++) {
-    for (let xi=0; xi<n; xi++) {
-      if (typeof uX[i][xi][0] != 'bigint') {
-        throw new Error(`Error in coefficient type of uX at k: ${id}, i: ${i}`);
-      }
-      await binFileUtils.writeBigInt(fdQAP, uX[i][xi][0], n8r);
-    }
-  }
-  for (let i=0; i<mK; i++) {
-    for (let xi=0; xi<n; xi++) {
-      if (typeof vX[i][xi][0] != 'bigint') {
-        throw new Error(`Error in coefficient type of vX at k: ${id}, i: ${i}`);
-      }
-      await binFileUtils.writeBigInt(fdQAP, vX[i][xi][0], n8r);
-    }
-  }
-  for (let i=0; i<mK; i++) {
-    for (let xi=0; xi<n; xi++) {
-      if (typeof wX[i][xi][0] != 'bigint') {
-        throw new Error(`Error in coefficient type of wX at k: ${id}, i: ${i}`);
-      }
-      await binFileUtils.writeBigInt(fdQAP, wX[i][xi][0], n8r);
-    }
-  }
-  await binFileUtils.endWriteSection(fdQAP);
-  await fdQAP.close();
+  process.exit(0);
 }
 
 /* eslint-disable no-console */
 const logger = Logger__default["default"].create('UniGro16js', {showTimestamp: false});
+
 Logger__default["default"].setLogLevel('INFO');
 
-const commands = [
-  {
-    cmd: 'setup [paramName] [RSName] [QAPName] [entropy]',
-    description: 'setup phase',
-    alias: ['st'],
-    options: "-verbose|v",
-    action: setup,
-  },
-  {
-    cmd: 'derive [RSName] [cRSName] [circuitName] [QAPName]',
-    description: 'derive phase',
-    alias: ['dr'],
-    options: "-verbose|v",
-    action: derive,
-  },
-  {
-    cmd: 'prove [cRSName] [proofName] [circuitName] [instanceId] [entropy]',
-    description: 'prove phase',
-    alias: ['pr'],
-    options: "-verbose|v",
-    action: groth16Prove,
-  },
-  {
-    cmd: 'verify [proofName] [cRSName] [circuitName] [instanceId]',
-    description: 'verify phase',
-    alias: ['vr'],
-    options: "-verbose|v",
-    action: groth16Verify,
-  },
-  {
-    cmd: 'qap-all [curveName] [s_D] [min_s_max]',
-    description: 'build all qap',
-    alias: ['qa'],
-    options: "-verbose|v",
-    action: buildQAP,
-  },
-  {
-    cmd: 'qap-single [paramName] [id]',
-    description: 'build a single qap',
-    alias: ['qs'],
-    options: "-verbose|v",
-    action: buildSingleQAP,
-  },
-];
+inquirer__default["default"].registerPrompt('autocomplete', inquirerPrompt__default["default"]);
 
-clProcessor(commands).then( (res) => {
-  process.exit(res);
-}, (err) => {
-  logger.error(err);
-  process.exit(1);
-});
+inquirer__default["default"]
+  .prompt([
+    {
+      type: 'list',
+      name: 'phase',
+      message: 'Which function do you want to run?',
+      choices: [
+        'Compile',
+        'Build QAP',
+        'Setup',
+        'Derive',
+        'Prove',
+        'Verify',
+      ],
+    },
+    {
+      type: 'confirm',
+      name: 'verbose',
+      message: 'Do you want to activate verbose mode?',
+      default: false,
+    }
+  ])
+  .then(answers => {
+    if (answers.verbose) Logger__default["default"].setLogLevel("DEBUG");
+    if (answers.phase === 'Compile') compile(answers.verbose);
+    if (answers.phase === 'Build QAP') buildQAP();
+    if (answers.phase === 'Setup') setup();
+    if (answers.phase === 'Derive') derive();
+    if (answers.phase === 'Prove') prove();
+    if (answers.phase === 'Verify') verify();
+  })
+  .catch(error => {
+    if (error.isTtyError) {
+      // Prompt couldn't be rendered in the current environment
+      console.log('Prompt couldn\'t be rendered in the current environment.');
+    } else {
+      // Something else when wrong
+      console.log(error);
+    }
+  });
 
-
-async function setup(params, options) {
-  const paramName = params[0];
-  const RSName = params[1];
-  const QAPName = params[2];
-  const entropy = params[3];
-
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
-
-  return setup$1(paramName, RSName, QAPName, entropy, logger);
+function compile(verbose) {
+  child_process.exec('resource/subcircuits/compile.sh',
+        (error, stdout, stderr) => {
+          
+          if (verbose) console.log(stdout);
+            console.log(stderr);
+            if (error !== null) {
+                console.log(`exec error: ${error}`);
+            }
+        });
 }
-async function derive(params, options) {
-  const RSName = params[0];
-  const cRSName = params[1];
-  const circuitName = params[2];
-  const QAPName = params[3];
 
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
-
-  return derive$1(RSName, cRSName, circuitName, QAPName, logger);
+function buildQAP() {
+  inquirer__default["default"]
+    .prompt([
+      {
+        type: 'list',
+        name: 'curve',
+        message: 'What is the name of curve?',
+        choices: [
+          'BN128',
+          'BN254',
+          'ALTBN128',
+          'BLS12381',
+        ]
+      },
+      {
+        type: 'input',
+        name: 'sD',
+        message: 'How many instructions are defined in the EVM?',
+        default: '12',
+        validate: value => {
+          return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
+        }
+      },
+      {
+        type: 'input',
+        name: 'sMax',
+        message: 'The maximum number of arithmetic instructions in the EVM application?',
+        default: '18',
+        validate: value => {
+          return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
+        }
+      },
+    ])
+    .then(
+      answers => {
+        return buildQAP$1(answers.curve, answers.sD, answers.sMax, logger);
+      }
+    );
 }
-async function groth16Prove(params, options) {
-  const cRSName = params[0];
-  const proofName = params[1];
-  const circuitName = params[2];
-  const instanceId = params[3];
-  const entropy = params[4];
 
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
-
-  return groth16Prove$1(cRSName, proofName, circuitName, instanceId, entropy, logger);
-}
-async function groth16Verify(params, options) {
-  const proofName = params[0];
-  const cRSName = params[1];
-  const circuitName = params[2];
-  let instanceId;
-  if (params[3] === undefined) {
-    instanceId = '';
-  } else {
-    instanceId = params[3];
+function setup() {
+  const parameterFileList = fromDir('/resource/subcircuits/', '*.dat');
+  function searchParameterFile(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy__default["default"].filter(input, parameterFileList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
   }
 
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
+  const qapDirList = fromDir('/resource/subcircuits/QAP', '*');
+  function searchQapDirectory(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy__default["default"].filter(input, qapDirList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
   
-  const isValid = await groth16Verify$1(proofName, cRSName, circuitName, instanceId, logger);
-  if (isValid === true) {
-    console.log('VALID');
-  } else {
-    console.log('INVALID');
+  inquirer__default["default"]
+    .prompt([
+      {
+        type: 'autocomplete',
+        name: 'parameterFile',
+        suggestOnly: true,
+        message: 'Which parameter file will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchParameterFile,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+      {
+        type: 'autocomplete',
+        name: 'qapDirectory',
+        suggestOnly: true,
+        message: 'Which QAP will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchQapDirectory,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+      {
+        type: 'input',
+        name: 'referenceString',
+        message: 'What is the name of the universial reference string file?',
+        default: 'rs',
+        validate: value => {
+          return isValidFilename__default["default"](value) ? true : 'Please enter a valid file name';
+        }
+      }
+    ])
+    .then(answers => {
+      return setup$1(answers.parameterFile, answers.referenceString, answers.qapDirectory, logger);
+    });
+}
+
+function derive() {
+  const circuitNameList = fromDir('/resource/circuits/', '*');
+  function searchCircuitName(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy__default["default"].filter(input, circuitNameList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
   }
+  const referenceStringList = fromDir('/resource/universal_rs/', '*.urs');
+  function searchReferenceString(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy__default["default"].filter(input, referenceStringList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
+  const qapDirList = fromDir('/resource/subcircuits/QAP', '*');
+  function searchQapDirectory(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy__default["default"].filter(input, qapDirList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
+  inquirer__default["default"]
+    .prompt([
+      {
+        type: 'autocomplete',
+        name: 'circuitName',
+        suggestOnly: true,
+        message: 'Which circuit will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchCircuitName,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+      {
+        type: 'autocomplete',
+        name: 'referenceStringFile',
+        suggestOnly: true,
+        message: 'Which reference string file will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchReferenceString,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+      {
+        type: 'autocomplete',
+        name: 'qapDirectory',
+        suggestOnly: true,
+        message: 'Which QAP will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchQapDirectory,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+      {
+        type: 'input',
+        name: 'circuitSpecificReferenceString',
+        message: 'What is the name of the circuit-specific reference string file?',
+        default: 'circuit',
+        validate: value => {
+          return isValidFilename__default["default"](value) ? true : 'Please enter a valid file name';
+        }
+      }
+    ])
+    .then(answers => {
+      return derive$1(
+        answers.referenceStringFile, 
+        answers.circuitSpecificReferenceString, 
+        answers.circuitName,
+        answers.qapDirectory, 
+        logger
+        );
+    });
 }
-async function buildQAP(params, options) {
-  const curveName = params[0];
-  const sD = params[1];
-  const minSMax = params[2];
 
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
-
-  return buildQAP$1(curveName, sD, minSMax, logger);
+function prove() {
+  const circuitNameList = fromDir('/resource/circuits/', '*');
+  function searchCircuitName(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy__default["default"].filter(input, circuitNameList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
+  const circuitSpecificReferenceStringList = fromDir('/resource/circuits/**/', '*.crs');
+  function searchCircuitSpecificReferenceString(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy__default["default"].filter(input, circuitSpecificReferenceStringList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
+  inquirer__default["default"]
+    .prompt([
+      {
+        type: 'autocomplete',
+        name: 'circuitSpecificReferenceString',
+        suggestOnly: true,
+        message: 'Which circuit-specific reference string will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchCircuitSpecificReferenceString,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+      {
+        type: 'autocomplete',
+        name: 'circuitName',
+        suggestOnly: true,
+        message: 'Which circuit will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchCircuitName,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+      {
+        type: 'input',
+        name: 'istanceId',
+        message: 'What is the index of the instance of the circuit?',
+        default: '1',
+        validate: value => {
+          return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
+        }
+      },
+      {
+        type: 'input',
+        name: 'proofName',
+        message: 'What is the name of the proof?',
+        default: 'proof',
+        validate: value => {
+          return isValidFilename__default["default"](value) ? true : 'Please enter a valid file name';
+        }
+      },
+    ])
+    .then(answers => {
+      return groth16Prove(
+        answers.circuitSpecificReferenceString, 
+        answers.proofName, 
+        answers.circuitName, 
+        answers.istanceId, 
+        logger
+      );
+    });
 }
-async function buildSingleQAP(params, options) {
-  const paramName = params[0];
-  const id = params[1];
 
-  if (options.verbose) Logger__default["default"].setLogLevel("DEBUG");
+function verify() {
+  const circuitNameList = fromDir('/resource/circuits/', '*');
+  function searchCircuitName(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy__default["default"].filter(input, circuitNameList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
+  const circuitSpecificReferenceStringList = fromDir('/resource/circuits/**/', '*.crs');
+  function searchCircuitSpecificReferenceString(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy__default["default"].filter(input, circuitSpecificReferenceStringList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
+  const proofFileList = fromDir('/resource/circuits/**/', '*.proof');
+  function searchProofFile(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy__default["default"].filter(input, proofFileList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
 
-  return buildSingleQAP$1(paramName, id, logger);
+  inquirer__default["default"]
+    .prompt([
+      {
+        type: 'autocomplete',
+        name: 'circuitSpecificReferenceString',
+        suggestOnly: true,
+        message: 'Which circuit-specific reference string will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchCircuitSpecificReferenceString,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+      {
+        type: 'autocomplete',
+        name: 'circuitName',
+        suggestOnly: true,
+        message: 'Which circuit will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchCircuitName,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+      {
+        type: 'input',
+        name: 'istanceId',
+        message: 'What is the index of the instance of the circuit?',
+        default: '1',
+        validate: value => {
+          return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
+        }
+      },
+      {
+        type: 'autocomplete',
+        name: 'proofFile',
+        suggestOnly: true,
+        message: 'Which proof will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchProofFile,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+
+    ])
+    .then(answers => {
+      return groth16Verify(
+        answers.proofFile,
+        answers.circuitSpecificReferenceString,
+        answers.circuitName,
+        answers.istanceId,
+        logger
+      )
+    });
+}
+
+// get file names from directory
+function fromDir (directory = '', filter = '/*') {
+  const __dirname = path__default["default"].resolve();
+  const res = glob__default["default"].sync(__dirname + directory + filter);
+  return res;
 }

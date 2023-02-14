@@ -8,11 +8,10 @@ import * as misc from './misc.js';
 import * as timer from './utils/timer.js';
 
 export default async function groth16Prove(
-    cRSName,
+    circuitReferenceString,
     proofName,
     circuitName,
     instanceId,
-    entropy,
     logger
 ) {
   const startTime = timer.start();
@@ -21,7 +20,7 @@ export default async function groth16Prove(
   let qapLoadTimeStart;
   let qapLoadTimeAccum = 0;
 
-  const dirPath = `resource/circuits/${circuitName}`;
+  const dirPath = circuitName;
   const TESTFLAG = process.env.TEST_MODE;
   const CRS = 1;
 
@@ -31,7 +30,7 @@ export default async function groth16Prove(
     fd: fdRS,
     sections: sectionsRS,
   } = await binFileUtils.readBinFile(
-      `${dirPath}/${cRSName}.crs`,
+      circuitReferenceString,
       'zkey',
       2,
       1<<25,
@@ -149,7 +148,7 @@ export default async function groth16Prove(
     wtns.push(wtnsK);
   }
 
-  // / TEST CODE 2
+  // TEST CODE 2
   if (TESTFLAG === 'true') {
     if (logger) logger.debug(`Running test 2`);
     const sR1cs = [];
@@ -264,7 +263,7 @@ export default async function groth16Prove(
     fd: fdQAP,
     sections: sectionsQAP,
   } = await binFileUtils.readBinFile(
-      `resource/circuits/${circuitName}/circuitQAP.qap`,
+      `${circuitName}/circuitQAP.qap`,
       'qapp',
       1,
       1<<22,
@@ -299,19 +298,16 @@ export default async function groth16Prove(
   }
   await fdQAP.close();
 
-  // FIXME: pXY has unexpected values
   const temp = await polyUtils.fftMulPoly(Fr, p1XY, p2XY);
   const pXY = await polyUtils.subPoly(Fr, temp, p3XY);
-  // console.log(pXY)
-
   pxyTime = timer.end(pxyTime);
 
-  // / compute H
+  // compute H
   if (logger) logger.debug(`  Finding h1(X,Y)...`);
   let PolDivTime = timer.start();
   const {res: h1XY, finalrem: rem1} = await polyUtils.divPolyByX(Fr, pXY, tX);
   if (logger) logger.debug(`  Finding h2(X,Y)...`);
-  // FIXME: 
+
   const {res: h2XY, finalrem: rem2} = await polyUtils.divPolyByY(Fr, rem1, tY);
   PolDivTime = timer.end(PolDivTime);
   qapSolveTime = timer.end(qapSolveTime);
@@ -372,8 +368,8 @@ export default async function groth16Prove(
   // / End of TEST CODE 3
 
   // Generate r and s
-  const rawr = await misc.getRandomRng(entropy);
-  const raws = await misc.getRandomRng(entropy+1);
+  const rawr = await misc.getRandomRng(1);
+  const raws = await misc.getRandomRng(2);
   const r = Fr.fromRng(rawr);
   const s = Fr.fromRng(raws);
 
@@ -600,6 +596,7 @@ export default async function groth16Prove(
     logger.debug(` ## Time for generating proofs with m=${m}, n=${n}, sMax=${sMax}: ${provingTime} [ms] (${(provingTime/totalTime*100).toFixed(3)} %)`);
     logger.debug(`  # Encryption time: ${EncTimeAccum} [ms] (${(EncTimeAccum/totalTime*100).toFixed(3)} %)`);
   } 
+  process.exit(0);
 
   async function mulFrInG1(point, fieldval) {
     EncTimeStart = timer.start();

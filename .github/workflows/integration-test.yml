@@ -5,7 +5,7 @@ on:
     branches:
       - master
 jobs:
-  test_circuit:
+  check-test-circuit:
     name: Check the Schnorr prove, verify algorithm circuit
     runs-on: ubuntu-latest
     env: 
@@ -25,35 +25,35 @@ jobs:
         options: -v ${{ github.workspace }}:/var/workspace
         run: |
               source "$HOME/.cargo/env"
-              cd /var/workspace/resource/subcircuits
-              ./compile.sh
+              /var/workspace/resource/subcircuits/compile.sh
   
-    - name: build
-      run : npm run buildcli
+    # - name: build
+    #   run : npm run buildcli
     
     - name: build QAP
-      run : node . qap-all bn128 12 18 -v
+      run : node cli.js qap-all bn128 12 18 -v
     
-    - name: universial setup
-      run : node . setup param_12_18 rs_18 QAP_12_18 1 -v 
+    - name: setup
+      run : node cli.js setup resource/subcircuits/param_12_18.dat rs_18 resource/subcircuits/QAP_12_18 -v 
     
     - name: derive
       run : |
-            node . derive rs_18 crsSchnorr_prove schnorr_prove QAP_12_18 -v
-            node . derive rs_18 crsSchnorr_verify schnorr_verify QAP_12_18 -v
-      
+            node cli.js derive resource/universal_rs/rs_18.urs crsSchnorr_prove resource/circuits/schnorr_prove resource/subcircuits/QAP_12_18 -v 
+            node cli.js derive resource/universal_rs/rs_18.urs crsSchnorr_verify resource/circuits/schnorr_verify resource/subcircuits/QAP_12_18 -v
+    
     - name: prove
       run : |
-            node . prove crsSchnorr_prove proof1 schnorr_prove 1 1 -v
-            node . prove crsSchnorr_prove proof2 schnorr_prove 2 1 -v
-            node . prove crsSchnorr_verify proof schnorr_verify 1 1 -v
-            
+            node cli.js prove resource/circuits/schnorr_prove/crsSchnorr_prove.crs proof1 resource/circuits/schnorr_prove 1 -v
+            node cli.js prove resource/circuits/schnorr_prove/crsSchnorr_prove.crs proof2 resource/circuits/schnorr_prove 2 -v
+            node cli.js prove resource/circuits/schnorr_verify/crsSchnorr_verify.crs proof resource/circuits/schnorr_verify 1 -v
       
     - name: verify
       run : |
-            node . verify proof1 crsSchnorr_prove schnorr_prove 1 -v  | tee output1
-            node . verify proof2 crsSchnorr_prove schnorr_prove 2 -v  | tee output2
-            node . verify proof crsSchnorr_verify schnorr_verify 1 -v | tee output3
+            node cli.js verify resource/circuits/schnorr_prove/proof1.proof resource/circuits/schnorr_prove/crsSchnorr_prove.crs resource/circuits/schnorr_prove 1 -v    | tee output1
+            node cli.js verify resource/circuits/schnorr_prove/proof2.proof resource/circuits/schnorr_prove/crsSchnorr_prove.crs resource/circuits/schnorr_prove 2 -v    | tee output2
+            node cli.js verify resource/circuits/schnorr_verify/proof.proof resource/circuits/schnorr_verify/crsSchnorr_verify.crs resource/circuits/schnorr_verify 1 -v | tee output3
+            echo "VALID" > expect
+
     
     - name: check the final results
       run : |
