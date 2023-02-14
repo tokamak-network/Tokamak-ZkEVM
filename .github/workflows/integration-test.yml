@@ -25,7 +25,6 @@ jobs:
         options: -v ${{ github.workspace }}:/var/workspace
         run: |
               source "$HOME/.cargo/env"
-              cd /var/workspace/resource/subcircuits
               ./compile.sh
   
     - name: build
