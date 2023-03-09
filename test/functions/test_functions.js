@@ -130,7 +130,7 @@ describe("0x10 LT function", () => {
     it("should compare two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x10)(RunState)
+      functions.get(0x10)(RunState) // Y < X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -140,7 +140,7 @@ describe("0x11 GT function", () => {
     it("should compare two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x11)(RunState)
+      functions.get(0x11)(RunState) // Y > X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -150,10 +150,28 @@ describe("0x12 SLT function", () => {
     it("should compare two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x12)(RunState)
+      functions.get(0x12)(RunState) // Y < X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
 })
-
-
+describe("0x13 SGT function", () => {
+  testcases_sgt.forEach(({ X, Y, Expected }) => {
+    it("should compare two numbers", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x13)(RunState) // Y > X
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
+describe("0x14 EQ function", () => {
+  testcases_eq.forEach(({ X, Y, Expected }) => {
+    it("should compare two numbers", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x14)(RunState) // Y == X
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
