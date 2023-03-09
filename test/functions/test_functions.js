@@ -145,3 +145,15 @@ describe("0x11 GT function", () => {
     })
   })
 })
+describe("0x12 SLT function", () => {
+  testcases_slt.forEach(({ X, Y, Expected }) => {
+    it("should compare two numbers", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x12)(RunState)
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
+
+
