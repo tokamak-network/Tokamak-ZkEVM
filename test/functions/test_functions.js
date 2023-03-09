@@ -205,3 +205,13 @@ describe("0x18 XOR function", () => {
     })
   })
 })
+describe("0x1A BYTE function", () => {
+  testcases_byte.forEach(({ X, Y, Expected }) => {
+    it("should get a byte from a number", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x1A)(RunState)
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
