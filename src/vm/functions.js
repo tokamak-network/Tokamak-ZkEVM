@@ -1,5 +1,5 @@
-import { keccak256 } from 'ethereum-cryptography/keccak'
-import { bytesToHex } from 'ethereum-cryptography/utils'
+import { keccak256 } from 'ethereum-cryptography/keccak.js'
+import { bytesToHex } from 'ethereum-cryptography/utils.js'
 
 import {
   TWO_POW256,
