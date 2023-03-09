@@ -215,3 +215,13 @@ describe("0x1A BYTE function", () => {
     })
   })
 })
+describe("0x1B SHL function", () => {
+  testcases_shl.forEach(({ X, Y, Expected }) => {
+    it("should shift left a number", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x1B)(RunState) // Y << X
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
