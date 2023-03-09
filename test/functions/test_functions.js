@@ -115,3 +115,13 @@ describe("0x0A EXP function", () => {
     })
   })
 })
+describe("0x0B SIGNEXTEND function", () => {
+  testcases_signext.forEach(({ X, Y, Expected }) => {
+    it("should sign extend a number", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x0B)(RunState)
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
