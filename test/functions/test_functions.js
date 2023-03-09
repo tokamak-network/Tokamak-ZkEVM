@@ -185,3 +185,13 @@ describe("0x16 AND function", () => {
     })
   })
 })
+describe("0x17 OR function", () => {
+  testcases_or.forEach(({ X, Y, Expected }) => {
+    it("should or two numbers in bitwise", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x17)(RunState) // Y | X
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
