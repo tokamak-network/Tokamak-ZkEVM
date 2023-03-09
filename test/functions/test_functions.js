@@ -225,3 +225,13 @@ describe("0x1B SHL function", () => {
     })
   })
 })
+describe("0x1C SHR function", () => {
+  testcases_shr.forEach(({ X, Y, Expected }) => {
+    it("should shift right a number", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x1C)(RunState) // Y >> X
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
