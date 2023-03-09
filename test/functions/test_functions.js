@@ -175,3 +175,13 @@ describe("0x14 EQ function", () => {
     })
   })
 })
+describe("0x16 AND function", () => {
+  testcases_and.forEach(({ X, Y, Expected }) => {
+    it("should and two numbers in bitwise", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x16)(RunState) // Y & X
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
