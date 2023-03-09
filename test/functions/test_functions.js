@@ -105,3 +105,13 @@ describe("0x07 SMOD function", () => {
     })
   })
 })
+describe("0x0A EXP function", () => {
+  testcases_exp.forEach(({ X, Y, Expected }) => {
+    it("should exponentiate two numbers", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x0A)(RunState) // Y ** X
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
