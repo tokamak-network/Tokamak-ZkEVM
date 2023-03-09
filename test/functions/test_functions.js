@@ -95,3 +95,13 @@ describe("0x06 MOD function", () => {
     })
   })
 })
+describe("0x07 SMOD function", () => {
+  testcases_smod.forEach(({ X, Y, Expected }) => {
+    it("should mod two numbers", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x07)(RunState) // Y % X
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
