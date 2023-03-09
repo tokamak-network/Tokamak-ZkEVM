@@ -195,3 +195,13 @@ describe("0x17 OR function", () => {
     })
   })
 })
+describe("0x18 XOR function", () => {
+  testcases_xor.forEach(({ X, Y, Expected }) => {
+    it("should xor two numbers in bitwise", () => {
+      RunState.stack.push(BigInt('0x' + X))
+      RunState.stack.push(BigInt('0x' + Y))
+      functions.get(0x18)(RunState) // Y ^ X
+      assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
+    })
+  })
+})
