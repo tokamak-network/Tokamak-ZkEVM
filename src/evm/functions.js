@@ -7,6 +7,7 @@ import {
   setLengthLeft,
   setLengthRight,
   bigIntToBuffer,
+  bufferToBigInt,
 } from '@ethereumjs/util'
 
 import {
