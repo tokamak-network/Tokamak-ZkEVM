@@ -2,27 +2,27 @@ import { Stack } from '../../src/evm/stack.js';
 import { functions } from '../../src/evm/functions.js';
 import { assert } from 'chai';
 
-import testcases_add from './testdata/testcases_add.json' assert {type: 'json'};
-import testcases_mul from './testdata/testcases_mul.json' assert {type: 'json'};
-import testcases_sub from './testdata/testcases_sub.json' assert {type: 'json'};
-import testcases_div from './testdata/testcases_div.json' assert {type: 'json'};
-import testcases_sdiv from './testdata/testcases_sdiv.json' assert {type: 'json'};
-import testcases_mod from './testdata/testcases_mod.json' assert {type: 'json'};
-import testcases_smod from './testdata/testcases_smod.json' assert {type: 'json'};
-import testcases_exp from './testdata/testcases_exp.json' assert {type: 'json'};
-import testcases_signext from './testdata/testcases_signext.json' assert {type: 'json'};
-import testcases_lt from './testdata/testcases_lt.json' assert {type: 'json'};
-import testcases_gt from './testdata/testcases_gt.json' assert {type: 'json'};
-import testcases_slt from './testdata/testcases_slt.json' assert {type: 'json'};
-import testcases_sgt from './testdata/testcases_sgt.json' assert {type: 'json'};
-import testcases_eq from './testdata/testcases_eq.json' assert {type: 'json'};
-import testcases_and from './testdata/testcases_and.json' assert {type: 'json'};
-import testcases_or from './testdata/testcases_or.json' assert {type: 'json'};
-import testcases_xor from './testdata/testcases_xor.json' assert {type: 'json'};
-import testcases_byte from './testdata/testcases_byte.json' assert {type: 'json'};
-import testcases_shl from './testdata/testcases_shl.json' assert {type: 'json'};
-import testcases_shr from './testdata/testcases_shr.json' assert {type: 'json'};
-import testcases_sar from './testdata/testcases_sar.json' assert {type: 'json'};
+import { default as testcases_add     } from './testdata/testcases_add.js';
+import { default as testcases_mul     } from './testdata/testcases_mul.js';
+import { default as testcases_sub     } from './testdata/testcases_sub.js';
+import { default as testcases_div     } from './testdata/testcases_div.js';
+import { default as testcases_sdiv    } from './testdata/testcases_sdiv.js';
+import { default as testcases_mod     } from './testdata/testcases_mod.js';
+import { default as testcases_smod    } from './testdata/testcases_smod.js';
+import { default as testcases_exp     } from './testdata/testcases_exp.js';
+import { default as testcases_signext } from './testdata/testcases_signext.js';
+import { default as testcases_lt      } from './testdata/testcases_lt.js';
+import { default as testcases_gt      } from './testdata/testcases_gt.js';
+import { default as testcases_slt     } from './testdata/testcases_slt.js';
+import { default as testcases_sgt     } from './testdata/testcases_sgt.js';
+import { default as testcases_eq      } from './testdata/testcases_eq.js';
+import { default as testcases_and     } from './testdata/testcases_and.js';
+import { default as testcases_or      } from './testdata/testcases_or.js';
+import { default as testcases_xor     } from './testdata/testcases_xor.js';
+import { default as testcases_byte    } from './testdata/testcases_byte.js';
+import { default as testcases_shl     } from './testdata/testcases_shl.js';
+import { default as testcases_shr     } from './testdata/testcases_shr.js';
+import { default as testcases_sar     } from './testdata/testcases_sar.js';
 
 
 const RunState = {
