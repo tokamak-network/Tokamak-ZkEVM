@@ -1,6 +1,7 @@
-import { Stack } from '../../src/evm/stack.js';
-import { functions } from '../../src/evm/functions.js';
 import { assert } from 'chai';
+import { Stack } from '../../src/evm/stack.js';
+import { Memory } from "../../src/evm/memory.js";
+import { functions } from '../../src/evm/functions.js';
 
 import { default as testcases_add     } from './testdata/testcases_add.js';
 import { default as testcases_mul     } from './testdata/testcases_mul.js';
@@ -27,8 +28,9 @@ import { default as testcases_sar     } from './testdata/testcases_sar.js';
 
 const RunState = {
   opcode: 0x00,
-  programCounter: 0,
+  programCounter: -1,
   stack: new Stack(),
+  memory: new Memory(),
   code: [],
 }
 
@@ -244,3 +246,46 @@ describe("0x1D SAR function", () => {
     })
   })
 })
+describe('0x51 MLOAD function', () => {
+  it('should load a word from memory', () => {
+    const memory = new Memory();
+    memory.write(32 - 3, 3, Buffer.from([1, 2, 3]));
+    RunState.memory = memory;
+    RunState.stack.push(BigInt(0));
+    functions.get(0x51)(RunState);
+    assert.equal(RunState.stack.pop(), BigInt('0x010203'));
+  });
+  it('should load a word from memory', () => {
+    const memory = new Memory();
+    memory.write(
+      64 - 10, 10, 
+      Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    );
+    RunState.memory = memory;
+    RunState.stack.push(BigInt(32));
+    functions.get(0x51)(RunState);
+    assert.equal(RunState.stack.pop(), BigInt('0x0102030405060708090A'));
+  });
+});
+describe('0x52 MSTORE function', () => {
+  it('should store a word to memory', () => {
+    RunState.memory = new Memory();
+    RunState.stack.push(BigInt('0x010203'));
+    RunState.stack.push(BigInt(0));
+    functions.get(0x52)(RunState);
+    assert.equal(
+      RunState.memory.read(32 - 3, 3).toString('hex'), 
+      '010203'
+    );
+  });
+  it('should store a word to memory', () => {
+    RunState.memory = new Memory();
+    RunState.stack.push(BigInt('0x0102030405060708'));
+    RunState.stack.push(BigInt(32));
+    functions.get(0x52)(RunState);
+    assert.equal(
+      RunState.memory.read(64 - 8, 8).toString('hex'), 
+      '0102030405060708'
+    );
+  });
+});
