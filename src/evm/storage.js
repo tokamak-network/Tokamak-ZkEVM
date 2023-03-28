@@ -67,4 +67,27 @@ export class TransientStorage {
 
     map.set(keyStr, value)
   }
+  /**
+   * To be called whenever entering a new context. If revert is called after checkpoint, all changes after the latest checkpoint are reverted.
+  */
+  checkpoint() {
+    this._indices.push(this._changeJournal.length)
+  }
+  
+  /**
+   * Revert transient storage to the last checkpoint
+  */
+  revert() {
+    const lastCheckpoint = this._indices.pop()
+    if (typeof lastCheckpoint === 'undefined') throw new Error('Nothing to revert')
+
+    for (let i = this._changeJournal.length - 1; i >= lastCheckpoint; i--) {
+      const { key, prevValue, addr } = this._changeJournal[i]
+      if (this._storage.get(addr) === null) {
+        throw Error('Wrong address');
+      }
+      this._storage.get(addr).set(key, prevValue)
+    }
+    this._changeJournal.splice(lastCheckpoint, this._changeJournal.length - lastCheckpoint)
+  }
 }
