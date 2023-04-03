@@ -20,7 +20,7 @@ jobs:
     - name: install circom
       uses: addnab/docker-run-action@v3
       with:
-        image: pleiadex/amd64-circom:2.0.5
+        image: onthertech/amd64-circom:2.0.5
         shell: bash
         options: -v ${{ github.workspace }}:/var/workspace
         run: |
