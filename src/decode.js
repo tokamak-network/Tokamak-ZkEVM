@@ -1,5 +1,5 @@
-import transaction from '../resource/circuits/schnorr_prove/transaction1.json' assert {type: 'json'};
-import subcircuitInfo from '../resource/subcircuits/subcircuit_info.json' assert {type: 'json'};
+// import transaction from '../resource/circuits/schnorr_prove/transaction1.json' assert {type: 'json'};
+import { subcircuit } from '../resource/subcircuits/subcircuit_info.js'
 
 class Data {
   constructor(opIndex, outputIndex, byteSize, value) {
@@ -19,101 +19,104 @@ class Data {
   }
 }
 
-const { bytecode } = transaction;
-let pc = 0;
-const wireMap = {
-  'load': {
-    inputs: [],
-    outputs: []
-  },
-};
-const stack = [];
+export function decode(opts) {
 
-while (pc < bytecode.length) {
-  const op = bytecode.slice(pc, pc + 2); // Get 1 byte from hex string
-  const numberOfInputs = getNumberOfInputs(op);
-
-  if (hexToInteger(op) - hexToInteger('60') >= 0 && 
-      hexToInteger(op) - hexToInteger('60') < 32) { // PUSH1 - PUSH32
+  let { code, pc } = opts;
+  console.log(code.toString())
+  const wireMap = {
+    'load': {
+      inputs: [],
+      outputs: []
+    },
+  };
+  const stack = [];
+  code = code.toString()
+  while (pc < code.length) {
+    const op = code.slice(pc, pc + 2); // Get 1 byte from hex string
+    const numberOfInputs = getNumberOfInputs(op);
+    console.log(op, numberOfInputs)
+    if (hexToInteger(op) - hexToInteger('60') >= 0 && 
+        hexToInteger(op) - hexToInteger('60') < 32) { // PUSH1 - PUSH32
+      
+      const byteSize = hexToInteger(op) - hexToInteger('60') + 1; // Get byte size
+      
+      const value = code.slice(pc + 2, pc + 2 + byteSize * 2); // Get data from code
+      
+      const data = new Data(1, wireMap.load.outputs.length, byteSize, value); // Create stack data object
+      
+      wireMap.load.outputs.push(data); // Add data to wire map
+      
+      stack.push(data); // Add data to stack
+      pc += byteSize * 2; // Move to next byte as many as byte size
+    }
     
-    const byteSize = hexToInteger(op) - hexToInteger('60') + 1; // Get byte size
-    
-    const value = bytecode.slice(pc + 2, pc + 2 + byteSize * 2); // Get data from bytecode
-    
-    const data = new Data(1, wireMap.load.outputs.length, byteSize, value); // Create stack data object
-    
-    wireMap.load.outputs.push(data); // Add data to wire map
-    
-    stack.push(data); // Add data to stack
-    pc += byteSize * 2; // Move to next byte as many as byte size
-  }
+    else if (numberOfInputs === 1) { // Unary operators
+      const a = stack.pop();
+      const value = hexUnaryOperators(op, a.value);
+      
+      const length = Object.keys(wireMap).length;
+      
+      const data = new Data (
+        length + 1, // opIndex
+        0, // outputIndex
+        a.byteSize, // FIXME: byteSize
+        value // value
+      )
+      wireMap[length] = {
+        inputs: [a],
+        outputs: [data]
+      }
+      stack.push(data); // Add data to stack
+    }
+    else if (numberOfInputs === 2) { // Binary operators
+      const a = stack.pop();
+      const b = stack.pop(); 
+      // FIXME: a, d 
+      // FIXME: number of inputs 
+      const value = hexBinaryOperators(op, a.value, b.value);
+      
+      const length = Object.keys(wireMap).length;
+      
+      const data = new Data(
+        length + 1, // opIndex
+        0, // outputIndex
+        Math.max(a.byteSize, b.byteSize), // FIXME: byteSize
+        value // value
+      )
+      wireMap[length] = {
+        inputs: [a, b],
+        outputs: [data]
+      }
+      stack.push(data); // Add data to stack
+    }
   
-  else if (numberOfInputs === 1) { // Unary operators
-    const a = stack.pop();
-    const value = hexUnaryOperators(op, a.value);
-    
-    const length = Object.keys(wireMap).length;
-    
-    const data = new Data (
-      length + 1, // opIndex
-      0, // outputIndex
-      a.byteSize, // FIXME: byteSize
-      value // value
-    )
-    wireMap[length] = {
-      inputs: [a],
-      outputs: [data]
+    else if (numberOfInputs === 3) { // Ternary operators
+      const a = stack.pop();
+      const b = stack.pop();
+      const c = stack.pop();
+      
+      const value = hexTernaryOperators(op, a.value, b.value, c.value);
+      
+      const length = Object.keys(wireMap).length;
+      
+      const data = new Data(
+        length + 1, // opIndex
+        0, // outputIndex
+        Math.max(a.byteSize, b.byteSize, c.byteSize), // FIXME: byteSize
+        value // value
+      )
+      wireMap[length] = {
+        inputs: [a, b, c],
+        outputs: [data]
+      }
+      stack.push(data); // Add data to stack
     }
-    stack.push(data); // Add data to stack
+      
+    pc += 2; // Move to next byte; 1 byte = 2 hex characters
   }
-  else if (numberOfInputs === 2) { // Binary operators
-    const a = stack.pop();
-    const b = stack.pop(); 
-    // FIXME: a, d 
-    // FIXME: number of inputs 
-    const value = hexBinaryOperators(op, a.value, b.value);
-    
-    const length = Object.keys(wireMap).length;
-    
-    const data = new Data(
-      length + 1, // opIndex
-      0, // outputIndex
-      Math.max(a.byteSize, b.byteSize), // FIXME: byteSize
-      value // value
-    )
-    wireMap[length] = {
-      inputs: [a, b],
-      outputs: [data]
-    }
-    stack.push(data); // Add data to stack
-  }
-
-  else if (numberOfInputs === 3) { // Ternary operators
-    const a = stack.pop();
-    const b = stack.pop();
-    const c = stack.pop();
-    
-    const value = hexTernaryOperators(op, a.value, b.value, c.value);
-    
-    const length = Object.keys(wireMap).length;
-    
-    const data = new Data(
-      length + 1, // opIndex
-      0, // outputIndex
-      Math.max(a.byteSize, b.byteSize, c.byteSize), // FIXME: byteSize
-      value // value
-    )
-    wireMap[length] = {
-      inputs: [a, b, c],
-      outputs: [data]
-    }
-    stack.push(data); // Add data to stack
-  }
-    
-  pc += 2; // Move to next byte; 1 byte = 2 hex characters
-}
-console.log(stack);
-
+  console.log(stack);
+  console.log(wireMap)
+}  
 
 function hexToInteger(hex) {
   return parseInt(hex, 16);
@@ -176,7 +179,7 @@ function hexTernaryOperators (op, a, b, c) {
 }
 
 function getNumberOfInputs (op) {
-  const subcircuits = subcircuitInfo['wire-list']
+  const subcircuits = subcircuit['wire-list']
   for (let i = 0; i < subcircuits.length; i++) {
     const opcode = subcircuits[i].opcode;
     if (hexToInteger(opcode) === hexToInteger(op)) {
