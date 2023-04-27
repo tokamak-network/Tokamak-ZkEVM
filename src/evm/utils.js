@@ -1,3 +1,4 @@
+import { EvmError } from "./exceptions.js"
 /**
  * Wraps error message as EvmError
  * @param {string} err The error message
@@ -108,4 +109,22 @@ export function jumpIsValid(runState, dest) {
  */
 export function jumpSubIsValid(runState, dest) {
   return runState.validJumps[dest] === 2
+}
+
+export function getFullname(code, name) {
+  switch (name) {
+    case 'LOG':
+      name += code - 0xa0
+      break
+    case 'PUSH':
+      name += code - 0x5f
+      break
+    case 'DUP':
+      name += code - 0x7f
+      break
+    case 'SWAP':
+      name += code - 0x8f
+      break
+  }
+  return name
 }

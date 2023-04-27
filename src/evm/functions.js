@@ -20,7 +20,7 @@ import {
 import { ERROR } from './exceptions.js'
 
 
-export const functions = new Map([
+export const handlers = new Map([
   // 0x00: STOP
   [
     0x00,

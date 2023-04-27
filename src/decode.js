@@ -34,7 +34,7 @@ export function decode(opts) {
   while (pc < code.length) {
     const op = code.slice(pc, pc + 2); // Get 1 byte from hex string
     const numberOfInputs = getNumberOfInputs(op);
-    console.log(op, numberOfInputs)
+    // console.log(op, numberOfInputs)
     if (hexToInteger(op) - hexToInteger('60') >= 0 && 
         hexToInteger(op) - hexToInteger('60') < 32) { // PUSH1 - PUSH32
       
@@ -48,9 +48,7 @@ export function decode(opts) {
       
       stack.push(data); // Add data to stack
       pc += byteSize * 2; // Move to next byte as many as byte size
-    }
-    
-    else if (numberOfInputs === 1) { // Unary operators
+    } else if (numberOfInputs === 1) { // Unary operators
       const a = stack.pop();
       const value = hexUnaryOperators(op, a.value);
       
@@ -67,14 +65,14 @@ export function decode(opts) {
         outputs: [data]
       }
       stack.push(data); // Add data to stack
-    }
-    else if (numberOfInputs === 2) { // Binary operators
+    } else if (numberOfInputs === 2) { // Binary operators
       const a = stack.pop();
       const b = stack.pop(); 
       // FIXME: a, d 
       // FIXME: number of inputs 
+      console.log(op, a.value, b.value)
       const value = hexBinaryOperators(op, a.value, b.value);
-      
+      // console.log(value)
       const length = Object.keys(wireMap).length;
       
       const data = new Data(
@@ -114,8 +112,10 @@ export function decode(opts) {
       
     pc += 2; // Move to next byte; 1 byte = 2 hex characters
   }
-  console.log(stack);
-  console.log(wireMap)
+  // console.log('stack', stack);
+  // console.log('wireMap',wireMap)
+  // console.log('wireMap[1].inputs', wireMap[1].inputs)
+  // console.log('wireMap[load].outputs', wireMap['load'].outputs)
 }  
 
 function hexToInteger(hex) {
@@ -180,6 +180,7 @@ function hexTernaryOperators (op, a, b, c) {
 
 function getNumberOfInputs (op) {
   const subcircuits = subcircuit['wire-list']
+
   for (let i = 0; i < subcircuits.length; i++) {
     const opcode = subcircuits[i].opcode;
     if (hexToInteger(opcode) === hexToInteger(op)) {

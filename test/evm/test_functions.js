@@ -1,7 +1,7 @@
 import { assert } from 'chai';
 import { Stack } from '../../src/evm/stack.js';
 import { Memory } from "../../src/evm/memory.js";
-import { functions } from '../../src/evm/functions.js';
+import { handlers } from '../../src/evm/functions.js';
 
 import { default as testcases_add     } from './testdata/testcases_add.js';
 import { default as testcases_mul     } from './testdata/testcases_mul.js';
@@ -39,7 +39,7 @@ describe("0x01 ADD function", () => {
     it("should add two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x01)(RunState) // Y + X
+      handlers.get(0x01)(RunState) // Y + X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -50,7 +50,7 @@ describe("0x02 MUL function", () => {
     it("should multiply two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x02)(RunState) // Y * X
+      handlers.get(0x02)(RunState) // Y * X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     }) 
   })
@@ -61,7 +61,7 @@ describe("0x03 SUB function", () => {
     it("should subtract two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x03)(RunState) // Y - X
+      handlers.get(0x03)(RunState) // Y - X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -71,7 +71,7 @@ describe("0x04 DIV function", () => {
     it("should divide two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x04)(RunState) // Y / X
+      handlers.get(0x04)(RunState) // Y / X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -81,7 +81,7 @@ describe("0x05 SDIV function", () => {
     it("should divide two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x05)(RunState) // Y / X
+      handlers.get(0x05)(RunState) // Y / X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -91,7 +91,7 @@ describe("0x06 MOD function", () => {
     it("should mod two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x06)(RunState) // Y % X
+      handlers.get(0x06)(RunState) // Y % X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -101,7 +101,7 @@ describe("0x07 SMOD function", () => {
     it("should mod two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x07)(RunState) // Y % X
+      handlers.get(0x07)(RunState) // Y % X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -111,7 +111,7 @@ describe("0x0A EXP function", () => {
     it("should exponentiate two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x0A)(RunState) // Y ** X
+      handlers.get(0x0A)(RunState) // Y ** X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -121,7 +121,7 @@ describe("0x0B SIGNEXTEND function", () => {
     it("should sign extend a number", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x0B)(RunState)
+      handlers.get(0x0B)(RunState)
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -131,7 +131,7 @@ describe("0x10 LT function", () => {
     it("should compare two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x10)(RunState) // Y < X
+      handlers.get(0x10)(RunState) // Y < X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -141,7 +141,7 @@ describe("0x11 GT function", () => {
     it("should compare two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x11)(RunState) // Y > X
+      handlers.get(0x11)(RunState) // Y > X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -151,7 +151,7 @@ describe("0x12 SLT function", () => {
     it("should compare two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x12)(RunState) // Y < X
+      handlers.get(0x12)(RunState) // Y < X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -161,7 +161,7 @@ describe("0x13 SGT function", () => {
     it("should compare two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x13)(RunState) // Y > X
+      handlers.get(0x13)(RunState) // Y > X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -171,7 +171,7 @@ describe("0x14 EQ function", () => {
     it("should compare two numbers", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x14)(RunState) // Y == X
+      handlers.get(0x14)(RunState) // Y == X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -181,7 +181,7 @@ describe("0x16 AND function", () => {
     it("should and two numbers in bitwise", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x16)(RunState) // Y & X
+      handlers.get(0x16)(RunState) // Y & X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -191,7 +191,7 @@ describe("0x17 OR function", () => {
     it("should or two numbers in bitwise", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x17)(RunState) // Y | X
+      handlers.get(0x17)(RunState) // Y | X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -201,7 +201,7 @@ describe("0x18 XOR function", () => {
     it("should xor two numbers in bitwise", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x18)(RunState) // Y ^ X
+      handlers.get(0x18)(RunState) // Y ^ X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -211,7 +211,7 @@ describe("0x1A BYTE function", () => {
     it("should get a byte from a number", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x1A)(RunState)
+      handlers.get(0x1A)(RunState)
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -221,7 +221,7 @@ describe("0x1B SHL function", () => {
     it("should shift left a number", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x1B)(RunState) // Y << X
+      handlers.get(0x1B)(RunState) // Y << X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -231,7 +231,7 @@ describe("0x1C SHR function", () => {
     it("should shift right a number", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x1C)(RunState) // Y >> X
+      handlers.get(0x1C)(RunState) // Y >> X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -241,7 +241,7 @@ describe("0x1D SAR function", () => {
     it("should shift right a number", () => {
       RunState.stack.push(BigInt('0x' + X))
       RunState.stack.push(BigInt('0x' + Y))
-      functions.get(0x1D)(RunState) // Y >> X
+      handlers.get(0x1D)(RunState) // Y >> X
       assert.equal(RunState.stack.pop(), BigInt('0x' + Expected))
     })
   })
@@ -252,7 +252,7 @@ describe('0x51 MLOAD function', () => {
     memory.write(32 - 3, 3, Buffer.from([1, 2, 3]));
     RunState.memory = memory;
     RunState.stack.push(BigInt(0));
-    functions.get(0x51)(RunState);
+    handlers.get(0x51)(RunState);
     assert.equal(RunState.stack.pop(), BigInt('0x010203'));
   });
   it('should load a word from memory', () => {
@@ -263,7 +263,7 @@ describe('0x51 MLOAD function', () => {
     );
     RunState.memory = memory;
     RunState.stack.push(BigInt(32));
-    functions.get(0x51)(RunState);
+    handlers.get(0x51)(RunState);
     assert.equal(RunState.stack.pop(), BigInt('0x0102030405060708090A'));
   });
 });
@@ -272,7 +272,7 @@ describe('0x52 MSTORE function', () => {
     RunState.memory = new Memory();
     RunState.stack.push(BigInt('0x010203'));
     RunState.stack.push(BigInt(0));
-    functions.get(0x52)(RunState);
+    handlers.get(0x52)(RunState);
     assert.equal(
       RunState.memory.read(32 - 3, 3).toString('hex'), 
       '010203'
@@ -282,7 +282,7 @@ describe('0x52 MSTORE function', () => {
     RunState.memory = new Memory();
     RunState.stack.push(BigInt('0x0102030405060708'));
     RunState.stack.push(BigInt(32));
-    functions.get(0x52)(RunState);
+    handlers.get(0x52)(RunState);
     assert.equal(
       RunState.memory.read(64 - 8, 8).toString('hex'), 
       '0102030405060708'
