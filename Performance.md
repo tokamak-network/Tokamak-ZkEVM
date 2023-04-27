@@ -102,7 +102,7 @@ contract transferContract {
 
 |Results (in mins)|BuildQAP|Setup|Derive|Prove|Verify|Note|
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
-|Overall time|47 secs|5.61|8.12|17.92|0.9 secs||
+|Overall time|47 secs|5.61|8.12|6.03|0.9 secs||
 |Time for EC exponentiations|-|4.67|1.92|25.88 secs|0|Pippenger's algorithm is not applied|
 |Time for polynomial arithmetics w/o division|24.5 secs|-|2.15|2.38|-||
 |Time for polynomial division|-|-|-|68 millisecs|-|An algorithm given in the following link is used: https://drive.google.com/file/d/1mhSafDcquDRZpaBX_0pHL1uuzH-rfym1/view?usp=share_link|
