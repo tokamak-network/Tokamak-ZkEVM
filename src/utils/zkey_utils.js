@@ -277,16 +277,16 @@ export async function readRS(fd, sections, rsParam, rsType, toObject) {
   }
   rsContent.sigmaG.vk1XyPows = vk1XyPows;
 
-  const vk1XyPowsT1g = Array.from(Array(n-1), () => new Array(2*sMax-1));
+  const vk1XyPowsT1g = Array.from(Array(n-1), () => new Array(sMax));
   for (let i = 0; i < n-1; i++) {
-    for (let j=0; j<2*sMax-1; j++) {
+    for (let j=0; j<sMax; j++) {
       vk1XyPowsT1g[i][j] = await readG1(fd, curve, toObject);
     }
   }
   rsContent.sigmaG.vk1XyPowsT1g = vk1XyPowsT1g;
 
-  const vk1XyPowsT2g = Array.from(Array(n), () => new Array(sMax-1));
-  for (let i = 0; i < n; i++) {
+  const vk1XyPowsT2g = Array.from(Array(2*n-1), () => new Array(sMax-1));
+  for (let i = 0; i < 2*n-1; i++) {
     for (let j=0; j<sMax-1; j++) {
       vk1XyPowsT2g[i][j] = await readG1(fd, curve, toObject);
     }

@@ -399,6 +399,84 @@ export async function divPoly(Fr, coefs1, coefs2, objectFlag) {
   }
 }
 
+export function _transpose(A){
+  return A[0].map((_, colIndex) => A.map(row => row[colIndex]));
+  /*
+  const res = Array.from(
+    Array(A.length),
+    () => new Array(A[0].length),
+  );
+  for (let i = 0; i < res.length; i++) {
+    for (let j = 0; j < res[0].length; j++) {
+      res[]
+    }
+  }
+  */
+}
+
+export async function QapDiv(Fr, QAPcoefs, objectFlag) {
+  // Assume divisors are t(X) = X^(n-1) - 1, t(Y) = Y^(s_{max}-1) - 1
+  // p(X,Y) = t(Y)*HY(X,Y) + r(X)
+  // r(X) = t(X)*HX(X)
+  let P = reduceDimPoly(Fr, _autoTransFromObject(Fr, QAPcoefs));
+  const PXDeg = P.length - 1;
+  const PYDeg = P[0].length - 1;
+  const nX = (PXDeg + 2)/2;
+  const nY = (PYDeg + 2)/2;
+  if (Math.round(nX) != nX || Math.round(nY) != nY){
+    throw new Error(`Error in QapDivOnY: X degree is not equal to 2n-2`)
+  }
+  if (P.length != 2*nX-1 || P[0].length != 2*nY-1) {
+    throw new Error(`Error in QapDivOnY: QAP polynomial degree mismatch`)
+  }
+
+  P = _transpose(P);
+  let P1, P2, P3;
+  P3 = P.slice(0, nY-1);
+  P2 = [P[nY-1]];
+  P1 = P.slice(nY, 2*nY-1);
+
+  const ZeroVector = Array.from(
+    Array(1),
+    () => new Array(P1[0].length),
+  );
+  for (let j = 0; j < P1[0].length; j++) {
+    ZeroVector[0][j] = Fr.zero;
+  }
+  let SL = P3;
+  SL.push(...P2);
+  let SR = P1;
+  SR.push(...ZeroVector);
+  const S = await addPoly(Fr, SL, SR);
+
+  const R = _transpose(S);
+  let R1, R2, R3;
+  R3 = R.slice(0, nX-1);
+  R2 = [R[nX-1]];
+  R1 = R.slice(nX, 2*nX-1);
+
+  for (let j = 0; j < R1[0].length; j++) {
+    if (await Fr.eq(R2[0][j], Fr.zero) == false){
+      throw new Error(`Error in QapDivOnY: P(X,Y) is not divisible (1)`)
+    }
+    for (let i = 0; i < R1.length; i++) {
+      if ((await Fr.eq(R1[i][j], await Fr.neg(R3[i][j])) == false)){
+        throw new Error(`Error in QapDivOnY: P(X,Y) is not divisible (2)`)
+      }
+    }
+  }
+
+  const HY = _transpose(P1);
+  const HX = R1;
+
+  if (!((objectFlag === undefined) || (objectFlag == false))) {
+    HX = _transToObject(Fr, HX);
+    HY = _transToObject(Fr, HY);
+  }
+
+  return {HX, HY};
+}
+
 export async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
   coefs1 = _autoTransFromObject(Fr, coefs1);
   coefs2 = _autoTransFromObject(Fr, coefs2);

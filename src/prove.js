@@ -305,10 +305,22 @@ export default async function groth16Prove(
   // compute H
   if (logger) logger.debug(`  Finding h1(X,Y)...`);
   let PolDivTime = timer.start();
+/*
   const {res: h1XY, finalrem: rem1} = await polyUtils.divPolyByX(Fr, pXY, tX);
   if (logger) logger.debug(`  Finding h2(X,Y)...`);
-
   const {res: h2XY, finalrem: rem2} = await polyUtils.divPolyByY(Fr, rem1, tY);
+*/
+    // h1XY = HX(X,Y), h2XY = HY(X,Y)
+  const {HX: h1XY, HY: h2XY} = await polyUtils.QapDiv(Fr, pXY);
+/*
+  let test1 = await polyUtils.fftMulPoly(Fr, h1XY, tX);
+  let test2 = await polyUtils.fftMulPoly(Fr, h2XY, tY);
+  let test3 = await polyUtils.addPoly(Fr, test1, test2);
+  let test4 = await polyUtils.subPoly(Fr, pXY, test3);
+  console.log(await polyUtils._transToObject(Fr, test4));
+*/
+
+
   PolDivTime = timer.end(PolDivTime);
   qapSolveTime = timer.end(qapSolveTime);
   if (logger) logger.debug(`Solving QAP...Done`);
@@ -420,7 +432,7 @@ export default async function groth16Prove(
   }
   vk1CP[1] = await mulFrInG1(buffG1, Fr.e(0));
   for (let i=0; i<n-1; i++) {
-    for (let j=0; j<2*sMax-1; j++) {
+    for (let j=0; j<sMax; j++) {
       const term = await mulFrInG1(
           urs.sigmaG.vk1XyPowsT1g[i][j],
           h1XY[i][j],
@@ -429,7 +441,7 @@ export default async function groth16Prove(
     }
   }
   vk1CP[2] = await mulFrInG1(buffG1, Fr.e(0));
-  for (let i=0; i<n; i++) {
+  for (let i=0; i<2*n-1; i++) {
     for (let j=0; j<sMax-1; j++) {
       const term = await mulFrInG1(
           urs.sigmaG.vk1XyPowsT2g[i][j],
