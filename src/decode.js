@@ -133,6 +133,7 @@ function getEnv(code) {
   const environData = Buffer.from(data, 'hex')
   const environLen = environData.length
   const codewdata = Buffer.concat([code, callcode_suffix, environData])
+  console.log(codewdata)
   
   const storage_keys = [
     '0000000000000000000000000000000000000000000000000000000000000000', 
@@ -140,7 +141,7 @@ function getEnv(code) {
     '0000000000000000000000000000000000000000000000000000000000000002', 
     '0000000000000000000000000000000000000000000000000000000000000003'
   ]
-  
+
   return { environ_pts, callcode_suffix }
 }
 
