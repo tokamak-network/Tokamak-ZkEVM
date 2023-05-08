@@ -278,7 +278,10 @@ export class Decoder {
         a=0;
 
         const addr = this.evalEVM(stack_pt[0]).toString().padStart(64, '0')
-        console.log(addr)
+        const sdata_pt = stack_pt[1]
+
+        storage_pt[addr] = sdata_pt
+        
       }
 
     }
