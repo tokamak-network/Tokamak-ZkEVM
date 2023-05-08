@@ -313,19 +313,23 @@ export class Decoder {
         stack_pt.unshift([0, balance_pt, balance_len])
       }
       else if (hexToInteger(op) - hexToInteger('80') >= 0 
-      && hexToInteger(op) - hexToInteger('80') < 16) { // duplicate
+        && hexToInteger(op) - hexToInteger('80') < 16) { // duplicate
         d = 1;
         a = 2
 
-        const duplen = hexToInteger(op) - hexToInteger('80') + 1
+        const duplen = hexToInteger(op) - hexToInteger('80')
 
         stack_pt.unshift(stack_pt[duplen]) // duplen 길어지면 수정 필ㅛㅏㄹ듯
       }
-      else if (hexToInteger(op) === hexToInteger('33')) { // store
+      else if (hexToInteger(op) - hexToInteger('90') >= 0 
+       && hexToInteger(op) - hexToInteger('90') < 16) { // swap
         d = 0;
-        a = 1
+        a = 0;
 
-        stack_pt.unshift([0, Is_pt, Is_len])
+        const target_index = hexToInteger(op) - hexToInteger('90') + 1
+        const temp = stack_pt[0]
+        stack_pt[0] = stack_pt[target_index]
+        stack_pt[target_index] = temp
       }
       this.vmTraceStep
 
@@ -349,36 +353,6 @@ export class Decoder {
   }
 }
 
-
-export default async function decode(opts) {
-  let { code, pc } = opts
-  const codeLen = code.length
-  let stack_pt = []
-  let ouputs_pt = []
-  pc = 0
-  // code = code.toString()
-  while (pc < codeLen) {
-    let d
-    let a
-    pc = pc + 1
-    op = code[pc]
-    let prev_stack_size = stack_pt.length
-
-    switch (op) {
-      case 'push' :
-      case '50':
-        d = 1;
-        a = 0;
-
-        stack_pt = pop_stack(stack_pt, d)
-      case '51': // mload
-        d = 1;
-        a = 0
-
-        addr = stack_pt[0][0] === 0 ? opPointer(stack_pt[0][1]) : ''
-    }
-  }
-}
 
 function opPointer (wire_pointer) {
   // ROM_value=vpa(hd_hex2dec(cell2mat(codewdata(wire_pointer:wire_pointer+byte_size-1))));
