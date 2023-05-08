@@ -273,9 +273,12 @@ export class Decoder {
           sdata_pt = [0, zero_pt, zero_len]
         }
         stack_pt.unshift(sdata_pt)
-      } else if (hexToInteger(op) === 54) {
-        d=1;
-        a=1;
+      } else if (hexToInteger(op) === hexToInteger('55')) { // store
+        d=2;
+        a=0;
+
+        const addr = this.evalEVM(stack_pt[0]).toString().padStart(64, '0')
+        console.log(addr)
       }
 
     }
