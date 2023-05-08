@@ -204,26 +204,25 @@ export class Decoder {
       const op = code[pc].toString(16)
       pc = pc + 1
       
-      // console.log('op', op)
-      // console.log(hexToInteger('60'))
-      // console.log(op - hexToInteger('60'))
+      console.log('op', op)
+
       let d = 0
       let a = 0
       const prev_stack_size = stack_pt.length
-      if (hexToInteger(op) - hexToInteger('60') >= 0 && 
-      hexToInteger(op) - hexToInteger('60') < 32) {
-          const pushlen = hexToInteger(op) - hexToInteger('60') + 1
-          // console.log(call_pt[calldepth - 1][0])
-          // console.log(pc)
-          stack_pt.unshift([0, pc+call_pt[calldepth - 1][0], pushlen])
-          pc = pc + pushlen
-      } else if (hexToInteger(op) === 50) {
+      
+      if (op - '60' >= 0 && op - 60 < 32) {
+        const pushlen = op - 60 + 1
+        // console.log(call_pt[calldepth - 1][0])
+        // console.log(pc)
+        stack_pt.unshift([0, pc+call_pt[calldepth - 1][0], pushlen])
+        pc = pc + pushlen
+      } else if (op === 50) {
         d = 1;
         a = 0
 
         stack_pt = pop_stack(stack_pt, d)
       } 
-      else if (hexToInteger(op) === hexToInteger('51')) { // mload
+      else if (op === 51) { // mload
         d = 1
         a = 0
         const addr = (this.evalEVM(stack_pt[0]) + 1)
@@ -234,13 +233,13 @@ export class Decoder {
 
         // }
         stack_pt.unshift(mem_pt(addr))
-      } else if (hexToInteger(op) === hexToInteger('52')) {
+      } else if (op === 52) {
         d = 2
         a = 0
         const addr = (this.evalEVM(stack_pt[0]) + 1)
         const data = stack_pt[1]
         mem_pt[addr - 1] = data
-      } else if (hexToInteger(op) === hexToInteger('53')) {
+      } else if (op === 53) {
         d = 2;
         a = 0;
         const addr = (this.evalEVM(stack_pt[0]) + 1)
@@ -248,9 +247,13 @@ export class Decoder {
         data[2] = 1
         mem_pt[addr - 1] = data
       }
-      else if (hexToInteger(op) === hexToInteger('54')) {
+      else if (op === 54) { //sload
+        d = 1
+        a = 1
 
-      } else if (hexToInteger(op) === 54) {
+        const addr = this.evalEVM(stack_pt[0])
+        console.log(addr)
+      } else if (op === 54) {
         d=1;
         a=1;
       }
@@ -336,10 +339,10 @@ export async function decodes(opts) {
     const op = code.slice(pc, pc + 2); // Get 1 byte from hex string
     const numberOfInputs = getNumberOfInputs(op);
     // console.log(op, numberOfInputs)
-    if (hexToInteger(op) - hexToInteger('60') >= 0 && 
-        hexToInteger(op) - hexToInteger('60') < 32) { // PUSH1 - PUSH32
+    if (op - 60 >= 0 && 
+        op - 60 < 32) { // PUSH1 - PUSH32
       
-      const byteSize = hexToInteger(op) - hexToInteger('60') + 1; // Get byte size
+      const byteSize = op - 60 + 1; // Get byte size
       
       const value = code.slice(pc + 2, pc + 2 + byteSize * 2); // Get data from code
       
@@ -528,7 +531,7 @@ function getNumberOfInputs (op) {
 
   for (let i = 0; i < subcircuits.length; i++) {
     const opcode = subcircuits[i].opcode;
-    if (hexToInteger(opcode) === hexToInteger(op)) {
+    if (hexToInteger(opcode) === op) {
       return subcircuits[i].In_idx[1];
     }
   }
