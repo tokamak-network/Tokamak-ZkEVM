@@ -3,7 +3,7 @@ import { Chain, Common, Hardfork } from '@ethereumjs/common'
 import { EVM } from '../evm.js'
 import { DefaultStateManager } from '@ethereumjs/statemanager'
 import { EEI } from '@ethereumjs/vm'
-import { decodes } from '../../decode.js'
+import { Decoder } from '../../decode.js'
 
 const main = async () => {
   const common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
@@ -15,6 +15,8 @@ const main = async () => {
     common,
     eei,
   })
+
+  const decoder = new Decoder({})
 
   const STOP = '00'
   const ADD = '01'
@@ -38,13 +40,10 @@ const PUSH1 = '60'
   //   console.log(`gasUsed: ${results.executionGasUsed.toString()}`)
   // })
   // .catch(console.error)
-  decodes({
-    code: '6000546000540a6003549006806000526002540a60035490066004556001546002540a60035490066000540260016003540303600160035403900660016003540360005106016001600354039006806005556020526040602060006040522060605260206060f3',
-
-    // code: code.join(''),
-    pc: 0,
-    gasLimit: BigInt(0xffff),
-  })
+  decoder.runCode(
+    Buffer.from('6000546000540a6003549006806000526002540a60035490066004556001546002540a60035490066000540260016003540303600160035403900660016003540360005106016001600354039006806005556020526040602060006040522060605260206060f3', 'hex')
+  )
+  
     
 
 }

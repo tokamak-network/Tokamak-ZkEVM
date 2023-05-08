@@ -257,6 +257,10 @@ function derive() {
     })
 }
 
+function decode() {
+  
+}
+
 function prove() {
   const circuitNameList = fromDir('/resource/circuits/', '*');
   function searchCircuitName(answers, input = '') {
