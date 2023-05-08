@@ -221,7 +221,8 @@ export class Decoder {
       const prev_stack_size = stack_pt.length
 
       
-      if (op - '60' >= 0 && op - 60 < 32) {
+      if (hexToInteger(op) - hexToInteger('60') >= 0 
+        && hexToInteger(op) - hexToInteger('60') < 32) {
         const pushlen = hexToInteger(op) - hexToInteger('60') + 1
         // console.log(call_pt[calldepth - 1][0])
         // console.log(pc)
@@ -293,29 +294,32 @@ export class Decoder {
 
         stack_pt.unshift([0, Iv_pt, Iv_len])
       }
-      else if (hexToInteger(op) === hexToInteger('33')) { // store
-        d = 0;
+      else if (hexToInteger(op) === hexToInteger('35')) { // calldataload
+        d = 1;
         a = 1
 
-        stack_pt.unshift([0, Is_pt, Is_len])
+        // stack_pt.unshift([0, Is_pt, Is_len])
       }
-      else if (hexToInteger(op) === hexToInteger('33')) { // store
+      else if (hexToInteger(op) === hexToInteger('36')) { // calldatasize
         d = 0;
         a = 1
 
-        stack_pt.unshift([0, Is_pt, Is_len])
+        stack_pt.unshift([0, Id_len_info_pt, Id_len_info_len])
       }
-      else if (hexToInteger(op) === hexToInteger('33')) { // store
+      else if (hexToInteger(op) === hexToInteger('47')) { // selfbalance
         d = 0;
         a = 1
 
-        stack_pt.unshift([0, Is_pt, Is_len])
+        stack_pt.unshift([0, balance_pt, balance_len])
       }
-      else if (hexToInteger(op) === hexToInteger('33')) { // store
-        d = 0;
-        a = 1
+      else if (hexToInteger(op) - hexToInteger('80') >= 0 
+      && hexToInteger(op) - hexToInteger('80') < 16) { // duplicate
+        d = 1;
+        a = 2
 
-        stack_pt.unshift([0, Is_pt, Is_len])
+        const duplen = hexToInteger(op) - hexToInteger('80') + 1
+
+        stack_pt.unshift(stack_pt[duplen]) // duplen 길어지면 수정 필ㅛㅏㄹ듯
       }
       else if (hexToInteger(op) === hexToInteger('33')) { // store
         d = 0;
