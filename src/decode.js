@@ -282,7 +282,49 @@ export class Decoder {
 
         storage_pt[addr] = sdata_pt
         
+      } else if (hexToInteger(op) === hexToInteger('33')) { // caller
+        d = 0;
+        a = 1
+
+        stack_pt.unshift([0, Is_pt, Is_len])
+      }  else if (hexToInteger(op) === hexToInteger('34')) { // callvalue
+        d = 0;
+        a = 1
+
+        stack_pt.unshift([0, Iv_pt, Iv_len])
       }
+      else if (hexToInteger(op) === hexToInteger('33')) { // store
+        d = 0;
+        a = 1
+
+        stack_pt.unshift([0, Is_pt, Is_len])
+      }
+      else if (hexToInteger(op) === hexToInteger('33')) { // store
+        d = 0;
+        a = 1
+
+        stack_pt.unshift([0, Is_pt, Is_len])
+      }
+      else if (hexToInteger(op) === hexToInteger('33')) { // store
+        d = 0;
+        a = 1
+
+        stack_pt.unshift([0, Is_pt, Is_len])
+      }
+      else if (hexToInteger(op) === hexToInteger('33')) { // store
+        d = 0;
+        a = 1
+
+        stack_pt.unshift([0, Is_pt, Is_len])
+      }
+      else if (hexToInteger(op) === hexToInteger('33')) { // store
+        d = 0;
+        a = 1
+
+        stack_pt.unshift([0, Is_pt, Is_len])
+      }
+      this.vmTraceStep
+
 
     }
 
