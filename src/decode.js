@@ -8,6 +8,11 @@ import {
   exponentiation
 } from './evm/utils.js'
 import { wire_mapping } from './wire_mappings.js';
+import { Stack } from './evm/stack.js';
+import { Memory } from './evm/memory.js';
+import { handlers } from './evm/functions.js';
+
+import { hexToInteger, decimalToHex, pop_stack } from './utils/convert.js';
 
 export class Decoder {
   // constructor(opIndex, outputIndex, byteSize, value) {
@@ -154,8 +159,8 @@ export class Decoder {
 
     this.oplist = [{
       opcode: '',
-      pt_inputs: '',
-      pt_outputs: '',
+      pt_inputs: [],
+      pt_outputs: [],
       inputs: [],
       outputs: [],
     }]
@@ -220,19 +225,16 @@ export class Decoder {
     let pc = 0;
 
     while (pc < codelen) {
-      const op = code[pc].toString(16)
+      const op = decimalToHex(code[pc])
       pc = pc + 1
       
       let d = 0
       let a = 0
       const prev_stack_size = stack_pt.length
-      // console.log('op', op, stack_pt)
+
       if (hexToInteger(op) - hexToInteger('60') >= 0 
         && hexToInteger(op) - hexToInteger('60') < 32) {
         const pushlen = hexToInteger(op) - hexToInteger('60') + 1
-        // console.log(call_pt[calldepth - 1][0])
-        // console.log(pc)
-        // console.log('push', [0, pc+call_pt[calldepth - 1][0], pushlen])
         stack_pt.unshift([0, pc+call_pt[calldepth - 1][0], pushlen])
         pc = pc + pushlen
       } else if (hexToInteger(op) === hexToInteger('50')) {
@@ -439,20 +441,49 @@ export class Decoder {
       // }
       this.vmTraceStep = this.vmTraceStep + 1
     }
-  
-    // console.log(this.oplist)
-    for (let i = 0; i < this.oplist.length; i++) {
-      console.log(this.oplist[i])
-      console.log(this.oplist[i].pt_inputs)
+    
+    this.oplist[0].pt_inputs = outputs_pt[0]
+    
+    
+    for (let i = 0; i < this.oplist.length ;i ++) {
+      let k_pt_inputs = this.oplist[i].pt_inputs
+      
+      k_pt_inputs = k_pt_inputs[0][0] ? k_pt_inputs[0] : [k_pt_inputs]
+      let k_inputs = []
+
+      for (let j=0; j<k_pt_inputs.length ; j++) {
+        console.log(k_pt_inputs[j])
+        const a = this.evalEVM(k_pt_inputs[j])
+        k_inputs.push(a)
+      }
+      let k_pt_outputs = this.oplist[i].pt_outputs;
+      const opcode = this.oplist[i].opcode
+      // console.log('k_pt_outputs_before',this.oplist[i].opcode ,k_pt_outputs)
+
+      // k_pt_outputs = opcode === 'fff' ? k_pt_outputs : [k_pt_outputs]
+      // let k_outputs = []
+      // // console.log('k_pt_outputs',k_pt_outputs)
+      // for (let j = 0; j < k_pt_outputs.length ; j ++) {
+      //   // console.log('pt_output',k_pt_outputs[j])
+      //   let k_output = this.evalEVM(k_pt_outputs[j])
+      //   // console.log('k_output', opcode ,k_output)
+      //   k_outputs.push(k_output)
+      // }
+      console.log('k_inputs', k_inputs)
+      this.oplist[i].inputs=k_inputs
+      // this.oplist[i].outputs=k_outputs
+      // console.log(this.oplist[i].inputs)
+      // console.log(this.oplist[i].outputs)
     }
+    
     return outputs_pt
   }
 
   
 
   evalEVM (pt) {
-
     const codewdata = this.codewdata
+    // console.log('pt',pt)
     const op_pointer = pt[0]
     const wire_pointer = pt[1]
     const byte_size = pt[3]
@@ -460,21 +491,56 @@ export class Decoder {
     if (op_pointer == 0) {
       return codewdata[wire_pointer - 1]
     }
+    // console.log(this.oplist[18])
+    
+    let t_oplist = this.oplist[op_pointer - 1]
+    // console.log('op_pointer',op_pointer)
+    // console.log(t_oplist)
+    const op = t_oplist.opcode
+    console.log('op', op)
+    if (t_oplist.outputs.length !== 0) {
+      return t_oplist.outputs[wire_pointer]
+    }
+    const RunState = {
+      opcode: 0x00,
+      programCounter: -1,
+      stack: new Stack(),
+      memory: new Memory(),
+      code: [],
+    }
+    
+    if (hexToInteger(op) == hexToInteger('fff')) {
+      console.log('fff')
+      let new_pt = t_oplist.pt_outputs[wire_pointer]
+      console.log('new_pt',new_pt)
+      return this.evalEVM(new_pt)
+    } else {
+      let inputlen = t_oplist.pt_inputs.length
+      let inputs = []
+      // console.log(t_oplist)
+      let pt_inputs = t_oplist.pt_inputs
+      console.log('opPointer', op_pointer)
+      console.log('oppp', op, pt_inputs)
+      for (let i=0; i < inputlen; i ++) {
+        console.log('input result',this.evalEVM(pt_inputs[0][i]))
+        inputs.push(this.evalEVM(pt_inputs[0][i]))
+        // RunState.stack.push(BigInt('0x' + this.evalEVM(pt_inputs[i]))) 
+      }
+      console.log(inputs)
+      // console.log(Runstate.stack)
+      handlers.get('0x'+ op)
+      return RunState.stack.pop()
+    }
+
+
   }
-}
 
-function display (param) {
-  console.log(param)
-}
 
-function pop_stack (stack_pt, d) {
-  return stack_pt.slice(d)
+
 }
 
 
-function hexToInteger(hex) {
-  return parseInt(hex, 16);
-}  
+
 
 // TODO: Underflow and Overflow check; there's no negative number in EVM
 
