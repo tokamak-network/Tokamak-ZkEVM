@@ -11,6 +11,8 @@ import { wire_mapping } from './wire_mappings.js';
 import { Stack } from './evm/stack.js';
 import { Memory } from './evm/memory.js';
 import { handlers } from './evm/functions.js';
+import { keccak256 } from 'ethereum-cryptography/keccak.js'
+import { bytesToHex } from 'ethereum-cryptography/utils.js'
 
 import { hexToInteger, decimalToHex, pop_stack } from './utils/convert.js';
 
@@ -189,30 +191,16 @@ export class Decoder {
     let stack_pt = []
     this.getEnv(code)
     const {
-      pc_pt,
-      pc_len,
       Iv_pt,
       Iv_len,
-      Id_pt,
-      Id_len,
       Id_len_info_pt,
       Id_len_info_len,
       Is_pt,
       Is_len,
-      od_pt,
-      od_len,
-      od_len_info_pt,
-      od_len_info_len,
-      sd_pt,
-      sd_len,
-      calldepth_pt,
-      calldepth_len,
       balance_pt,
       balance_len,
       zero_pt,
       zero_len,
-      storage_pts,
-      storage_lens
     } = this.environ_pts
     
     let storage_pt = this.storage_pt
@@ -291,13 +279,10 @@ export class Decoder {
         } else {
           sdata_pt = [0, zero_pt, zero_len]
         }
-        // console.log('before unshift 54', stack_pt)
-        // console.log('54 sdata_pt', sdata_pt)
         stack_pt.unshift(sdata_pt)
-        // console.log('after unshift 54', stack_pt)
       } else if (hexToInteger(op) === hexToInteger('55')) { // store
-        d=2;
-        a=0;
+        d = 2;
+        a = 0;
 
         const addr = this.evalEVM(stack_pt[0]).toString().padStart(64, '0')
         const sdata_pt = stack_pt[1]
@@ -337,9 +322,7 @@ export class Decoder {
         a = 2
 
         const duplen = hexToInteger(op) - hexToInteger('80')
-        // console.log(duplen, '80', stack_pt)
-        // console.log('80', stack_pt[duplen])
-        stack_pt.unshift(stack_pt[duplen]) // duplen 길어지면 수정 필ㅛㅏㄹ듯
+        stack_pt.unshift(stack_pt[duplen]) 
       } else if (hexToInteger(op) - hexToInteger('90') >= 0 
        && hexToInteger(op) - hexToInteger('90') < 16) { // swap
         d = 0;
@@ -360,12 +343,12 @@ export class Decoder {
           case ['15','19'].includes(op) :
             d = 1;
             a = 1;
-          case ['10', '1b', '1c', '14', '1', '2', '3', '4', '16', '17', '18', 'a', '12', '11', '6', '5', '7', 'b', '13', '1a', '1d'].includes(op):
-            d=2
-            a=1
+          case ['10', '1b', '1c', '14', '01', '02', '03', '04', '16', '17', '18', '0a', '12', '11', '06', '05', '07', '0b', '13', '1a', '1d'].includes(op):
+            d = 2
+            a = 1
           case ['08', '09'].includes(op):
-            d=3;
-            a=1;
+            d = 3;
+            a = 1;
           case '20': // keccak256
             a=1;
             const addr = this.evalEVM(stack_pt[0]) + 1
@@ -444,36 +427,31 @@ export class Decoder {
     
     this.oplist[0].pt_inputs = outputs_pt[0]
     
-    
     for (let i = 0; i < this.oplist.length ;i ++) {
       let k_pt_inputs = this.oplist[i].pt_inputs
-      
+      console.log(k_pt_inputs)
+      console.log(this.oplist[i].pt_outputs)
       k_pt_inputs = k_pt_inputs[0][0] ? k_pt_inputs[0] : [k_pt_inputs]
       let k_inputs = []
 
       for (let j=0; j<k_pt_inputs.length ; j++) {
-        console.log(k_pt_inputs[j])
         const a = this.evalEVM(k_pt_inputs[j])
         k_inputs.push(a)
       }
       let k_pt_outputs = this.oplist[i].pt_outputs;
       const opcode = this.oplist[i].opcode
-      // console.log('k_pt_outputs_before',this.oplist[i].opcode ,k_pt_outputs)
 
-      // k_pt_outputs = opcode === 'fff' ? k_pt_outputs : [k_pt_outputs]
-      // let k_outputs = []
-      // // console.log('k_pt_outputs',k_pt_outputs)
-      // for (let j = 0; j < k_pt_outputs.length ; j ++) {
-      //   // console.log('pt_output',k_pt_outputs[j])
-      //   let k_output = this.evalEVM(k_pt_outputs[j])
-      //   // console.log('k_output', opcode ,k_output)
-      //   k_outputs.push(k_output)
-      // }
-      console.log('k_inputs', k_inputs)
+      k_pt_outputs = opcode === 'fff' ? k_pt_outputs : [k_pt_outputs]
+      let k_outputs = []
+      for (let j = 0; j < k_pt_outputs.length ; j ++) {
+        let k_output = this.evalEVM(k_pt_outputs[j])
+        k_outputs.push(k_output)
+      }
       this.oplist[i].inputs=k_inputs
-      // this.oplist[i].outputs=k_outputs
-      // console.log(this.oplist[i].inputs)
-      // console.log(this.oplist[i].outputs)
+      this.oplist[i].outputs=k_outputs
+      console.log('input result:',this.oplist[i].inputs)
+      console.log('output result:', this.oplist[i].outputs)
+      console.log('')
     }
     
     return outputs_pt
@@ -483,7 +461,6 @@ export class Decoder {
 
   evalEVM (pt) {
     const codewdata = this.codewdata
-    // console.log('pt',pt)
     const op_pointer = pt[0]
     const wire_pointer = pt[1]
     const byte_size = pt[3]
@@ -491,54 +468,201 @@ export class Decoder {
     if (op_pointer == 0) {
       return codewdata[wire_pointer - 1]
     }
-    // console.log(this.oplist[18])
     
     let t_oplist = this.oplist[op_pointer - 1]
-    // console.log('op_pointer',op_pointer)
-    // console.log(t_oplist)
+
     const op = t_oplist.opcode
-    console.log('op', op)
+    // console.log('pt_inputs', t_oplist.pt_inputs, t_oplist.pt_inputs[0])
     if (t_oplist.outputs.length !== 0) {
-      return t_oplist.outputs[wire_pointer]
-    }
-    const RunState = {
-      opcode: 0x00,
-      programCounter: -1,
-      stack: new Stack(),
-      memory: new Memory(),
-      code: [],
+      return t_oplist.outputs[wire_pointer - 1]
     }
     
-    if (hexToInteger(op) == hexToInteger('fff')) {
-      console.log('fff')
-      let new_pt = t_oplist.pt_outputs[wire_pointer]
-      console.log('new_pt',new_pt)
-      return this.evalEVM(new_pt)
-    } else {
-      let inputlen = t_oplist.pt_inputs.length
-      let inputs = []
-      // console.log(t_oplist)
-      let pt_inputs = t_oplist.pt_inputs
-      console.log('opPointer', op_pointer)
-      console.log('oppp', op, pt_inputs)
-      for (let i=0; i < inputlen; i ++) {
-        console.log('input result',this.evalEVM(pt_inputs[0][i]))
-        inputs.push(this.evalEVM(pt_inputs[0][i]))
-        // RunState.stack.push(BigInt('0x' + this.evalEVM(pt_inputs[i]))) 
+    try {
+      const RunState = {
+        opcode: 0x00,
+        programCounter: -1,
+        stack: new Stack(),
+        memory: new Memory(),
+        code: [],
       }
-      console.log(inputs)
-      // console.log(Runstate.stack)
-      handlers.get('0x'+ op)
-      return RunState.stack.pop()
+
+      if (hexToInteger(op) == hexToInteger('fff')) {
+        let new_pt = t_oplist.pt_outputs[wire_pointer - 1]
+        const value = this.evalEVM(new_pt)
+        return value
+      } else {
+        let inputlen = t_oplist.pt_inputs[0].length
+        let inputs = []
+        let pt_inputs = t_oplist.pt_inputs[0][0][0] ? t_oplist.pt_inputs[0] : t_oplist.pt_inputs
+        for (let i=0; i < inputlen; i ++) {
+          inputs.push(this.evalEVM(pt_inputs[i]))
+        }
+
+        if (op === '01') {
+          return inputs[0] + inputs[1]
+        }
+        if (op === '02') {
+          return inputs[0] * inputs[1]
+        }
+        if (op === '03') {
+          return inputs[0] - inputs[1]
+        }
+        if (op === '04') {
+          return inputs[0] / inputs[1]
+        }
+        if (op === '05') {
+          const result = inputs[1] === 0 ? 0 : inputs[0] / inputs[1]
+          return result
+        }
+        if (op === '06') {
+          const result = inputs[1] === 0 ? inputs[1] : inputs[0] % inputs[1]
+          return result
+        }
+        if (op === '0a') {
+          return inputs[0] ** inputs[1]
+        }
+        if (op === '20') {
+          //padData.padStart(pc_len * 2, '0')
+          const inputLen = inputs.length
+          for (let i = 0; i < inputLen; i ++) {
+            inputs[i] = inputs[i].toString().padStart(64, '0')
+          }
+          const input_con = Buffer.from(inputs.join(''), 'hex')
+          const hex = bytesToHex(keccak256(input_con))
+          return hexToInteger(hex)
+        }  
+      }
+    } catch(e) {
+      console.log(e)
     }
-
-
   }
-
-
-
 }
 
+class Data {
+  constructor(opIndex, outputIndex, byteSize, value) {
+    this.opIndex = opIndex;
+    this.outputIndex = outputIndex;
+    this.byteSize = byteSize;
+    this.value = value;
+  }
+  getOpIndex() {
+    return this.opIndex;
+  }
+  getOutputIndex() {
+    return this.outputIndex;
+  }
+  getByteSize() {
+    return this.byteSize;
+  }
+}
+
+export async function decodes(opts) {
+
+  let { code, pc } = opts;
+  // console.log(code)
+  const wireMap = {
+    'load': {
+      inputs: [],
+      outputs: []
+    },
+  };
+  const stack = [];
+  // code = code.toString()
+  // console.log(code)
+  while (pc < code.length) {
+    // const op = code.slice(pc, pc + 2); // Get 1 byte from hex string
+    const op = decimalToHex(code[pc])
+    const numberOfInputs = getNumberOfInputs(op);
+    // console.log(op, numberOfInputs)
+    if (hexToInteger(op) - hexToInteger('60') >= 0 && 
+        hexToInteger(op) - hexToInteger('60') < 32) { // PUSH1 - PUSH32
+      
+      const byteSize = hexToInteger(op) - hexToInteger('60') + 1; // Get byte size
+      // console.log('bytesize', byteSize)
+      // const value = code.slice(pc + 1, pc + 1 + byteSize ); // Get data from code
+      const value = decimalToHex(code[pc + 1])
+      console.log('value', hexToInteger(value))
+      const data = new Data(1, wireMap.load.outputs.length, byteSize, value); // Create stack data object
+      
+      wireMap.load.outputs.push(data); // Add data to wire map
+      // console.log(data)
+      stack.push(data); // Add data to stack
+      // console.log(stack)
+      pc += byteSize; // Move to next byte as many as byte size
+    }
+    
+    else if (numberOfInputs === 1) { // Unary operators
+      const a = stack.pop();
+      const value = hexUnaryOperators(op, a.value);
+      
+      const length = Object.keys(wireMap).length;
+      
+      const data = new Data (
+        length + 1, // opIndex
+        0, // outputIndex
+        a.byteSize, // FIXME: byteSize
+        value // value
+      )
+      wireMap[length] = {
+        inputs: [a],
+        outputs: [data]
+      }
+      stack.push(data); // Add data to stack
+    }
+    else if (numberOfInputs === 2) { // Binary operators
+      console.log('stack',stack)
+      const a = stack.pop();
+      const b = stack.pop(); 
+      // FIXME: a, d 
+      // FIXME: number of inputs 
+      console.log('value', op, hexToInteger(a.value), hexToInteger(b.value))
+      const value = hexBinaryOperators(op, a.value.toString(), b.value.toString());
+      
+      const length = Object.keys(wireMap).length;
+      
+      const data = new Data(
+        length + 1, // opIndex
+        0, // outputIndex
+        Math.max(a.byteSize, b.byteSize), // FIXME: byteSize
+        value // value
+      )
+      wireMap[length] = {
+        inputs: [a, b],
+        outputs: [data]
+      }
+      stack.push(data); // Add data to stack
+      console.log('stack3',stack)
+    }
+  
+    else if (numberOfInputs === 3) { // Ternary operators
+      const a = stack.pop();
+      const b = stack.pop();
+      const c = stack.pop();
+      
+      const value = hexTernaryOperators(op, a.value, b.value, c.value);
+      
+      const length = Object.keys(wireMap).length;
+      
+      const data = new Data(
+        length + 1, // opIndex
+        0, // outputIndex
+        Math.max(a.byteSize, b.byteSize, c.byteSize), // FIXME: byteSize
+        value // value
+      )
+      wireMap[length] = {
+        inputs: [a, b, c],
+        outputs: [data]
+      }
+      stack.push(data); // Add data to stack
+    }
+      
+    pc += 1; // Move to next byte; 1 byte = 2 hex characters
+  }
+  // console.log(stack);
+  console.log(wireMap)
+  // console.log(wireMap[1])
+  // console.log(wireMap.load)
+}  
 
 
 
