@@ -104,10 +104,11 @@ contract transferContract {
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
 |Overall time|47 secs|5.61|8.12|6.03|0.9 secs||
 |Time for EC exponentiations|-|4.67|1.92|25.88 secs|0|Pippenger's algorithm is not applied|
-|Time for polynomial arithmetics w/o division|24.5 secs|-|2.15|2.38|-||
-|Time for polynomial division|-|-|-|68 millisecs|-|An algorithm given in the following link is used: https://drive.google.com/file/d/1mhSafDcquDRZpaBX_0pHL1uuzH-rfym1/view?usp=share_link|
+|Time for polynomial arithmetics w/o division|24.5 secs|-|2.15|2.38|-|For Prove, 10.78 mins with convolution => 2.15 mins with FFT|
+|Time for polynomial division|-|-|-|68 millisecs|-|For Prove, 4.8 hours with convolution => 11.74 mins with FFT => 68ms with the algorithm given in https://drive.google.com/file/d/1mhSafDcquDRZpaBX_0pHL1uuzH-rfym1/view?usp=share_link|
 |Time for storage access|22.05 secs|46.59 secs|3.90|3.17|0||
 |Time for pairing and hashing|-|-|-|-|0||
+|Note|-|-|-||-|-|
 
 # 3. Input Node.js commands to reproduce the results
 - How to use UniGro16js can be found [here](https://github.com/Onther-Tech/UniGro16js/blob/master/README.md)
@@ -130,5 +131,9 @@ contract transferContract {
 |crsName    |"crsSchnorr_prove"|"crsEtherTransfer"|
 |circuitName|"schnorr_prove"|"test_transfer"|
 
-# 4. Concluding remark
+# 4. Implementation upgrade history
+- Jan. 17: FFTs were applied to compute polynomial multiplication and division, and the proving time with the Ether transfer circuit was reduced from 5.04 hours to 17.92 mins.
+- Apr. 27: An efficient algorithm for the division of QAP polynomials was applied, and the division time with the Ether transfer circuit was reduced from 11.74 mins to 68 milliseconds (the total proving time reduction: 17.92 mins to 6.03 mins).
+
+# 5. Concluding remark
 Since the computation complexity of prove algorithm of our protocol is similar to the original Groth16's, we expect that the proving speed will be improved as fast as the original one such as Mina protocol's GPU implementation.
