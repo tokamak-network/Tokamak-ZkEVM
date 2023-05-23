@@ -181,9 +181,9 @@ export class Decoder {
     return { environ_pts, callcode_suffix }
   }
 
-  runCode (code) {
+  runCode (code, dirname) {
     this.decode(code)
-
+    
     const listLength = this.oplist.length
     const oplist = this.oplist
     const { NWires, wireIndex } = getWire(this.oplist)
@@ -197,7 +197,7 @@ export class Decoder {
     
     const { SetData_I_V, SetData_I_P } = getIVIP(WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell)
 
-    const dir = `${process.cwd()}/resource/circuits/schnorr_prove2`
+    const dir = `${process.cwd()}/resource/circuits/${dirname}`
     makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, WireListm)
     makeJsonFile (dir, oplist, NINPUT, this.codewdata)
   }
@@ -223,7 +223,7 @@ export class Decoder {
     let call_pt = this.call_pt
     let calldepth = this.callDepth
     let codelen = code.length
-    console.log('codelen', codelen)
+  
     const codewdata = this.codewdata
     let mem_pt = {}
 
@@ -258,7 +258,7 @@ export class Decoder {
         // if (mem_pt.length === 0) {
 
         // }
-        // console.log('51', addr, mem_pt[addr])
+        
         stack_pt.unshift(mem_pt[addr])
       } else if (hexToInteger(op) === hexToInteger('52')) { //mstore
         d = 2
@@ -272,7 +272,7 @@ export class Decoder {
         d = 2;
         a = 0;
         const addr = this.evalEVM(stack_pt[0]) + 1
-        // console.log('addr',addr)
+        
         const data = stack_pt[1]
         data[2] = 1
         mem_pt[addr] = data
@@ -321,13 +321,13 @@ export class Decoder {
       } else if (hexToInteger(op) === hexToInteger('36')) { // calldatasize
         d = 0;
         a = 1
-        // console.log('36', [0, Id_len_info_pt, Id_len_info_len])
+
         stack_pt.unshift([0, Id_len_info_pt, Id_len_info_len])
       } else if (hexToInteger(op) === hexToInteger('47')) { // selfbalance
         d = 0;
         a = 1
 
-        // console.log('47', [0, balance_pt, balance_len])
+
         stack_pt.unshift([0, balance_pt, balance_len])
       } else if (hexToInteger(op) - hexToInteger('80') >= 0 
         && hexToInteger(op) - hexToInteger('80') < 16) { // duplicate
@@ -438,11 +438,11 @@ export class Decoder {
       // }
       this.vmTraceStep = this.vmTraceStep + 1
     }
-    this.oplist[0].pt_inputs = outputs_pt[0]
-    
+    outputs_pt[0] ? this.oplist[0].pt_inputs = outputs_pt[0] : this.oplist[0].pt_inputs = []
+
     for (let i = 0; i < this.oplist.length ;i ++) {
       let k_pt_inputs = this.oplist[i].pt_inputs
-
+      
       k_pt_inputs = k_pt_inputs[0][0] ? k_pt_inputs[0] : [k_pt_inputs]
       let k_inputs = []
 
@@ -468,7 +468,7 @@ export class Decoder {
 
   evalEVM (pt) {
     const codewdata = this.codewdata
-    // console.log(pt)
+    
     const op_pointer = pt[0]
     const wire_pointer = pt[1]
     const byte_size = pt[3]
@@ -485,16 +485,9 @@ export class Decoder {
     }
     
     try {
-      const RunState = {
-        opcode: 0x00,
-        programCounter: -1,
-        stack: new Stack(),
-        memory: new Memory(),
-        code: [],
-      }
-
       if (hexToInteger(op) == hexToInteger('fff')) {
         let new_pt = t_oplist.pt_outputs[wire_pointer - 1]
+        
         const value = this.evalEVM(new_pt)
         return value
       } else {

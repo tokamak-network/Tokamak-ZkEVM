@@ -13,10 +13,10 @@ export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer) {
     if (stack_pt[i][0] === 0) {
       let data = stack_pt[i]
       let checkArray = []
-      // if (i==1 && (op === '1c1' || op === '1c2')) {
-      //   let original_bytelength = data[2]
-      //   if (op === '1c1') data[0] = data[0] + max(original_bytelength-data[2], 0)
-      // }
+      if (i==1 && (op === '1c1' || op === '1c2')) {
+        let original_bytelength = data[2]
+        if (op === '1c1') data[0] = data[0] + max(original_bytelength-data[2], 0)
+      }
 
       if (oplist[0].pt_outputs.length == 0) {
         checks = 0

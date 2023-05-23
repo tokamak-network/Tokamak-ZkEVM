@@ -51,7 +51,7 @@ export async function decodes(opts) {
       // console.log('bytesize', byteSize)
       // const value = code.slice(pc + 1, pc + 1 + byteSize ); // Get data from code
       const value = decimalToHex(code[pc + 1])
-      console.log('value', hexToInteger(value))
+
       const data = new Data(1, wireMap.load.outputs.length, byteSize, value); // Create stack data object
       
       wireMap.load.outputs.push(data); // Add data to wire map

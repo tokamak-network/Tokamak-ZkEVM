@@ -10,6 +10,7 @@ import * as zkey from './src/zkey.js';
 import Logger from 'logplease';
 const logger = Logger.create('UniGro16js', {showTimestamp: false});
 import { exec } from 'child_process';
+import { Decoder } from './src/decode.js';
 
 Logger.setLogLevel('INFO');
 
@@ -25,6 +26,7 @@ inquirer
         'Compile',
         'Build QAP',
         'Setup',
+        'Decode',
         'Derive',
         'Prove',
         'Verify',
@@ -41,6 +43,7 @@ inquirer
     if (answers.verbose) Logger.setLogLevel("DEBUG");
     if (answers.phase === 'Compile') compile(answers.verbose);
     if (answers.phase === 'Build QAP') buildQAP();
+    if (answers.phase === 'Decode') decode();
     if (answers.phase === 'Setup') setup();
     if (answers.phase === 'Derive') derive();
     if (answers.phase === 'Prove') prove();
@@ -258,7 +261,30 @@ function derive() {
 }
 
 function decode() {
-  
+  inquirer
+    .prompt([
+      // {
+      //   type: 'list',
+      //   name: ''
+      // }
+      {
+        type: 'input',
+        name: 'directory',
+        message: 'What is the name of the opcode name?'
+      },
+      {
+        type: 'input',
+        name: 'opcode',
+        message: 'What is the opcode you want to decode?'
+      }
+    ])
+    .then(answers => {
+      const decode = new Decoder()
+      return decode.runCode(
+        answers.directory,
+        Buffer.from(answers.opcode, 'hex')
+      )
+    })
 }
 
 function prove() {

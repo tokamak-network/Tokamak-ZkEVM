@@ -3866,6 +3866,8 @@ async function buildSingleQAP(paramName, id, logger) {
   await fdQAP.close();
 }
 
+// export {default as decode} from './decode.js'
+
 var zkey = /*#__PURE__*/Object.freeze({
   __proto__: null,
   setup: setup,

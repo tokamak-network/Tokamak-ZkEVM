@@ -21,6 +21,9 @@ var hash = require('js-sha3');
 var r1csfile = require('r1csfile');
 var Logger = require('logplease');
 var child_process = require('child_process');
+var util = require('@ethereumjs/util');
+var keccak_js = require('ethereum-cryptography/keccak.js');
+var utils_js = require('ethereum-cryptography/utils.js');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -53,6 +56,7 @@ var readline__default = /*#__PURE__*/_interopDefaultLegacy(readline);
 var crypto__default = /*#__PURE__*/_interopDefaultLegacy(crypto);
 var binFileUtils__namespace = /*#__PURE__*/_interopNamespace(binFileUtils);
 var chai__default = /*#__PURE__*/_interopDefaultLegacy(chai);
+var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs);
 var fastFile__namespace = /*#__PURE__*/_interopNamespace(fastFile);
 var appRootPath__default = /*#__PURE__*/_interopDefaultLegacy(appRootPath);
 var hash__default = /*#__PURE__*/_interopDefaultLegacy(hash);
@@ -3727,6 +3731,1487 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
   process.exit(0);
 }
 
+const subcircuit = {
+	"wire-list": [
+		{
+			"id": 0,
+			"opcode": "fff",
+			"name": "LOAD",
+			"Nwires": 33,
+			"Out_idx": [
+				1,
+				16
+			],
+			"In_idx": [
+				17,
+				16
+			]
+		},
+		{
+			"id": 1,
+			"opcode": "01",
+			"name": "ADD",
+			"Nwires": 5,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 2,
+			"opcode": "02",
+			"name": "MUL",
+			"Nwires": 4,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 3,
+			"opcode": "03",
+			"name": "SUB",
+			"Nwires": 5,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 4,
+			"opcode": "04",
+			"name": "DIV",
+			"Nwires": 7,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 5,
+			"opcode": "20",
+			"name": "SHA3",
+			"Nwires": 4,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 6,
+			"opcode": "05",
+			"name": "SDIV",
+			"Nwires": 50,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 7,
+			"opcode": "06",
+			"name": "MOD",
+			"Nwires": 5,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 8,
+			"opcode": "07",
+			"name": "SMOD",
+			"Nwires": 54,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 9,
+			"opcode": "08",
+			"name": "ADDMOD",
+			"Nwires": 16,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				3
+			]
+		},
+		{
+			"id": 10,
+			"opcode": "09",
+			"name": "MULMOD",
+			"Nwires": 17,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				3
+			]
+		},
+		{
+			"id": 11,
+			"opcode": "0a",
+			"name": "EXP",
+			"Nwires": 32,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 12,
+			"opcode": "10",
+			"name": "LT",
+			"Nwires": 255,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 13,
+			"opcode": "11",
+			"name": "GT",
+			"Nwires": 255,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 14,
+			"opcode": "12",
+			"name": "SLT",
+			"Nwires": 294,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 15,
+			"opcode": "13",
+			"name": "SGT",
+			"Nwires": 294,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 16,
+			"opcode": "14",
+			"name": "EQ",
+			"Nwires": 5,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 17,
+			"opcode": "15",
+			"name": "ISZERO",
+			"Nwires": 4,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				1
+			]
+		},
+		{
+			"id": 18,
+			"opcode": "16",
+			"name": "AND",
+			"Nwires": 760,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 19,
+			"opcode": "17",
+			"name": "OR",
+			"Nwires": 760,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 20,
+			"opcode": "18",
+			"name": "XOR",
+			"Nwires": 760,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 21,
+			"opcode": "19",
+			"name": "NOT",
+			"Nwires": 255,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				1
+			]
+		},
+		{
+			"id": 22,
+			"opcode": "1b",
+			"name": "SHL",
+			"Nwires": 18,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 23,
+			"opcode": "1c1",
+			"name": "SHR-L",
+			"Nwires": 21,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 24,
+			"opcode": "1c2",
+			"name": "SHR-H",
+			"Nwires": 21,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 25,
+			"opcode": "1d",
+			"name": "SAR",
+			"Nwires": 288,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 26,
+			"opcode": "0b",
+			"name": "SIGNEXTEND",
+			"Nwires": 290,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 27,
+			"opcode": "1a",
+			"name": "BYTE",
+			"Nwires": 276,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		}
+	]
+};
+
+const ERROR = {
+  OUT_OF_GAS : 'out of gas',
+  CODESTORE_OUT_OF_GAS : 'code store out of gas',
+  CODESIZE_EXCEEDS_MAXIMUM : 'code size to deposit exceeds maximum code size',
+  STACK_UNDERFLOW : 'stack underflow',
+  STACK_OVERFLOW : 'stack overflow',
+  INVALID_JUMP : 'invalid JUMP',
+  INVALID_OPCODE : 'invalid opcode',
+  OUT_OF_RANGE : 'value out of range',
+  REVERT : 'revert',
+  STATIC_STATE_CHANGE : 'static state change',
+  INTERNAL_ERROR : 'internal error',
+  CREATE_COLLISION : 'create collision',
+  STOP : 'stop',
+  REFUND_EXHAUSTED : 'refund exhausted',
+  VALUE_OVERFLOW : 'value overflow',
+  INSUFFICIENT_BALANCE : 'insufficient balance',
+  INVALID_BEGINSUB : 'invalid BEGINSUB',
+  INVALID_RETURNSUB : 'invalid RETURNSUB',
+  INVALID_JUMPSUB : 'invalid JUMPSUB',
+  INVALID_BYTECODE_RESULT : 'invalid bytecode deployed',
+  INVALID_EOF_FORMAT : 'invalid EOF format',
+  INITCODE_SIZE_VIOLATION : 'initcode exceeds max initcode size',
+
+  AUTHCALL_UNSET : 'attempting to AUTHCALL without AUTH set',
+  AUTHCALL_NONZERO_VALUEEXT : 'attempting to execute AUTHCALL with nonzero external value',
+  AUTH_INVALID_S : 'invalid Signature: s-values greater than secp256k1n/2 are considered invalid',
+
+  // BLS errors
+  BLS_12_381_INVALID_INPUT_LENGTH : 'invalid input length',
+  BLS_12_381_POINT_NOT_ON_CURVE : 'point not on curve',
+  BLS_12_381_INPUT_EMPTY : 'input is empty',
+  BLS_12_381_FP_NOT_IN_FIELD : 'fp point not in field',
+
+  // Point Evaluation Errors
+  POINT_GREATER_THAN_BLS_MODULUS : 'point greater than BLS modulus',
+  INVALID_COMMITMENT : 'kzg commitment does not match versioned hash',
+};
+
+class EvmError {
+  constructor(error) {
+    this.error = error;
+    this.errorType = 'EvmError';
+  }
+}
+
+/**
+ * @param {bigint} base base of exponentiation
+ * @param {bigint} exp exponent
+ * @returns {bigint} base^exp
+ */
+BigInt(115792089237316195423570985008687907853269984665640564039457584007913129639936);
+
+function hexToInteger(hex) {
+  return parseInt(hex, 16);
+}  
+
+function decimalToHex(d) {
+  let hex = Number(d).toString(16);
+  let padding = 2;
+  while (hex.length < padding) {
+    hex = "0" + hex;
+  }
+  return hex
+}
+
+function pop_stack (stack_pt, d) {
+  return stack_pt.slice(d)
+}
+
+function getWire(oplist) {
+  const subcircuits = subcircuit['wire-list'];
+  const NWires = [];
+  const wireIndex = [];
+  oplist.map((op) => {
+    const wire = subcircuits.find(circuit => {
+      if (circuit.opcode === op.opcode) return true
+    });
+    NWires.push(wire.Nwires);
+    wireIndex.push(wire.id);
+  });
+  
+  return { NWires, wireIndex }
+}
+
+function getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT) {
+  let RangeCell = new Array(listLength);
+  const cellSize = Math.max(NWires[0], NCONSTWIRES + 2 * NINPUT);
+
+  for (let i = 0; i < listLength; i++) {
+    RangeCell[i] = new Array(cellSize);
+  }
+
+  // Load subcircuit with 32 inputs and 32 outputs, where every input refers
+  // to the corresponding output
+  for (let i = NCONSTWIRES; i <= NINPUT + NCONSTWIRES - 1; i++) {
+    RangeCell[0][i] = [[1, i + 1], [1, i + 1 + NINPUT]];
+  }
+
+  for (let k = 1; k < listLength + 1; k++) {
+    RangeCell[0][0] ? RangeCell[0][0].push([k, 1]) : RangeCell[0][0] = [[k, 1]];
+  }
+  
+  for (let k = 1; k < listLength; k++) {
+    let oplist_k = oplist[k];
+    oplist_k.pt_inputs;
+    let inlen = oplist_k.pt_inputs[0].length;
+    let outlen = [oplist_k.pt_outputs].length;
+    let NWires_k = NWires[k];
+    for (let j = 0; j < NWires_k + 1; j++) {
+      if ((j + 1 > NCONSTWIRES && j + 1 <= NCONSTWIRES + outlen) || j + 1 > NCONSTWIRES + outlen + inlen) {
+        RangeCell[k][j] = [[k+1, j + 1]];
+      }
+    }
+  }
+
+  // Apply oplist into RangeCell
+  for (let k = 1; k < listLength; k++) {
+    let oplist_k = oplist[k];
+    let k_pt_inputs = oplist_k.pt_inputs[0];
+    let inlen = oplist_k.pt_inputs[0].length;
+    let outlen = [oplist_k.pt_outputs].length;
+    NWires[k];
+    
+    for (let i = 0; i < inlen; i++) {
+      const iIndex = k_pt_inputs[i][0] - 1;
+      const jIndex = NCONSTWIRES + k_pt_inputs[i][1] - 1;
+      const input = [k + 1, NCONSTWIRES + outlen + i + 1];
+
+      RangeCell[iIndex][jIndex] 
+        ? RangeCell[iIndex][jIndex].push(input) 
+        : RangeCell[iIndex][jIndex] = [[iIndex+1, jIndex+1], input];
+    }
+  }
+  return RangeCell
+}
+
+function getWireList (NWires, RangeCell, listLength) {
+  let WireListm = [];
+  for (let k = 0; k < listLength; k++) {
+    let NWires_k = NWires[k];
+
+    for (let i = 0; i < NWires_k; i++) {
+      if (RangeCell[k][i] && RangeCell[k][i].length > 0) {
+        WireListm.push([k, i]);
+      }
+    }
+  }
+  
+  return WireListm
+}
+
+
+function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell) {
+  let I_V = [];
+  let I_P = [];
+
+  for (let i = 0; i < mWires; i++) {
+    let k = WireListm[i][0];
+    let wireIdx = WireListm[i][1];
+    let oplist_k = oplist[k];
+
+    let outlen;
+
+    if (k === 0) {
+      outlen = NINPUT;
+    } else {
+      oplist_k.pt_inputs.length;
+      outlen = oplist_k.pt_outputs.length;
+    }
+
+    if (wireIdx >= NCONSTWIRES && wireIdx < NCONSTWIRES + outlen) {
+      I_V.push(i);
+    } else {
+      I_P.push(i);
+    }
+  }
+
+  let I_V_len = I_V.length;
+  let I_P_len = I_P.length;
+  let rowInv_I_V = [];
+  let rowInv_I_P = [];
+
+  for (let i of I_V) {
+    let k = WireListm[i][0];
+    let wireIdx = WireListm[i][1];
+
+    let InvSet = RangeCell[k][wireIdx].map(value => value.map(value => value -1));
+    let NInvSet = InvSet.length;
+    let temp = [];
+    InvSet.forEach(invs => invs.forEach(inv => {
+      temp.push(inv);
+    }));
+
+    InvSet = temp;
+    rowInv_I_V.push(NInvSet, ...InvSet);
+  }
+
+  for (let i of I_P) {
+    let k = WireListm[i][0];
+    let wireIdx = WireListm[i][1];
+    let InvSet = RangeCell[k][wireIdx].map(value => value.map(value => value -1));
+    let NInvSet = InvSet.length;
+    let temp = [];
+    InvSet.forEach(invs => invs.forEach(inv => {
+      temp.push(inv);
+    }));
+    InvSet = temp;
+    rowInv_I_P.push(NInvSet, ...InvSet);
+  }
+
+  let SetData_I_V = [I_V_len, ...I_V, ...rowInv_I_V];
+  let SetData_I_P = [I_P_len, ...I_P, ...rowInv_I_P];
+  
+  // for (let i of SetData_I_V) {
+  //   console.log(i)
+  // }
+  return { SetData_I_V, SetData_I_P }
+}
+
+function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) {
+  
+  !fs__default["default"].existsSync(dir) && fs__default["default"].mkdirSync(dir);
+
+  const fdset1 = fs__default["default"].openSync(`${dir}/Set_I_V.bin`, 'w');
+  const fdset2 = fs__default["default"].openSync(`${dir}/Set_I_P.bin`, 'w');
+  const fdOpList = fs__default["default"].openSync(`${dir}/OpList.bin`, 'w');
+  const fdWireList = fs__default["default"].openSync(`${dir}/WireList.bin`, 'w');
+
+  const setIDataBuffer = Buffer.from(Uint32Array.from(SetData_I_V).buffer);
+  const setPDataBuffer = Buffer.from(Uint32Array.from(SetData_I_P).buffer);
+  const opListDataBuffer = Buffer.from(Uint32Array.from([OpLists.length, ...OpLists]).buffer);
+  const wireListDataBuffer = Buffer.from(Uint32Array.from([WireListm.length, ...WireListm.flat()]).buffer);
+
+  fs__default["default"].writeSync(fdset1, setIDataBuffer, 0, setIDataBuffer.length);
+  fs__default["default"].writeSync(fdset2, setPDataBuffer, 0, setPDataBuffer.length);
+  fs__default["default"].writeSync(fdOpList, opListDataBuffer, 0, opListDataBuffer.length);
+  fs__default["default"].writeSync(fdWireList, wireListDataBuffer, 0, wireListDataBuffer.length);
+
+  fs__default["default"].closeSync(fdset1);
+  fs__default["default"].closeSync(fdset2);
+  fs__default["default"].closeSync(fdOpList);
+  fs__default["default"].closeSync(fdWireList);
+
+}
+
+function makeJsonFile (dir, oplist, NINPUT, codewdata) {
+  const InstanceFormatIn = [];
+  const InstanceFormatOut = [];
+  for (let k = 0; k < oplist.length; k++) {
+    const outputs = oplist[k].outputs;
+    let inputs, inputs_hex, outputs_hex;
+
+    if (k === 0) {
+      inputs = outputs;
+      inputs_hex = new Array(NINPUT).fill('0x0');
+      outputs_hex = new Array(NINPUT).fill('0x0');
+    } else {
+      inputs = oplist[k].inputs;
+      inputs_hex = new Array(inputs.length).fill('0x0');
+      outputs_hex = new Array(outputs.length).fill('0x0');
+    }
+
+    if (inputs.length > NINPUT) {
+      throw new Error('Too many inputs');
+    }
+
+    for (let i = 0; i < inputs_hex.length; i++) {
+      if (i < inputs.length) {
+        inputs_hex[i] = '0x' + decimalToHex(inputs[i]).toString().padStart(64, '0');
+      }
+    }
+
+    for (let i = 0; i < outputs_hex.length; i++) {
+      if (i < outputs.length) {
+        oplist[k].opcode === '20' 
+          ? outputs_hex[i] = '0x' + outputs[i].padStart(64, '0')
+          : outputs_hex[i] = '0x' + decimalToHex(outputs[i]).toString().padStart(64, '0');
+      }
+    }
+
+    if (k === 0) {
+      for (let i = 0; i < inputs.length; i++) {
+        let sourcevalue = codewdata[oplist[k].pt_outputs[i][1] - 1];
+        sourcevalue = '0x' + decimalToHex(sourcevalue).toString().padStart(64, '0');
+        
+        if (sourcevalue !== outputs_hex[i]) {
+          throw new Error('source value mismatch');
+        }
+      }
+    }
+
+    InstanceFormatIn.push({ in: inputs_hex });
+    InstanceFormatOut.push({ out: outputs_hex });
+    !fs__default["default"].existsSync(`${dir}/instance`) && fs__default["default"].mkdirSync(`${dir}/instance`);
+    const fdInput = fs__default["default"].openSync(`${dir}/instance/Input_opcode${k}.json`, 'w');
+    const fdOutput = fs__default["default"].openSync(`${dir}/instance/Output_opcode${k}.json`, 'w');
+
+    fs__default["default"].writeSync(fdInput, JSON.stringify(InstanceFormatIn[k]));
+    fs__default["default"].writeSync(fdOutput, JSON.stringify(InstanceFormatOut[k]));
+
+    fs__default["default"].closeSync(fdInput);
+    fs__default["default"].closeSync(fdOutput);
+  }
+}
+
+function wire_mapping (op, stack_pt, d, a, oplist, op_pointer) {
+  
+  let checks = 0;
+  oplist[0].opcode = 'fff';
+  for (let i=0; i<d; i++) {
+
+    if (stack_pt[i][0] === 0) {
+      let data = stack_pt[i];
+      let checkArray = [];
+      // if (i==1 && (op === '1c1' || op === '1c2')) {
+      //   let original_bytelength = data[2]
+      //   if (op === '1c1') data[0] = data[0] + max(original_bytelength-data[2], 0)
+      // }
+
+      if (oplist[0].pt_outputs.length == 0) {
+        checks = 0;
+      } else {
+        
+        for (let i=0; i<oplist[0].pt_outputs.length; i ++) {
+          if (oplist[0].pt_outputs[i] === data) {
+            
+            checks = checks + 1;
+            checkArray.push(1);
+          } else {
+            checkArray.push(0);
+          }
+        }
+      }
+      
+      const index = checkArray.findIndex(check => check === 1);
+
+      if (index == -1 || checks == 0) {
+        oplist[0].pt_outputs.push(data);
+        stack_pt[i] = [1, oplist[0].pt_outputs.length, 32];
+      } else {
+        stack_pt[i] = [1, index + 1, 32];
+      }
+
+      if (hexToInteger(op) == hexToInteger('20')) {
+        stack_pt[i][2] = data[2];
+      }
+    }
+  }
+  
+  oplist[op_pointer].opcode = op;
+  oplist[op_pointer].pt_inputs.push(stack_pt.slice(0, d));
+  oplist[op_pointer].pt_outputs.push(op_pointer + 1, 1, 32);
+  
+  return oplist
+}
+
+/**
+ * Implementation of the stack used in evm.
+ */
+class Stack {
+  constructor(maxHeight) {
+    this._store = [];
+    this._maxHeight = maxHeight ?? 1024;
+  }
+
+  get length() {
+    return this._store.length
+  }
+
+  push(value) {
+    if (typeof value !== 'bigint') {
+      throw new EvmError(ERROR.INTERNAL_ERROR)
+    }
+
+    if (value > util.MAX_INTEGER_BIGINT) {
+      throw new EvmError(ERROR.OUT_OF_RANGE)
+    }
+
+    if (this._store.length >= this._maxHeight) {
+      throw new EvmError(ERROR.STACK_OVERFLOW)
+    }
+
+    this._store.push(value);
+  }
+
+  pop() {
+    if (this._store.length < 1) {
+      throw new EvmError(ERROR.STACK_UNDERFLOW)
+    }
+
+    // Length is checked above, so pop shouldn't return undefined
+    const res = this._store.pop();
+    if (res === undefined) {
+      throw new EvmError(ERROR.STACK_UNDERFLOW)
+    }
+    return res
+  }
+
+  /**
+   * Pop multiple items from stack. Top of stack is first item
+   * in returned array.
+   * @param num - Number of items to pop
+   */
+  popN (num) {
+    num = num ?? 1;
+    if (this._store.length < num) {
+      throw new EvmError(ERROR.STACK_UNDERFLOW)
+    }
+
+    if (num === 0) {
+      return []
+    }
+
+    return this._store.splice(-1 * num).reverse()
+  }
+
+  /**
+   * Return items from the stack
+   * @param num Number of items to return
+   * @throws {@link ERROR.STACK_UNDERFLOW}
+   */
+  peek (num) {
+    num = num ?? 1;
+    const peekArray = [];
+
+    for (let peek = 1; peek <= num; peek++) {
+      const index = this._store.length - peek;
+      if (index < 0) {
+        throw new EvmError(ERROR.STACK_UNDERFLOW)
+      }
+      peekArray.push(this._store[index]);
+    }
+    return peekArray
+  }
+
+  /**
+   * Swap top of stack with an item in the stack.
+   * @param position - Index of item from top of the stack (0-indexed)
+   */
+  swap(position) {
+    if (this._store.length <= position) {
+      throw new EvmError(ERROR.STACK_UNDERFLOW)
+    }
+
+    const head = this._store.length - 1;
+    const i = this._store.length - position - 1;
+
+    const tmp = this._store[head];
+    this._store[head] = this._store[i];
+    this._store[i] = tmp;
+  }
+
+  /**
+   * Pushes a copy of an item in the stack.
+   * @param position - Index of item to be copied (1-indexed)
+   */
+  // I would say that we do not need this method any more
+  // since you can't copy a primitive data type
+  // Nevertheless not sure if we "loose" something here?
+  // Will keep commented out for now
+  dup(position) {
+    if (this._store.length < position) {
+      throw new EvmError(ERROR.STACK_UNDERFLOW)
+    }
+    const i = this._store.length - position;
+    this.push(this._store[i]);
+  }
+}
+
+/**
+ * 
+ * @param {number} value 
+ * @param {number} ceiling 
+ * @returns {number} ceil value
+ */
+const ceil = (value, ceiling) => {
+  const r = value % ceiling;
+  if (r === 0) {
+    return value
+  } else {
+    return value + ceiling - r
+  }
+};
+
+const CONTAINER_SIZE = 8192;
+
+/**
+ * Memory implements a simple memory model
+ * for the ethereum virtual machine.
+ */
+class Memory {
+  constructor() {
+    this._store = Buffer.alloc(0);
+  }
+
+  /**
+   * Extends the memory given an offset and size. Rounds extended
+   * memory to word-size.
+   * @param {number} offset - Starting position
+   * @param {number} size - How many bytes to extend
+   */
+  extend(offset, size) {
+    if (size === 0) {
+      return
+    }
+
+    const newSize = ceil(offset + size, 32);
+    const sizeDiff = newSize - this._store.length;
+    if (sizeDiff > 0) {
+      this._store = Buffer.concat([
+        this._store,
+        Buffer.alloc(Math.ceil(sizeDiff / CONTAINER_SIZE) * CONTAINER_SIZE),
+      ]);
+    }
+  }
+
+  /**
+   * Writes a byte array with length `size` to memory, starting from `offset`.
+   * @param {number} offset - Starting position
+   * @param {number} size - How many bytes to write
+   * @param {Buffer} value - Value
+   */
+  write(offset, size, value) {
+    if (size === 0) {
+      return
+    }
+
+    this.extend(offset, size);
+
+    if (value.length !== size) throw new Error('Invalid value size')
+    if (offset + size > this._store.length) throw new Error('Value exceeds memory capacity')
+
+    value.copy(this._store, offset);
+  }
+
+  /**
+   * Reads a slice of memory from `offset` till `offset + size` as a `Buffer`.
+   * It fills up the difference between memory's length and `offset + size` with zeros.
+   * @param {number} offset - Starting position
+   * @param {number} size - How many bytes to read
+   * @param {boolean} avoidCopy - Avoid memory copy if possible for performance reasons (optional)
+   * @returns {Buffer}
+   */
+  read(offset, size, avoidCopy) {
+    this.extend(offset, size);
+
+    const loaded = this._store.slice(offset, offset + size);
+    if (avoidCopy === true) {
+      return loaded
+    }
+
+    return Buffer.from(loaded)
+  }
+}
+
+// import transaction from '../resource/circuits/schnorr_prove/transaction1.json' assert {type: 'json'};
+
+class Decoder {
+  constructor () {
+
+  }
+
+  getEnv(code) {
+    const codelen = code.length;
+    const callcode_suffix_raw = '63fffffffd5447101561040163fffffffe541016';
+    const callcode_suffix_pt = codelen + 1;
+    
+    const callcode_suffix = Buffer.from(callcode_suffix_raw, 'hex'); 
+    const callcode_suffix_len = callcode_suffix_raw.length / 2;
+  
+    const Iddata = '45152ae300000000000000000000000000000000000000000000000000000000';
+  
+    const pc_pt = callcode_suffix_pt + callcode_suffix_len;
+    const pc_len = 4;
+    
+    const Iv_pt = pc_pt + pc_len;
+    const Iv_len = 32;
+    const Id_pt = Iv_pt + Iv_len;
+    const Id_len = Iddata.length / 2;
+    const Id_lendata = '0020'; // TODO: lower(dec2hex(environ_pts.Id_len,environ_pts.Id_len_info_len*2));
+    
+    const Id_len_info_pt = Id_pt + Id_len;
+    const Id_len_info_len = 2;
+    const Is_pt = Id_len_info_pt + Id_len_info_len;
+    const Is_len = 32;
+    const od_pt = Is_pt + Is_len;
+    const od_len = 128;
+    const od_len_info_pt = od_pt + od_len;
+    const od_len_info_len = 1;
+    const sd_pt = od_len_info_pt + od_len_info_len;
+    const sd_len = 32;
+    const calldepth_pt = sd_pt + sd_len;
+    const calldepth_len = 2;
+    const balance_pt = calldepth_pt + calldepth_len;
+    const balance_len = 32;
+  
+    const zerodata = '00';
+    const zero_pt = balance_pt + balance_len;
+    const zero_len = 1;
+  
+    const storagedata = ['03', '06',  '05', '11'];
+    let storage_pts = [0, 0, 0, 0];
+    let storage_lens = [0, 0, 0, 0];
+    
+    storage_pts[0] = zero_pt + zero_len;
+    storage_lens[0] = storagedata[0].length / 2;
+    
+    for (let i=1; i < storagedata.length ; i++) {
+      storage_pts[i] = storage_pts[i-1] + storage_lens[i-1];
+      storage_lens[i] = storagedata[i].length / 2;
+    }
+  
+    const environ_pts = {
+      pc_pt: pc_pt,
+      pc_len: pc_len,
+      Iv_pt: Iv_pt,
+      Iv_len: Iv_len,
+      Id_pt: Id_pt,
+      Id_len: Id_len,
+      Id_len_info_pt: Id_len_info_pt,
+      Id_len_info_len: Id_len_info_len,
+      Is_pt: Is_pt,
+      Is_len: Is_len,
+      od_pt: od_pt,
+      od_len: od_len,
+      od_len_info_pt: od_len_info_pt,
+      od_len_info_len: od_len_info_len,
+      sd_pt: sd_pt,
+      sd_len: sd_len,
+      calldepth_pt: calldepth_pt,
+      calldepth_len: calldepth_len,
+      balance_pt: balance_pt,
+      balance_len: balance_len,
+      zero_pt: zero_pt,
+      zero_len: zero_len,
+      storage_pts: storage_pts,
+      storage_lens: storage_lens
+    };
+    
+    const Isdata = '0000000000000000000000005B38Da6a701c568545dCfcB03FcB875f56beddC4';
+    const padData = ''; 
+    const od_lendata = od_len.toString(16);
+    const pcdata = padData.padStart(pc_len * 2, '0');
+    const Ivdata = padData.padStart(Iv_len*2, '0');
+    const oddData = padData.padStart(od_len * 2, '0');
+    const sddata = '55'.padStart(sd_len * 2, '0');
+    const calldepthdata = padData.padStart(calldepth_len * 2, '0');
+    const balance = 1000000;
+    const balancedata = balance.toString(16).padStart(balance_len * 2, '0');
+  
+    const storage_keys = [
+      '0000000000000000000000000000000000000000000000000000000000000000',
+      '0000000000000000000000000000000000000000000000000000000000000001',
+      '0000000000000000000000000000000000000000000000000000000000000002',
+      '0000000000000000000000000000000000000000000000000000000000000003'
+    ];
+    
+    let storage_pt = {};
+    for (let i = 0; i < storage_keys.length; i++) {
+      storage_pt[storage_keys[i]] = [0, storage_pts[i], storage_lens[i]];
+    }
+
+    const data = pcdata 
+                + Ivdata 
+                + Iddata 
+                + Id_lendata 
+                + Isdata 
+                + oddData 
+                + od_lendata 
+                + sddata 
+                + calldepthdata 
+                + balancedata 
+                + zerodata
+                + storagedata[0]
+                + storagedata[1]
+                + storagedata[2]
+                + storagedata[3];
+    
+    const environData = Buffer.from(data, 'hex');
+    let call_pt = [];
+    
+    const codewdata = Buffer.concat([code, callcode_suffix, environData]);
+    const callDepth = '1'.padStart(calldepth_len * 2, '0');
+    call_pt.push([1, codelen]);
+
+    this.oplist = [{
+      opcode: '',
+      pt_inputs: [],
+      pt_outputs: [],
+      inputs: [],
+      outputs: [],
+    }];
+    
+    this.call_pt = call_pt;
+    this.codewdata = codewdata;
+    this.callDepth = callDepth;
+    this.environData = environData;
+    this.storage_keys = storage_keys;
+    this.environ_pts = environ_pts;
+    this.op_pointer = 0;
+    this.cjmp_pointer = 0;
+    this.storage_pt = storage_pt;
+    this.storage_pts = storage_pts;
+    this.callcode_suffix = callcode_suffix;
+    this.callcode_suffix_pt = callcode_suffix_pt;
+    this.callresultlist = [];
+    this.vmTraceStep = 0;
+    this.call_pointer = 0;
+
+    return { environ_pts, callcode_suffix }
+  }
+
+  runCode (dirname, code) {
+    this.decode(code);
+
+    const listLength = this.oplist.length;
+    const oplist = this.oplist;
+    const { NWires, wireIndex } = getWire(this.oplist);
+    
+    const NCONSTWIRES=1;
+    const NINPUT = (NWires[0] - NCONSTWIRES)/2;
+
+    const RangeCell = getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT);
+    const WireListm = getWireList(NWires, RangeCell, listLength); 
+    let mWires = WireListm.length;
+    
+    const { SetData_I_V, SetData_I_P } = getIVIP(WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell);
+
+    const dir = `${process.cwd()}/resource/circuits/${dirname}`;
+    makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, WireListm);
+    makeJsonFile (dir, oplist, NINPUT, this.codewdata);
+  }
+
+  decode (code) {
+    let outputs_pt = [];
+    let stack_pt = [];
+    this.getEnv(code);
+    const {
+      Iv_pt,
+      Iv_len,
+      Id_len_info_pt,
+      Id_len_info_len,
+      Is_pt,
+      Is_len,
+      balance_pt,
+      balance_len,
+      zero_pt,
+      zero_len,
+    } = this.environ_pts;
+    
+    let storage_pt = this.storage_pt;
+    let call_pt = this.call_pt;
+    let calldepth = this.callDepth;
+    let codelen = code.length;
+    console.log('codelen', codelen);
+    this.codewdata;
+    let mem_pt = {};
+
+    let pc = 0;
+
+    while (pc < codelen) {
+      const op = decimalToHex(code[pc]);
+      pc = pc + 1;
+      
+      let d = 0;
+      let a = 0;
+      stack_pt.length;
+
+      if (hexToInteger(op) - hexToInteger('60') >= 0 
+        && hexToInteger(op) - hexToInteger('60') < 32) {
+        const pushlen = hexToInteger(op) - hexToInteger('60') + 1;
+        stack_pt.unshift([0, pc+call_pt[calldepth - 1][0], pushlen]);
+        pc = pc + pushlen;
+      } else if (hexToInteger(op) === hexToInteger('50')) {
+        d = 1;
+        a = 0;
+
+        stack_pt = pop_stack(stack_pt, d);
+      } 
+      else if (hexToInteger(op) === hexToInteger('51')) { // mload
+        d = 1;
+        a = 0;
+        const addr = this.evalEVM(stack_pt[0]) + 1;
+        // console.log(addr)
+        stack_pt = pop_stack(stack_pt,d);
+
+        // if (mem_pt.length === 0) {
+
+        // }
+        // console.log('51', addr, mem_pt[addr])
+        stack_pt.unshift(mem_pt[addr]);
+      } else if (hexToInteger(op) === hexToInteger('52')) { //mstore
+        d = 2;
+        a = 0;
+        const addr = this.evalEVM(stack_pt[0]) + 1;
+        const data = stack_pt[1];
+        mem_pt[addr] = data;
+
+        stack_pt = pop_stack(stack_pt, d);
+      } else if (hexToInteger(op) === hexToInteger('53')) {
+        d = 2;
+        a = 0;
+        const addr = this.evalEVM(stack_pt[0]) + 1;
+        // console.log('addr',addr)
+        const data = stack_pt[1];
+        data[2] = 1;
+        mem_pt[addr] = data;
+        
+        stack_pt = pop_stack(stack_pt, d);
+      }
+      else if (hexToInteger(op) === hexToInteger('54')) { //sload
+        d = 1;
+        a = 1;
+
+        const addr = this.evalEVM(stack_pt[0]).toString().padStart(64, '0');
+        stack_pt = pop_stack(stack_pt, d);
+        
+        let sdata_pt;
+        if (storage_pt[addr]) {
+          sdata_pt = storage_pt[addr];
+        } else {
+          sdata_pt = [0, zero_pt, zero_len];
+        }
+        stack_pt.unshift(sdata_pt);
+      } else if (hexToInteger(op) === hexToInteger('55')) { // store
+        d = 2;
+        a = 0;
+
+        const addr = this.evalEVM(stack_pt[0]).toString().padStart(64, '0');
+        const sdata_pt = stack_pt[1];
+        stack_pt = pop_stack(stack_pt, d);
+
+        storage_pt[addr] = sdata_pt;
+        
+      } else if (hexToInteger(op) === hexToInteger('33')) { // caller
+        d = 0;
+        a = 1;
+
+        stack_pt.unshift([0, Is_pt, Is_len]);
+      } else if (hexToInteger(op) === hexToInteger('34')) { // callvalue
+        d = 0;
+        a = 1;
+
+        stack_pt.unshift([0, Iv_pt, Iv_len]);
+      } else if (hexToInteger(op) === hexToInteger('35')) { // calldataload
+        d = 1;
+        a = 1;
+
+        stack_pt.unshift([0, Is_pt, Is_len]);
+      } else if (hexToInteger(op) === hexToInteger('36')) { // calldatasize
+        d = 0;
+        a = 1;
+        // console.log('36', [0, Id_len_info_pt, Id_len_info_len])
+        stack_pt.unshift([0, Id_len_info_pt, Id_len_info_len]);
+      } else if (hexToInteger(op) === hexToInteger('47')) { // selfbalance
+        d = 0;
+        a = 1;
+
+        // console.log('47', [0, balance_pt, balance_len])
+        stack_pt.unshift([0, balance_pt, balance_len]);
+      } else if (hexToInteger(op) - hexToInteger('80') >= 0 
+        && hexToInteger(op) - hexToInteger('80') < 16) { // duplicate
+        d = 1;
+        a = 2;
+
+        const duplen = hexToInteger(op) - hexToInteger('80');
+        stack_pt.unshift(stack_pt[duplen]); 
+      } else if (hexToInteger(op) - hexToInteger('90') >= 0 
+       && hexToInteger(op) - hexToInteger('90') < 16) { // swap
+        d = 0;
+        a = 0;
+
+        const target_index = hexToInteger(op) - hexToInteger('90') + 1;
+        const temp = stack_pt[0];
+        stack_pt[0] = stack_pt[target_index];
+        stack_pt[target_index] = temp;
+      } 
+      else if (hexToInteger(op) < hexToInteger('11') 
+          || (hexToInteger(op) >= hexToInteger('16') && hexToInteger(op) <= hexToInteger('29'))
+          || (hexToInteger(op) == 32)
+      ) {
+        const numberOfInputs = getNumberOfInputs(op);
+        d = numberOfInputs;
+
+        switch (op) {
+          case ['15','19'].includes(op) :
+            d = 1;
+            a = 1;
+          case ['10', '1b', '1c', '14', '01', '02', '03', '04', '16', '17', '18', '0a', '12', '11', '06', '05', '07', '0b', '13', '1a', '1d'].includes(op):
+            d = 2;
+            a = 1;
+          case ['08', '09'].includes(op):
+            d = 3;
+            a = 1;
+          case '20': // keccak256
+            a=1;
+            const addr = this.evalEVM(stack_pt[0]) + 1;
+            const len = this.evalEVM(stack_pt[1]);
+
+            stack_pt = pop_stack(stack_pt, 2);
+
+            let len_left = len;
+            let target_mem = [];
+            let target_addr = addr;
+
+            while (len_left > 0) {
+              const target = mem_pt[target_addr];
+              target_mem.push(target);
+              len_left = len_left - 32;
+              target_addr = target_addr + 32;
+            }
+
+            d = target_mem.length;
+            for (let i = 0; i < target_mem.length; i ++) {
+              stack_pt.push(target_mem[i]);
+            }
+        }
+        
+        this.op_pointer = this.op_pointer + 1;
+        this.oplist.push({
+          opcode: '',
+          pt_inputs: [],
+          pt_outputs: [],
+          inputs: [],
+          outputs: [],
+        });
+        
+        this.oplist = wire_mapping(op, stack_pt, d, a, this.oplist, this.op_pointer);
+
+        stack_pt = pop_stack(stack_pt, d);
+        stack_pt.unshift(this.oplist[this.op_pointer].pt_outputs);
+      }
+      else if (hexToInteger(op) == hexToInteger('f3') || hexToInteger(op) == hexToInteger('fd')) {
+        d=2;
+        a=0;
+
+        const addr_offset = this.evalEVM(stack_pt[0]) + 1;
+        const addr_len = this.evalEVM(stack_pt[1]);
+
+        outputs_pt = [];
+        let len_left = addr_len;
+        let addr = addr_offset;
+
+        while (len_left > 0) {
+          let target_data = mem_pt[addr];
+          outputs_pt.push(target_data);
+          len_left = len_left - target_data[2];
+          addr = addr_offset + target_data[2];
+        }
+        stack_pt = pop_stack(stack_pt, d);
+        pc = codelen;
+      } 
+      else if (hexToInteger(op) == hexToInteger('ff')) ;
+      else if (hexToInteger(op) == hexToInteger('00')) {
+        d = 0;
+        a = 0;
+        outputs_pt=[];
+        pc = codelen;
+      }
+
+      // const newStackSize = stack_pt.length
+      // if (newStackSize - prev_stack_size !== a-d) {
+
+      // }
+      this.vmTraceStep = this.vmTraceStep + 1;
+    }
+    this.oplist[0].pt_inputs = outputs_pt[0];
+    
+    for (let i = 0; i < this.oplist.length ;i ++) {
+      let k_pt_inputs = this.oplist[i].pt_inputs;
+
+      k_pt_inputs = k_pt_inputs[0][0] ? k_pt_inputs[0] : [k_pt_inputs];
+      let k_inputs = [];
+
+      for (let j=0; j<k_pt_inputs.length ; j++) {
+        const a = this.evalEVM(k_pt_inputs[j]);
+        k_inputs.push(a);
+      }
+      let k_pt_outputs = this.oplist[i].pt_outputs;
+      const opcode = this.oplist[i].opcode;
+
+      k_pt_outputs = opcode === 'fff' ? k_pt_outputs : [k_pt_outputs];
+      let k_outputs = [];
+      for (let j = 0; j < k_pt_outputs.length ; j ++) {
+        let k_output = this.evalEVM(k_pt_outputs[j]);
+        k_outputs.push(k_output);
+      }
+      this.oplist[i].inputs=k_inputs;
+      this.oplist[i].outputs=k_outputs;
+
+    }
+    return outputs_pt
+  }
+
+  evalEVM (pt) {
+    const codewdata = this.codewdata;
+    // console.log(pt)
+    const op_pointer = pt[0];
+    const wire_pointer = pt[1];
+    pt[3];
+
+    if (op_pointer == 0) {
+      return codewdata[wire_pointer - 1]
+    }
+    
+    let t_oplist = this.oplist[op_pointer - 1];
+
+    const op = t_oplist.opcode;
+    if (t_oplist.outputs.length !== 0) {
+      return t_oplist.outputs[wire_pointer - 1]
+    }
+    
+    try {
+      const RunState = {
+        opcode: 0x00,
+        programCounter: -1,
+        stack: new Stack(),
+        memory: new Memory(),
+        code: [],
+      };
+
+      if (hexToInteger(op) == hexToInteger('fff')) {
+        let new_pt = t_oplist.pt_outputs[wire_pointer - 1];
+        const value = this.evalEVM(new_pt);
+        return value
+      } else {
+        let inputlen = t_oplist.pt_inputs[0].length;
+        let inputs = [];
+        let pt_inputs = t_oplist.pt_inputs[0][0][0] ? t_oplist.pt_inputs[0] : t_oplist.pt_inputs;
+        for (let i=0; i < inputlen; i ++) {
+          inputs.push(this.evalEVM(pt_inputs[i]));
+        }
+        if (op === '01') {
+          return inputs[0] + inputs[1]
+        }
+        if (op === '02') {
+          return inputs[0] * inputs[1]
+        }
+        if (op === '03') {
+          return inputs[0] - inputs[1]
+        }
+        if (op === '04') {
+          return inputs[0] / inputs[1]
+        }
+        if (op === '05') {
+          const result = inputs[1] === 0 ? 0 : inputs[0] / inputs[1];
+          return result
+        }
+        if (op === '06') {
+          const result = inputs[1] === 0 ? inputs[1] : inputs[0] % inputs[1];
+          return result
+        }
+        if (op === '0a') {
+          return inputs[0] ** inputs[1]
+        }
+        if (op === '20') {
+          //padData.padStart(pc_len * 2, '0')
+          const inputLen = inputs.length;
+          for (let i = 0; i < inputLen; i ++) {
+            inputs[i] = inputs[i].toString().padStart(64, '0');
+          }
+          const input_con = Buffer.from(inputs.join(''), 'hex');
+          const hex = utils_js.bytesToHex(keccak_js.keccak256(input_con));
+          return hex
+        }  
+      }
+    } catch(e) {
+      console.log(e);
+    }
+  }
+}
+
+function getNumberOfInputs (op) {
+  const subcircuits = subcircuit['wire-list'];
+  for (let i = 0; i < subcircuits.length; i++) {
+    const opcode = subcircuits[i].opcode;
+    if (hexToInteger(opcode) === hexToInteger(op)) {
+      return subcircuits[i].In_idx[1];
+    }
+  }
+  return -1;
+}
+
 /* eslint-disable no-console */
 const logger = Logger__default["default"].create('UniGro16js', {showTimestamp: false});
 
@@ -3744,6 +5229,7 @@ inquirer__default["default"]
         'Compile',
         'Build QAP',
         'Setup',
+        'Decode',
         'Derive',
         'Prove',
         'Verify',
@@ -3760,6 +5246,7 @@ inquirer__default["default"]
     if (answers.verbose) Logger__default["default"].setLogLevel("DEBUG");
     if (answers.phase === 'Compile') compile(answers.verbose);
     if (answers.phase === 'Build QAP') buildQAP();
+    if (answers.phase === 'Decode') decode();
     if (answers.phase === 'Setup') setup();
     if (answers.phase === 'Derive') derive();
     if (answers.phase === 'Prove') prove();
@@ -3973,6 +5460,33 @@ function derive() {
         answers.qapDirectory, 
         logger
         );
+    });
+}
+
+function decode() {
+  inquirer__default["default"]
+    .prompt([
+      // {
+      //   type: 'list',
+      //   name: ''
+      // }
+      {
+        type: 'input',
+        name: 'directory',
+        message: 'What is the name of the opcode name?'
+      },
+      {
+        type: 'input',
+        name: 'opcode',
+        message: 'What is the opcode you want to decode?'
+      }
+    ])
+    .then(answers => {
+      const decode = new Decoder();
+      return decode.runCode(
+        answers.directory,
+        Buffer.from(answers.opcode, 'hex')
+      )
     });
 }
 
