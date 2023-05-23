@@ -182,6 +182,27 @@ export class Decoder {
   }
 
   runCode (code) {
+    this.decode(code)
+
+    const listLength = this.oplist.length
+    const oplist = this.oplist
+    const { NWires, wireIndex } = getWire(this.oplist)
+    
+    const NCONSTWIRES=1
+    const NINPUT = (NWires[0] - NCONSTWIRES)/2
+
+    const RangeCell = getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT)
+    const WireListm = getWireList(NWires, RangeCell, listLength) 
+    let mWires = WireListm.length;
+    
+    const { SetData_I_V, SetData_I_P } = getIVIP(WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell)
+
+    const dir = `${process.cwd()}/resource/circuits/schnorr_prove2`
+    makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, WireListm)
+    makeJsonFile (dir, oplist, NINPUT, this.codewdata)
+  }
+
+  decode (code) {
     let outputs_pt = []
     let stack_pt = []
     this.getEnv(code)
@@ -442,30 +463,6 @@ export class Decoder {
       this.oplist[i].outputs=k_outputs
 
     }
-    // console.log(this.oplist)
-    const listLength = this.oplist.length
-    const oplist = this.oplist
-    const { NWires, wireIndex } = getWire(this.oplist)
-    
-    const NCONSTWIRES=1
-    const NINPUT = (NWires[0] - NCONSTWIRES)/2
-
-    const RangeCell = getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT)
-
-    const WireListm = getWireList(NWires, RangeCell, listLength) // wirelistM 값들 수정해야함
-
-
-    let mWires = WireListm.length;
-    
-    const { SetData_I_V, SetData_I_P } = getIVIP(WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell)
-
-    const dir = `${process.cwd()}/resource/circuits/schnorr_prove2`
-    makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, WireListm)
-    makeJsonFile (dir, oplist, NINPUT, this.codewdata)
-    
-    
-    
-
     return outputs_pt
   }
 
@@ -546,7 +543,6 @@ export class Decoder {
     }
   }
 }
-
 
 function getNumberOfInputs (op) {
   const subcircuits = subcircuit['wire-list']
