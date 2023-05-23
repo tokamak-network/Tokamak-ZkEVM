@@ -1,6 +1,6 @@
 import { Blockchain } from '@ethereumjs/blockchain'
 import { Chain, Common, Hardfork } from '@ethereumjs/common'
-import { EVM } from './evm.ts'
+import { EVM } from '../evm.js'
 import { DefaultStateManager } from '@ethereumjs/statemanager'
 import { EEI } from '@ethereumjs/vm'
 import { Decoder } from '../../decode.js'

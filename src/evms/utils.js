@@ -1,4 +1,5 @@
 import { EvmError } from "./exceptions.js"
+
 /**
  * Wraps error message as EvmError
  * @param {string} err The error message

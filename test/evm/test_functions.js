@@ -1,7 +1,7 @@
 import { assert } from 'chai';
-import { Stack } from '../../src/evm/stack.js';
-import { Memory } from "../../src/evm/memory.js";
-import { handlers } from '../../src/evm/functions.js';
+import { Stack } from '../../src/evms/stack.js';
+import { Memory } from "../../src/evms/memory.js";
+import { handlers } from '../../src/evms/functions.js';
 
 import { default as testcases_add     } from './testdata/testcases_add.js';
 import { default as testcases_mul     } from './testdata/testcases_mul.js';
