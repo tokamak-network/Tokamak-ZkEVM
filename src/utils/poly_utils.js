@@ -1,5 +1,6 @@
 import {processConstraints} from './zkey_utils.js';
 import * as binFileUtils from '@iden3/binfileutils';
+import {Scalar, BigBuffer} from 'ffjavascript';
 
 /**
  *
@@ -474,7 +475,25 @@ export async function QapDiv(Fr, QAPcoefs, objectFlag) {
     HY = _transToObject(Fr, HY);
   }
 
-  return {HX, HY};
+  //return {HX, HY};
+  
+  const HY_buff = new BigBuffer((2*nX-1)*(nY-1) * Fr.n8);
+  const buff_temp = new Uint8Array(Fr.n8);
+  for (let i = 0; i < 2*nX-1; i++){
+    for (let j = 0; j < nY-1; j++){
+      await Fr.toRprLE(buff_temp, 0, HY[i][j]);
+      HY_buff.set(buff_temp, (j + (nY-1)*i) * Fr.n8);
+    }
+  }
+  const HX_buff = new BigBuffer((nX-1)*nY * Fr.n8);
+  for (let i = 0; i < nX-1; i++){
+    for (let j = 0; j < nY; j++){
+      await Fr.toRprLE(buff_temp, 0, HX[i][j]);
+      HX_buff.set(buff_temp, (j + nY*i) * Fr.n8);
+    }
+  }
+
+  return {HX_buff, HY_buff};
 }
 
 export async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
@@ -738,58 +757,68 @@ export async function readQAP(qapDirPath, k, m, n, n8r) {
 }
 
 export async function readCircuitQAP(
-    Fr,
     fdQAP,
     sectionsQAP,
     i,
-    n,
-    sMax,
     n8r,
 ) {
   await binFileUtils.startReadUniqueSection(fdQAP, sectionsQAP, 2+i);
 
-  let degreeX;
-  let degreeY;
+  let nX;
+  let nY;
 
-  degreeX = await fdQAP.readULE32();
-  degreeY = await fdQAP.readULE32();
+  nX = await fdQAP.readULE32();
+  nY = await fdQAP.readULE32();
+  const uXY_buff = new BigBuffer(nX*nY*n8r);
+  await fdQAP.readToBuffer(uXY_buff,0,nX*nY*n8r);
+  /*
   const uXY = Array.from(
-      Array(degreeX),
-      () => new Array(degreeY),
+      Array(nX),
+      () => new Array(nY),
   );
-  for (let i = 0; i < degreeX; i++) {
-    for (let j = 0; j < degreeY; j++) {
+  for (let i = 0; i < nX; i++) {
+    for (let j = 0; j < nY; j++) {
       uXY[i][j] = await fdQAP.read(n8r);
     }
-  }
+  }*/
 
-  degreeX = await fdQAP.readULE32();
-  degreeY = await fdQAP.readULE32();
+  nX = await fdQAP.readULE32();
+  nY = await fdQAP.readULE32();
+  const vXY_buff = new BigBuffer(nX*nY*n8r);
+  await fdQAP.readToBuffer(vXY_buff,0,nX*nY*n8r);
+  /*
   const vXY = Array.from(
-      Array(degreeX),
-      () => new Array(degreeY),
+      Array(nX),
+      () => new Array(nY),
   );
-  for (let i = 0; i < degreeX; i++) {
-    for (let j = 0; j < degreeY; j++) {
+  for (let i = 0; i < nX; i++) {
+    for (let j = 0; j < nY; j++) {
       vXY[i][j] = await fdQAP.read(n8r);
     }
   }
+  */
 
-  degreeX = await fdQAP.readULE32();
-  degreeY = await fdQAP.readULE32();
+  nX = await fdQAP.readULE32();
+  nY = await fdQAP.readULE32();
+  const wXY_buff = new BigBuffer(nX*nY*n8r);
+  await fdQAP.readToBuffer(wXY_buff,0,nX*nY*n8r);
+
+  /*
   const wXY = Array.from(
-      Array(degreeX),
-      () => new Array(degreeY),
+      Array(nX),
+      () => new Array(nY),
   );
-  for (let i = 0; i < degreeX; i++) {
-    for (let j = 0; j < degreeY; j++) {
+  for (let i = 0; i < nX; i++) {
+    for (let j = 0; j < nY; j++) {
       wXY[i][j] = await fdQAP.read(n8r);
     }
   }
+  */
 
   await binFileUtils.endReadSection(fdQAP);
 
-  return {uXY, vXY, wXY};
+  //return {uXY, vXY, wXY};
+  return {uXY_buff, vXY_buff, wXY_buff};
 }
 
 /**

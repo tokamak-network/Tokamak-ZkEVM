@@ -25,7 +25,7 @@
 // PointsH(9)
 // Contributions(10)
 
-import {Scalar, F1Field} from 'ffjavascript';
+import {Scalar, F1Field, BigBuffer} from 'ffjavascript';
 import * as binFileUtils from '@iden3/binfileutils';
 import {getCurveFromQ as getCurve} from '../curves.js';
 
@@ -277,20 +277,28 @@ export async function readRS(fd, sections, rsParam, rsType, toObject) {
   }
   rsContent.sigmaG.vk1XyPows = vk1XyPows;
 
+  const vk1XyPowsT1g = new BigBuffer((n-1)*sMax*curve.G1.F.n8*2);
+  await fd.readToBuffer(vk1XyPowsT1g, 0, (n-1)*sMax*curve.G1.F.n8*2);
+  /*
   const vk1XyPowsT1g = Array.from(Array(n-1), () => new Array(sMax));
   for (let i = 0; i < n-1; i++) {
     for (let j=0; j<sMax; j++) {
       vk1XyPowsT1g[i][j] = await readG1(fd, curve, toObject);
     }
   }
+  */
   rsContent.sigmaG.vk1XyPowsT1g = vk1XyPowsT1g;
 
+  const vk1XyPowsT2g = new BigBuffer((2*n-1)*(sMax-1)*curve.G1.F.n8*2);
+  await fd.readToBuffer(vk1XyPowsT2g, 0, (2*n-1)*(sMax-1)*curve.G1.F.n8*2)
+  /*
   const vk1XyPowsT2g = Array.from(Array(2*n-1), () => new Array(sMax-1));
   for (let i = 0; i < 2*n-1; i++) {
     for (let j=0; j<sMax-1; j++) {
       vk1XyPowsT2g[i][j] = await readG1(fd, curve, toObject);
     }
   }
+  */
   rsContent.sigmaG.vk1XyPowsT2g = vk1XyPowsT2g;
 
   await binFileUtils.endReadSection(fd);
@@ -379,6 +387,7 @@ export async function readRS(fd, sections, rsParam, rsType, toObject) {
     const mPrivate = await fd.readULE32();
     rsContent.crs.param.mPrivate = mPrivate;
 
+    /*
     const vk1Uxy1d = new Array(m);
     const vk1Vxy1d = new Array(m);
     const vk1Zxy1d = new Array(mPublic);
@@ -402,6 +411,20 @@ export async function readRS(fd, sections, rsParam, rsType, toObject) {
     for (let i=0; i<m; i++) {
       vk2Vxy1d[i] = await readG2(fd, curve, toObject);
     }
+    */
+
+    const vk1Uxy1d = new BigBuffer(m*curve.G1.F.n8*2);
+    const vk1Vxy1d = new BigBuffer(m*curve.G1.F.n8*2);
+    const vk1Zxy1d = new BigBuffer(mPublic*curve.G1.F.n8*2);
+    const vk1Axy1d = new BigBuffer(mPrivate*curve.G1.F.n8*2);
+    const vk2Vxy1d = new BigBuffer(m*curve.G2.F.n8*2);
+    await fd.readToBuffer(vk1Uxy1d, 0, m*curve.G1.F.n8*2);
+    await fd.readToBuffer(vk1Vxy1d, 0, m*curve.G1.F.n8*2);
+    await fd.readToBuffer(vk1Zxy1d, 0, mPublic*curve.G1.F.n8*2);
+    await fd.readToBuffer(vk1Axy1d, 0, mPrivate*curve.G1.F.n8*2);
+    await fd.readToBuffer(vk2Vxy1d, 0, m*curve.G2.F.n8*2);
+    
+
     await binFileUtils.endReadSection(fd);
 
     rsContent.crs.vk1Uxy1d = vk1Uxy1d;
