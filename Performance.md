@@ -102,11 +102,11 @@ contract transferContract {
 
 |Results (in mins)|BuildQAP|Setup|Derive|Prove|Verify|Note|
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
-|Overall time|47 secs|5.61|8.12|6.03|0.9 secs||
-|Time for EC exponentiations|-|4.67|1.92|25.88 secs|0|Pippenger's algorithm is not applied|
+|Overall time|47 secs|5.61|8.12|5.49|0.9 secs||
+|Time for EC exponentiations|-|4.67|1.92|0.6 secs|0|For Prove, 25.88 secs with naive MSM => 0.6 secs with batched MSM using WASM|
 |Time for polynomial arithmetics w/o division|24.5 secs|-|2.15|2.38|-|For Prove, 10.78 mins with convolution => 2.15 mins with FFT|
-|Time for polynomial division|-|-|-|68 millisecs|-|For Prove, 4.8 hours with convolution => 11.74 mins with FFT => 68ms with the algorithm given in https://drive.google.com/file/d/1mhSafDcquDRZpaBX_0pHL1uuzH-rfym1/view?usp=share_link|
-|Time for storage access|22.05 secs|46.59 secs|3.90|3.17|0||
+|Time for polynomial division|-|-|-|0.1 secs|-|For Prove, 4.8 hours with convolution => 11.74 mins with FFT => 68ms with the algorithm given in [this link](https://drive.google.com/file/d/1mhSafDcquDRZpaBX_0pHL1uuzH-rfym1/view?usp=share_link)|
+|Time for storage access|22.05 secs|46.59 secs|3.1|3.17|0||
 |Time for pairing and hashing|-|-|-|-|0||
 |Note|-|-|-||-|-|
 
@@ -132,8 +132,9 @@ contract transferContract {
 |circuitName|"schnorr_prove"|"test_transfer"|
 
 # 4. Implementation upgrade history
-- Jan. 17: FFTs were applied to compute polynomial multiplication and division, and the proving time with the Ether transfer circuit was reduced from 5.04 hours to 17.92 mins.
-- Apr. 27: An efficient algorithm for the division of QAP polynomials was applied, and the division time with the Ether transfer circuit was reduced from 11.74 mins to 68 milliseconds (the total proving time reduction: 17.92 mins to 6.03 mins).
+- Jan. 17: For multiplication and division of polynomials, FFTs were applied, and the proving time for an Ether transfer circuit was reduced from 5.04 hours (with convolution of coefficients) to 17.92 mins.
+- Apr. 27: For division of QAP polynomials, [an efficient algorithm](https://drive.google.com/file/d/1mhSafDcquDRZpaBX_0pHL1uuzH-rfym1/view?usp=share_link) was applied, and the dividing time for an Ether transfer circuit was reduced from 11.74 mins (with polynomial long division and FFT) to 68 milliseconds (the total proving time was reduced from 17.92 mins to 6.03 mins).
+- May. 24: For MSM (multi-scalar exponentiation), [a batched computation using WASM provided by Iden3](https://github.com/iden3/ffjavascript/blob/master/src/engine_multiexp.js) was applied, and the MSM time for an Ether transfer circuit was reduced from 25.9 secs (with separated computation) to 0.6 secs.
 
 # 5. Concluding remark
 Since the computation complexity of prove algorithm of our protocol is similar to the original Groth16's, we expect that the proving speed will be improved as fast as the original one such as Mina protocol's GPU implementation.
