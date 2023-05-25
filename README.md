@@ -312,13 +312,11 @@ $ node .
 |prfName|"proof1"|"proof2"|"proof"|
 |anyNumber|1|1|1|
 
-## Performance test
+## Related Docs
 
-- [A report on performance test](https://github.com/tokamak-network/UniGro16js/blob/master/Performance.md)
-
-## Technical specification
-
+- [Performance test report](https://github.com/tokamak-network/UniGro16js/blob/master/Performance.md)
 - [The technical specification of UniGroth16](https://drive.google.com/file/d/1DTEWbiKalPe3l1ohniP60jlyr-vIUiuH/view?usp=sharing)
+- [History of implementation updates](https://github.com/tokamak-network/UniGro16js/blob/master/UpdateHistory.md)
 
 ## Contact
 
