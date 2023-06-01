@@ -342,8 +342,9 @@ export default async function derive(
   }
 
   if (logger) logger.debug(`  Deriving u_i(X,Y), v_i(X,Y), w_i(X,Y) for i upto ${m}...`);
-  for (let i=0; i<m; i++) {
-    await startWriteSection(fdQAP, 2+i);
+  
+  await startWriteSection(fdQAP, 2); // section2: u_i(X,Y)
+  for (let i=0; i<m; i++) {    
     let arrayIdx;
     let PreImgSet;
     if (IdSetV.set.indexOf(i) > -1) {
@@ -355,8 +356,6 @@ export default async function derive(
     }
     const PreImgSize = PreImgSet.length;
     let uXY = [[Fr.zero]];
-    let vXY = [[Fr.zero]];
-    let wXY = [[Fr.zero]];
     for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
       const kPrime = PreImgSet[PreImgIdx][0];
       const iPrime = PreImgSet[PreImgIdx][1];
@@ -369,50 +368,119 @@ export default async function derive(
           fYK[kPrime],
       );
       uXY = await polyUtils.addPoly(Fr, uXY, uTerm);
+      PolTimeAccum += timer.end(PolTimeStart);      
+    }
+    
+    if (n != uXY.length || sMax != uXY[0].length) {
+      uXY = polyUtils.reduceDimPoly(Fr, uXY);
+      if (n != uXY.length || sMax != uXY[0].length) {
+        throw new Error(`uXY size and degree do not match`);
+      }
+    }
+    
+    QAPWriteTimeStart = timer.start();
+    for (let xi=0; xi<uXY.length; xi++) {
+      for (let yi=0; yi<uXY[0].length; yi++) {
+        await fdQAP.write(uXY[xi][yi]);
+      }
+    }
+    QAPWriteTimeAccum += timer.end(QAPWriteTimeStart);
+  }
+  await endWriteSection(fdQAP);
 
+  await startWriteSection(fdQAP, 3); // section3: v_i(X,Y)
+  for (let i=0; i<m; i++) {    
+    let arrayIdx;
+    let PreImgSet;
+    if (IdSetV.set.indexOf(i) > -1) {
+      arrayIdx = IdSetV.set.indexOf(i);
+      PreImgSet = IdSetV.PreImgs[arrayIdx];
+    } else {
+      arrayIdx = IdSetP.set.indexOf(i);
+      PreImgSet = IdSetP.PreImgs[arrayIdx];
+    }
+    const PreImgSize = PreImgSet.length;
+    let vXY = [[Fr.zero]];
+    for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
+      const kPrime = PreImgSet[PreImgIdx][0];
+      const iPrime = PreImgSet[PreImgIdx][1];
+      const sKPrime = OpList[kPrime];
+
+      PolTimeStart = timer.start();
       const vTerm = await polyUtils.tensorProduct(
           Fr,
           vXK[sKPrime][iPrime],
           fYK[kPrime],
       );
       vXY = await polyUtils.addPoly(Fr, vXY, vTerm);
+      PolTimeAccum += timer.end(PolTimeStart);      
+    }
+    
+    if (n != vXY.length || sMax != vXY[0].length) {
+      vXY = polyUtils.reduceDimPoly(Fr, vXY);
+      if (n != vXY.length || sMax != vXY[0].length) {
+        throw new Error(`vXY size and degree do not match`);
+      }
+    }
+    
+    QAPWriteTimeStart = timer.start();
+    for (let xi=0; xi<vXY.length; xi++) {
+      for (let yi=0; yi<vXY[0].length; yi++) {
+        await fdQAP.write(vXY[xi][yi]);
+      }
+    }
+    QAPWriteTimeAccum += timer.end(QAPWriteTimeStart);
+  }
+  await endWriteSection(fdQAP);
 
+  await startWriteSection(fdQAP, 4); // section4: w_i(X,Y)
+  for (let i=0; i<m; i++) {    
+    let arrayIdx;
+    let PreImgSet;
+    if (IdSetV.set.indexOf(i) > -1) {
+      arrayIdx = IdSetV.set.indexOf(i);
+      PreImgSet = IdSetV.PreImgs[arrayIdx];
+    } else {
+      arrayIdx = IdSetP.set.indexOf(i);
+      PreImgSet = IdSetP.PreImgs[arrayIdx];
+    }
+    const PreImgSize = PreImgSet.length;
+    let wXY = [[Fr.zero]];
+    for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
+      const kPrime = PreImgSet[PreImgIdx][0];
+      const iPrime = PreImgSet[PreImgIdx][1];
+      const sKPrime = OpList[kPrime];
+
+      PolTimeStart = timer.start();
       const wTerm = await polyUtils.tensorProduct(
           Fr,
           wXK[sKPrime][iPrime],
           fYK[kPrime],
       );
       wXY = await polyUtils.addPoly(Fr, wXY, wTerm);
-      PolTimeAccum += timer.end(PolTimeStart);
+      PolTimeAccum += timer.end(PolTimeStart);      
     }
-
+    
+    if (n != wXY.length || sMax != wXY[0].length) {
+      wXY = polyUtils.reduceDimPoly(Fr, wXY);
+      if (n != wXY.length || sMax != wXY[0].length) {
+        throw new Error(`wXY size and degree do not match`);
+      }
+    }
+    
     QAPWriteTimeStart = timer.start();
-    await fdQAP.writeULE32(uXY.length);
-    await fdQAP.writeULE32(uXY[0].length);
-    for (let xi=0; xi<uXY.length; xi++) {
-      for (let yi=0; yi<uXY[0].length; yi++) {
-        await fdQAP.write(uXY[xi][yi]);
-      }
-    }
-    await fdQAP.writeULE32(vXY.length);
-    await fdQAP.writeULE32(vXY[0].length);
-    for (let xi=0; xi<vXY.length; xi++) {
-      for (let yi=0; yi<vXY[0].length; yi++) {
-        await fdQAP.write(vXY[xi][yi]);
-      }
-    }
-    await fdQAP.writeULE32(wXY.length);
-    await fdQAP.writeULE32(wXY[0].length);
     for (let xi=0; xi<wXY.length; xi++) {
       for (let yi=0; yi<wXY[0].length; yi++) {
         await fdQAP.write(wXY[xi][yi]);
       }
     }
     QAPWriteTimeAccum += timer.end(QAPWriteTimeStart);
-    await endWriteSection(fdQAP);
   }
+  await endWriteSection(fdQAP);
+
   await fdQAP.close();
   qapTime = timer.end(qapTime);
+
   if (logger) logger.debug('Deriving QAP...Done');
   if (logger) logger.debug('\n');
 

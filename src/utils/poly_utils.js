@@ -759,64 +759,26 @@ export async function readQAP(qapDirPath, k, m, n, n8r) {
 export async function readCircuitQAP(
     fdQAP,
     sectionsQAP,
-    i,
+    m,
+    nX,
+    nY,
     n8r,
 ) {
-  await binFileUtils.startReadUniqueSection(fdQAP, sectionsQAP, 2+i);
-
-  let nX;
-  let nY;
-
-  nX = await fdQAP.readULE32();
-  nY = await fdQAP.readULE32();
-  const uXY_buff = new BigBuffer(nX*nY*n8r);
-  await fdQAP.readToBuffer(uXY_buff,0,nX*nY*n8r);
-  /*
-  const uXY = Array.from(
-      Array(nX),
-      () => new Array(nY),
-  );
-  for (let i = 0; i < nX; i++) {
-    for (let j = 0; j < nY; j++) {
-      uXY[i][j] = await fdQAP.read(n8r);
-    }
-  }*/
-
-  nX = await fdQAP.readULE32();
-  nY = await fdQAP.readULE32();
-  const vXY_buff = new BigBuffer(nX*nY*n8r);
-  await fdQAP.readToBuffer(vXY_buff,0,nX*nY*n8r);
-  /*
-  const vXY = Array.from(
-      Array(nX),
-      () => new Array(nY),
-  );
-  for (let i = 0; i < nX; i++) {
-    for (let j = 0; j < nY; j++) {
-      vXY[i][j] = await fdQAP.read(n8r);
-    }
-  }
-  */
-
-  nX = await fdQAP.readULE32();
-  nY = await fdQAP.readULE32();
-  const wXY_buff = new BigBuffer(nX*nY*n8r);
-  await fdQAP.readToBuffer(wXY_buff,0,nX*nY*n8r);
-
-  /*
-  const wXY = Array.from(
-      Array(nX),
-      () => new Array(nY),
-  );
-  for (let i = 0; i < nX; i++) {
-    for (let j = 0; j < nY; j++) {
-      wXY[i][j] = await fdQAP.read(n8r);
-    }
-  }
-  */
-
+  await binFileUtils.startReadUniqueSection(fdQAP, sectionsQAP, 2);
+  const uXY_buff = new BigBuffer(m*nX*nY*n8r);
+  await fdQAP.readToBuffer(uXY_buff, 0, m*nX*nY*n8r);
   await binFileUtils.endReadSection(fdQAP);
 
+  await binFileUtils.startReadUniqueSection(fdQAP, sectionsQAP, 3);
+  const vXY_buff = new BigBuffer(m*nX*nY*n8r);
+  await fdQAP.readToBuffer(uXY_buff, 0, m*nX*nY*n8r);
+  await binFileUtils.endReadSection(fdQAP);
+
+  await binFileUtils.startReadUniqueSection(fdQAP, sectionsQAP, 4);
+  const wXY_buff = new BigBuffer(m*nX*nY*n8r);
+  await fdQAP.readToBuffer(uXY_buff, 0, m*nX*nY*n8r);
+  await binFileUtils.endReadSection(fdQAP);
+  
   //return {uXY, vXY, wXY};
   return {uXY_buff, vXY_buff, wXY_buff};
 }

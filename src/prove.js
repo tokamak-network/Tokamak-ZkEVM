@@ -231,15 +231,16 @@ export default async function groth16Prove(
 
   // / arrange circuit witness
   const cWtns_buff = new BigBuffer(WireList.length * Fr.n8);
-  const cWtns = new Array(WireList.length);
+  //const cWtns = new Array(WireList.length);
   for (let i=0; i<WireList.length; i++) {
     const kPrime = WireList[i][0];
     const idx = WireList[i][1];
-    cWtns[i] = wtns[kPrime][idx]; // Uint8Array buffer
-    if (cWtns[i] === undefined) {
+    //cWtns[i] = wtns[kPrime][idx]; // Uint8Array buffer
+    const cWtns_i = wtns[kPrime][idx]; // Uint8Array buffer
+    if (cWtns_i === undefined) {
       throw new Error(`Undefined cWtns value at i=${i}`);
     }
-    cWtns_buff.set(cWtns[i], Fr.n8*i);
+    cWtns_buff.set(cWtns_i, Fr.n8*i);
   }
   const cWtns_private_buff = new BigBuffer(mPrivate * Fr.n8);
   for (let i=0; i<mPrivate; i++) {
@@ -276,30 +277,53 @@ export default async function groth16Prove(
       1<<24,
   );
   let pxyTime = timer.start();
-  let p1XY = [[Fr.zero]];
-  let p2XY = [[Fr.zero]];
-  let p3XY = [[Fr.zero]];
-  for (let i=0; i<m; i++) {
-    qapLoadTimeStart = timer.start();
-    const {
-      uXY_i_buff,
-      vXY_i_buff,
-      wXY_i_buff,
-    } = await polyUtils.readCircuitQAP(
-        fdQAP,
-        sectionsQAP,
-        i,
-        Fr.n8,
-    );
-    qapLoadTimeAccum += timer.end(qapLoadTimeStart);
-    const term1 = await polyUtils.scalePoly(Fr, uXY_i_buff, cWtns[i]);
-    p1XY = await polyUtils.addPoly(Fr, p1XY, term1);
-    const term2 = await polyUtils.scalePoly(Fr, vXY_i_buff, cWtns[i]);
-    p2XY = await polyUtils.addPoly(Fr, p2XY, term2);
-    const term3 = await polyUtils.scalePoly(Fr, wXY_i_buff, cWtns[i]);
-    p3XY = await polyUtils.addPoly(Fr, p3XY, term3);
-  }
+
+  qapLoadTimeStart = timer.start();
+  const {
+    uXY_buff,
+    vXY_buff,
+    wXY_buff,
+  } = await polyUtils.readCircuitQAP(
+      fdQAP,
+      sectionsQAP,
+      m,
+      n,
+      sMax,
+      Fr.n8,
+  );
   await fdQAP.close();
+  qapLoadTimeAccum += timer.end(qapLoadTimeStart);
+  
+  const p1XY = Array.from(Array(n), () => new Array(sMax));
+  const p2XY = Array.from(Array(n), () => new Array(sMax));
+  const p3XY = Array.from(Array(n), () => new Array(sMax));
+  for (let ii=0; ii<n; ii++){
+    for (let jj=0; jj<sMax; jj++){
+      p1XY[ii][jj] = Uint8Array(Fr.n8);
+      Fr.toRprLE(p1XY[ii][jj],0,Fr.zero);
+      p2XY[ii][jj] = Uint8Array(Fr.n8);
+      Fr.toRprLE(p1XY[ii][jj],0,Fr.zero);
+      p3XY[ii][jj] = Uint8Array(Fr.n8);
+      Fr.toRprLE(p1XY[ii][jj],0,Fr.zero);
+    }
+  }
+  for (let i=0; i<m; i++){
+    const coefs_i = coefs_buff.slice(i*Fr.n8, i*Fr.n8 + Fr.n8);
+    const uXY_i = uXY_buff.slice(i*n*sMax*Fr.n8, i*n*sMax*Fr.n8 + n*sMax*Fr.n8);
+    const vXY_i = vXY_buff.slice(i*n*sMax*Fr.n8, i*n*sMax*Fr.n8 + n*sMax*Fr.n8);
+    const wXY_i = wXY_buff.slice(i*n*sMax*Fr.n8, i*n*sMax*Fr.n8 + n*sMax*Fr.n8);
+
+    for (let ii=0; ii<n; ii++){
+      for (let jj=0; jj<sMax; jj++){
+        const uXY_i_ii_jj = uXY_i.slice((sMax*ii+jj)*Fr.n8, (sMax*ii+jj)*Fr.n8+Fr.n8);
+        p1XY[ii][jj].set(Fr.add(p1XY[ii][jj], Fr.mul(uXY_i_ii_jj, coefs_i)), 0);
+        const vXY_i_ii_jj = vXY_i.slice((sMax*ii+jj)*Fr.n8, (sMax*ii+jj)*Fr.n8+Fr.n8);
+        p2XY[ii][jj].set(Fr.add(p2XY[ii][jj], Fr.mul(vXY_i_ii_jj, coefs_i)), 0);
+        const wXY_i_ii_jj = wXY_i.slice((sMax*ii+jj)*Fr.n8, (sMax*ii+jj)*Fr.n8+Fr.n8);
+        p3XY[ii][jj].set(Fr.add(p3XY[ii][jj], Fr.mul(wXY_i_ii_jj, coefs_i)), 0);
+      }
+    }
+  }
 
   let qapMulTime = timer.start();
   const temp = await polyUtils.fftMulPoly(Fr, p1XY, p2XY);

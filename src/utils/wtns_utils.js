@@ -51,8 +51,8 @@ export async function read(fileName) {
   const {n8, nWitness} = await readHeader(fd, sections);
 
   await binFileUtils.startReadUniqueSection(fd, sections, 2);
-  const res_buff = new BigBuffer(nWitness*n8);
-  await fd.readToBuffer(res_buff,0,nWitness*n8);
+  //const res_buff = new BigBuffer(nWitness*n8);
+  //await fd.readToBuffer(res_buff,0,nWitness*n8);
   
   const res = new Array(nWitness);
   for (let i=0; i<nWitness; i++) { 

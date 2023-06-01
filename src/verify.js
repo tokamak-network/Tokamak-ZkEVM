@@ -4,7 +4,6 @@ import * as fastFile from 'fastfile';
 import {readFileSync} from 'fs';
 import hash from 'js-sha3';
 import * as timer from './utils/timer.js';
-import {Scalar, BigBuffer} from 'ffjavascript';
 
 export default async function groth16Verify(
     proofFile,
@@ -160,8 +159,7 @@ export default async function groth16Verify(
 
   // arrange circuit instance accroding to Set_I_V.bin (= IdSetV),
   // which ideally consists of only subcircuit outputs
-  const cInstance = new BigBuffer(IdSetV.set.length * Fr.n8);
-  const buff_temp = new Uint8Array(Fr.n8);
+  const cInstance = new Array(IdSetV.set.length);
   for (let i=0; i<IdSetV.set.length; i++) {
     const kPrime = WireList[IdSetV.set[i]][0];
     const iPrime = WireList[IdSetV.set[i]][1];
@@ -173,12 +171,9 @@ export default async function groth16Verify(
           'Error in arranging circuit instance: containing a private wire.',
       );
     }
-    const value = Fr.e(subInstance[kPrime][iPrime]);
-    await Fr.toRprLE(buff_temp, 0, value, Fr.n8);
-    cInstance.set(buff_temp, Fr.n8 * i);  
+    cInstance[i] = subInstance[kPrime][iPrime];
   }
-
-  if (cInstance.byteLength != mPublic * Fr.n8) {
+  if (cInstance.length != mPublic) {
     throw new Error(
         'Error in arranging circuit instance: wrong instance size.',
     );
@@ -196,7 +191,11 @@ export default async function groth16Verify(
   // / Compute term D
   let EncTime = timer.start();
   let vk1D;
-  vk1D = await G1.multiExpAffine(crs.vk1Zxy1d, cInstance, false);
+  vk1D = await G1.timesFr(buffG1, Fr.e(0));
+  for (let i=0; i<mPublic; i++) {
+    const term = await G1.timesFr(crs.vk1Zxy1d[i], Fr.e(cInstance[i]));
+    vk1D = await G1.add(vk1D, term);
+  }
   EncTime = timer.end(EncTime);
 
   // / Verify
