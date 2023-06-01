@@ -131,10 +131,5 @@ contract transferContract {
 |crsName    |"crsSchnorr_prove"|"crsEtherTransfer"|
 |circuitName|"schnorr_prove"|"test_transfer"|
 
-# 4. Implementation upgrade history
-- Jan. 17: For multiplication and division of polynomials, FFTs were applied, and the proving time for an Ether transfer circuit was reduced from 5.04 hours (with convolution of coefficients) to 17.92 mins.
-- Apr. 27: For division of QAP polynomials, [an efficient algorithm](https://drive.google.com/file/d/1mhSafDcquDRZpaBX_0pHL1uuzH-rfym1/view?usp=share_link) was applied, and the dividing time for an Ether transfer circuit was reduced from 11.74 mins (with polynomial long division and FFT) to 68 milliseconds (the total proving time was reduced from 17.92 mins to 6.03 mins).
-- May. 24: For MSM (multi-scalar exponentiation), [a batched computation using WASM provided by Iden3](https://github.com/iden3/ffjavascript/blob/master/src/engine_multiexp.js) was applied, and the MSM time for an Ether transfer circuit was reduced from 25.9 secs (with separated computation) to 0.6 secs.
-
-# 5. Concluding remark
+# 4. Concluding remark
 Since the computation complexity of prove algorithm of our protocol is similar to the original Groth16's, we expect that the proving speed will be improved as fast as the original one such as Mina protocol's GPU implementation.
