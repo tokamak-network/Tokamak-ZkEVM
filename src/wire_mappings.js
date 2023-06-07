@@ -18,7 +18,7 @@ export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code) {
       return
     }
   }
-  console.log('op',op, stack_pt)
+  // console.log('op',op, stack_pt)
   let checks = 0
   oplist[0].opcode = 'fff'
   for (let i = 0; i < d; i++) {
@@ -29,6 +29,7 @@ export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code) {
       let checkArray = []
       if (i==1 && (op === '1c1' || op === '1c2')) {
         let original_bytelength = data[2]
+        data[2] = Math.min(31, original_bytelength)
         if (op === '1c1') data[0] = data[0] + max(original_bytelength-data[2], 0)
       }
 
