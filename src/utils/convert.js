@@ -78,7 +78,7 @@ export function getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT) {
       const iIndex = k_pt_inputs[i][0] - 1
       const jIndex = NCONSTWIRES + k_pt_inputs[i][1] - 1
       const input = [k + 1, NCONSTWIRES + outlen + i + 1]
-
+      // console.log(iIndex, jIndex)
       RangeCell[iIndex][jIndex] 
         ? RangeCell[iIndex][jIndex].push(input) 
         : RangeCell[iIndex][jIndex] = [[iIndex+1, jIndex+1], input];
@@ -165,9 +165,6 @@ export function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCe
   let SetData_I_V = [I_V_len, ...I_V, ...rowInv_I_V];
   let SetData_I_P = [I_P_len, ...I_P, ...rowInv_I_P];
   
-  // for (let i of SetData_I_V) {
-  //   console.log(i)
-  // }
   return { SetData_I_V, SetData_I_P }
 }
 
@@ -236,7 +233,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
       for (let i = 0; i < inputs.length; i++) {
         let sourcevalue = codewdata[oplist[k].pt_outputs[i][1] - 1]
         sourcevalue = '0x' + decimalToHex(sourcevalue).toString().padStart(64, '0');
-        
+
         if (sourcevalue !== outputs_hex[i]) {
           throw new Error('source value mismatch');
         }

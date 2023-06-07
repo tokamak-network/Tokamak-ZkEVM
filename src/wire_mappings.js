@@ -1,15 +1,29 @@
 import { hexToInteger } from "./utils/convert.js"
+import { Decoder } from "./decode.js"
 
-export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer) {
-
+export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code) {
+  const decoder = new Decoder({})
+  decoder.getEnv(code)
   if (op === '1c') {
-    // const target_val = this.evalEVM(stack_pt[1])
+    const target_val = decoder.evalEVM(stack_pt[1])
+    const threshold = 2**248
+    const flag = target_val < threshold ? false : true
+    const shiftamount = decoder.evalEVM(stack_pt[0])
+    if (flag) {
+      op = '1c1'
+    } else if (!flag && shiftamount>=8) {
+      op='1c2'
+    } else {
+      console.log('error')
+      return
+    }
   }
-  
+  console.log('op',op, stack_pt)
   let checks = 0
   oplist[0].opcode = 'fff'
-  for (let i=0; i<d; i++) {
-
+  for (let i = 0; i < d; i++) {
+    
+    // console.log(op, stack_pt[i][0])
     if (stack_pt[i][0] === 0) {
       let data = stack_pt[i]
       let checkArray = []

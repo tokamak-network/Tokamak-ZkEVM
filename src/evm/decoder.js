@@ -51,7 +51,7 @@ export async function decodes(opts) {
       // console.log('bytesize', byteSize)
       // const value = code.slice(pc + 1, pc + 1 + byteSize ); // Get data from code
       const value = decimalToHex(code[pc + 1])
-      console.log('value', hexToInteger(value))
+
       const data = new Data(1, wireMap.load.outputs.length, byteSize, value); // Create stack data object
       
       wireMap.load.outputs.push(data); // Add data to wire map
@@ -80,10 +80,12 @@ export async function decodes(opts) {
       stack.push(data); // Add data to stack
     }
     else if (numberOfInputs === 2) { // Binary operators
+      console.log('stack',stack)
       const a = stack.pop();
       const b = stack.pop(); 
       // FIXME: a, d 
       // FIXME: number of inputs 
+      console.log('value', op, hexToInteger(a.value), hexToInteger(b.value))
       const value = hexBinaryOperators(op, a.value.toString(), b.value.toString());
       
       const length = Object.keys(wireMap).length;
@@ -99,6 +101,7 @@ export async function decodes(opts) {
         outputs: [data]
       }
       stack.push(data); // Add data to stack
+      console.log('stack3',stack)
     }
   
     else if (numberOfInputs === 3) { // Ternary operators
@@ -125,6 +128,10 @@ export async function decodes(opts) {
       
     pc += 1; // Move to next byte; 1 byte = 2 hex characters
   }
+  // console.log(stack);
+  console.log(wireMap)
+  // console.log(wireMap[1])
+  // console.log(wireMap.load)
 }  
 
 

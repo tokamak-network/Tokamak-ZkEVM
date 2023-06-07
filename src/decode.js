@@ -6,11 +6,11 @@ import {
   fromTwos,
   toTwos,
   exponentiation,
-} from './evms/utils.js'
+} from './evm/utils.js'
 import { wire_mapping } from './wire_mappings.js';
-import { Stack } from './evms/stack.js';
-import { Memory } from './evms/memory.js';
-import { handlers } from './evms/functions.js';
+import { Stack } from './evm/stack.js';
+import { Memory } from './evm/memory.js';
+import { handlers } from './evm/functions.js';
 import { keccak256 } from 'ethereum-cryptography/keccak.js'
 import { bytesToHex } from 'ethereum-cryptography/utils.js'
 
@@ -28,7 +28,6 @@ import {
 
 export class Decoder {
   constructor () {
-
   }
 
   getEnv(code) {
@@ -231,6 +230,7 @@ export class Decoder {
 
     while (pc < codelen) {
       const op = decimalToHex(code[pc])
+      console.log('op',op)
       pc = pc + 1
       
       let d = 0
@@ -346,8 +346,8 @@ export class Decoder {
         stack_pt[0] = stack_pt[target_index]
         stack_pt[target_index] = temp
       } 
-      else if (hexToInteger(op) < hexToInteger('11') 
-          || (hexToInteger(op) >= hexToInteger('16') && hexToInteger(op) <= hexToInteger('29'))
+      else if (hexToInteger(op) < '11'
+          || (hexToInteger(op) >= '16' && hexToInteger(op) <= '29')
           || (hexToInteger(op) == 32)
       ) {
         const numberOfInputs = getNumberOfInputs(op);
@@ -387,7 +387,7 @@ export class Decoder {
               stack_pt.push(target_mem[i])
             }
         }
-        
+        // console.log('0p',op)
         this.op_pointer = this.op_pointer + 1
         this.oplist.push({
           opcode: '',
@@ -396,8 +396,8 @@ export class Decoder {
           inputs: [],
           outputs: [],
         })
-        
-        this.oplist = wire_mapping(op, stack_pt, d, a, this.oplist, this.op_pointer)
+        console.log('pc', pc)
+        this.oplist = wire_mapping(op, stack_pt, d, a, this.oplist, this.op_pointer, code)
 
         stack_pt = pop_stack(stack_pt, d)
         stack_pt.unshift(this.oplist[this.op_pointer].pt_outputs)
@@ -430,6 +430,8 @@ export class Decoder {
         a = 0;
         outputs_pt=[]
         pc = codelen
+      } else {
+        // console.log('xxxx', op)
       }
 
       // const newStackSize = stack_pt.length
@@ -442,10 +444,13 @@ export class Decoder {
 
     for (let i = 0; i < this.oplist.length ;i ++) {
       let k_pt_inputs = this.oplist[i].pt_inputs
-      
-      k_pt_inputs = k_pt_inputs[0][0] ? k_pt_inputs[0] : [k_pt_inputs]
+      k_pt_inputs = this.oplist[i].opcode == 'fff' && !k_pt_inputs[0]
+                    ? [] 
+                    : k_pt_inputs[0][0] 
+                    ? k_pt_inputs[0] 
+                    : [k_pt_inputs]
       let k_inputs = []
-
+      // console.log(k_pt_inputs, this.oplist[i].opcode)
       for (let j=0; j<k_pt_inputs.length ; j++) {
         const a = this.evalEVM(k_pt_inputs[j])
         k_inputs.push(a)
@@ -468,7 +473,6 @@ export class Decoder {
 
   evalEVM (pt) {
     const codewdata = this.codewdata
-    
     const op_pointer = pt[0]
     const wire_pointer = pt[1]
     const byte_size = pt[3]
@@ -543,6 +547,8 @@ function getNumberOfInputs (op) {
     const opcode = subcircuits[i].opcode;
     if (hexToInteger(opcode) === hexToInteger(op)) {
       return subcircuits[i].In_idx[1];
+    } else if (op === '1c') {
+      return 2
     }
   }
   return -1;
