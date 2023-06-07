@@ -316,6 +316,10 @@ export class Decoder {
       } else if (hexToInteger(op) === hexToInteger('35')) { // calldataload
         d = 1;
         a = 1
+        const offset = this.evalEVM(stack_pt[0])
+        let pt = this.Id_pt + offset
+        let chose_data_len = Math.min(Id_len - offset, 32)
+        console.log(offset, pt, chose_data_len)
 
         stack_pt.unshift([0, Is_pt, Is_len])
       } else if (hexToInteger(op) === hexToInteger('36')) { // calldatasize
