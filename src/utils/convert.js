@@ -253,3 +253,110 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
     fs.closeSync(fdOutput);
   }
 }
+
+export function hd_dec2bin(d, n) {
+  // Input checking
+  if (arguments.length < 1 || arguments.length > 2) {
+    throw new Error('Invalid number of arguments');
+  }
+  if (d === null || d === undefined || d === '') {
+    return '';
+  }
+
+  if (n === undefined) {
+    n = 1; // Need at least one digit even for 0.
+  } else {
+    if (typeof n !== 'number' && typeof n !== 'string' || isNaN(Number(n)) || Number(n) < 0) {
+      throw new Error('Invalid bit argument');
+    }
+    n = Math.round(Number(n)); // Make sure n is an integer.
+  }
+
+  // Actual algorithm
+  let e = Math.ceil(Math.log2(Math.max(Number(d))));
+  let s = '';
+
+  for (let i = 1 - Math.max(n, e); i <= 0; i++) {
+    s += Math.floor(Number(d) * Math.pow(2, i)) % 2;
+  }
+
+  return s;
+}
+
+export function dec2bin(d, n) {
+  // Input checking
+  if (arguments.length < 1 || arguments.length > 2) {
+      throw new Error('Invalid number of arguments');
+  }
+  
+  if (d === null || d === undefined || d === '') {
+      return '';
+  }
+  
+  if (typeof d !== 'number' || d < 0 || !isFinite(d)) {
+      throw new Error('Input must be a non-negative finite integer');
+  }
+  
+  // Convert d to a column vector
+  d = [d];
+  
+  if (n === undefined) {
+      n = 1; // Need at least one digit even for 0.
+  } else {
+      if (typeof n !== 'number' || !isFinite(n) || n < 0 || n % 1 !== 0) {
+          throw new Error('Invalid bit argument');
+      }
+      n = Math.round(n); // Make sure n is an integer.
+  }
+  
+  // Actual algorithm
+  var e = Math.ceil(Math.log2(Math.max.apply(null, d))); // How many digits do we need to represent the numbers?
+  var s = '';
+  
+  for (var i = 0; i < d.length; i++) {
+      var binary = '';
+      for (var j = 1 - Math.max(n, e); j <= 0; j++) {
+          binary += Math.floor(d[i] * Math.pow(2, j)) % 2;
+      }
+      s += binary.split('').reverse().join(''); // Reverse the binary string and append it to s
+  }
+  
+  return s;
+}
+
+export function bin2dec(str) {
+  if (typeof str === 'string') {
+      return bin2decImpl(str);
+  } else if (Array.isArray(str) && str.every(item => typeof item === 'string')) {
+      const binaryStrings = str.map(item => bin2decImpl(item));
+      return binaryStrings;
+  } else {
+      throw new Error('Invalid input. Expected a string or an array of strings.');
+  }
+}
+
+function bin2decImpl(s) {
+  if (s.length === 0) {
+      return null;
+  }
+
+  // Remove significant spaces
+  let trimmed = s.replace(/\s/g, '');
+  const leadingZeros = s.length - trimmed.length;
+  trimmed = '0'.repeat(leadingZeros) + trimmed;
+
+  // Check for illegal binary strings
+  if (!/^[01]+$/.test(trimmed)) {
+      throw new Error('Illegal binary string');
+  }
+
+  const n = trimmed.length;
+  let x = 0;
+
+  for (let i = 0; i < n; i++) {
+      const digit = parseInt(trimmed.charAt(i), 10);
+      x += digit * Math.pow(2, n - 1 - i);
+  }
+
+  return x;
+}

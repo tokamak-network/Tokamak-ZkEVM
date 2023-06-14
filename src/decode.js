@@ -23,7 +23,9 @@ import {
   getWireList, 
   getIVIP, 
   makeBinFile, 
-  makeJsonFile 
+  makeJsonFile,
+  hd_dec2bin,
+  hd_bin2dec
 } from './utils/convert.js';
 
 export class Decoder {
@@ -462,6 +464,12 @@ export class Decoder {
         //   if (callcode)
         // }
         stack_pt = pop_stack(stack_pt, d)
+      } else if (hexToInteger(op) == hexToInteger('58')) {
+        d = 0;
+        a = 1;
+
+        codewdata[pc_pt]
+        stack_pt.unshift([0, pc_pt, pc_len])
       }
       else {
         // console.log('xxxx', op)
@@ -575,6 +583,106 @@ export class Decoder {
          
           return inputs[0] > inputs[2] ? 1 : 0
         }
+        if (op === '12') { // slt: signed less than
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var inputlengths = [pt_inputs[0][2], pt_inputs[1][2]];
+          var bin_input = [];
+          
+          bin_input[0] = hd_dec2bin(inputs[0], inputlengths[0] * 8);
+          bin_input[1] = hd_dec2bin(inputs[1], inputlengths[1] * 8);
+          
+          var signed_inputs = new Array(2);
+          
+          for (var i = 0; i < 2; i++) {
+            var temp = bin_input[i];
+            signed_inputs[i] = -hd_bin2dec(temp[0]) * Math.pow(2, inputlengths[i] * 8 - 1) + hd_bin2dec(temp.slice(1));
+          }
+          
+          return Number(signed_inputs[0] < signed_inputs[1]);        
+        }
+        if (op === '13') { // sgt: signed greater than
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var inputlengths = [pt_inputs[0][2], pt_inputs[1][2]];
+          var bin_input = [];
+          
+          bin_input[0] = hd_dec2bin(inputs[0], inputlengths[0] * 8);
+          bin_input[1] = hd_dec2bin(inputs[1], inputlengths[1] * 8);
+          
+          var signed_inputs = new Array(2);
+          
+          for (var i = 0; i < 2; i++) {
+            var temp = bin_input[i];
+            signed_inputs[i] = -hd_bin2dec(temp[0]) * Math.pow(2, inputlengths[i] * 8 - 1) + hd_bin2dec(temp.slice(1));
+          }
+          
+          return Number(signed_inputs[0] > signed_inputs[1]);
+          
+        }
+        if (op === '15') { // equality
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          return Number(inputs[0] === inputs[1]);
+          
+        }
+        if (op === '14') { // iszero
+          if (inputlen !== 1) throw new Error("Invalid input length");
+          return Number(inputs[0] === 0);
+          
+        }
+        if (op === '16') { // and
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var bin_input = [];
+          bin_input[0] = hd_dec2bin(inputs[0], 253);
+          bin_input[1] = hd_dec2bin(inputs[1], 253);
+          
+          var bin_and_result = bin_input[0].split('').map((digit, index) => {
+            return (Number(digit) * Number(bin_input[1][index])).toString();
+          }).join('');
+          
+          return Number(hd_bin2dec(bin_and_result));
+          
+        }
+        if (op === '17') { // or
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var bin_input = [];
+          bin_input[0] = hd_dec2bin(inputs[0], 253);
+          bin_input[1] = hd_dec2bin(inputs[1], 253);
+          
+          var bin_or_result = bin_input[0].split('').map((digit, index) => {
+            return (Math.floor(0.5 * (Number(digit) + Number(bin_input[1][index])))).toString();
+          }).join('');
+          
+          return Number(hd_bin2dec(bin_or_result));
+          
+        }
+        if (op === '18') { // xor
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var bin_input = [];
+          bin_input[0] = hd_dec2bin(inputs[0], 253);
+          bin_input[1] = hd_dec2bin(inputs[1], 253);
+          
+          var bin_not_result = bin_input[0].split('').map((digit, index) => {
+            return (Number(digit) + Number(bin_input[1][index])) % 2;
+          }).join('');
+          
+          return Number(hd_bin2dec(bin_not_result));
+          
+        }
+        if (op === '19') { // not
+          if (inputlen !== 1) throw new Error("Invalid input length");
+          
+          var bin_input = hd_dec2bin(inputs[0], 253);
+          var bin_not_result = bin_input.split('').map((digit) => {
+            return (Number(digit) + 1) % 2;
+          }).join('');
+          
+          return Number(hd_bin2dec(bin_not_result));
+        }
+        
         if (op === '20') {
           //padData.padStart(pc_len * 2, '0')
           const inputLen = inputs.length
@@ -584,7 +692,21 @@ export class Decoder {
           const input_con = Buffer.from(inputs.join(''), 'hex')
           const hex = bytesToHex(keccak256(input_con))
           return hex
-        } if (op === '1b' || op === '1c1' || op === '1c2') {
+        } 
+        if (op === '1a') {
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var hex_input2 = hd_dec2hex(inputs[1], 64);
+          var input1 = Number(inputs[0]);
+          
+          if (input1 >= 32) {
+            return Number(0);
+          } else {
+            var pos = input1 * 2 + 1;
+            return Number(hex2dec(hex_input2.slice(pos, pos + 2)));
+          }
+        }
+        if (op === '1b' || op === '1c1' || op === '1c2') {
           // console.log('1c',op, inputs[0], inputs[1])
           inputs[0] = inputs[0] % (2 ** 256)
           inputs[1] = inputs[1] % (2 ** 256)
@@ -598,6 +720,9 @@ export class Decoder {
           }
         }
       }
+      oplist[op_pointer].outputs = outputs;
+      return outputs[wire_pointer];
+
     } catch(e) {
       console.log(e)
     }
