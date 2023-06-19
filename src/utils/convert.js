@@ -233,7 +233,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
       for (let i = 0; i < inputs.length; i++) {
         let sourcevalue = codewdata[oplist[k].pt_outputs[i][1] - 1]
         sourcevalue = '0x' + decimalToHex(sourcevalue).toString().padStart(64, '0');
-
+        // console.log(sourcevalue, outputs_hex[i])
         if (sourcevalue !== outputs_hex[i]) {
           throw new Error('source value mismatch');
         }
