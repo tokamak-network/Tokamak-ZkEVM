@@ -231,9 +231,15 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
 
     if (k === 0) {
       for (let i = 0; i < inputs.length; i++) {
-        let sourcevalue = codewdata[oplist[k].pt_outputs[i][1] - 1]
-        sourcevalue = '0x' + decimalToHex(sourcevalue).toString().padStart(64, '0');
-        // console.log(sourcevalue, outputs_hex[i])
+        let output = oplist[k].pt_outputs[i][1]
+        let next = oplist[k].pt_outputs[i][2]
+        let sourcevalue = codewdata.slice(output - 1, output + next - 1 )
+
+        let slice = ''
+        for (let i=0; i < sourcevalue.length; i ++){
+          slice = slice + decimalToHex(sourcevalue[i])
+        }
+        sourcevalue = '0x' + slice.toString().padStart(64, '0');
         if (sourcevalue !== outputs_hex[i]) {
           throw new Error('source value mismatch');
         }
