@@ -1,6 +1,6 @@
 import { subcircuit } from "../../resource/subcircuits/subcircuit_info.js"
 import fs from 'fs'
-
+import { BigNumber } from 'ethers'
 
 
 export function hexToInteger(hex) {
@@ -200,7 +200,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
   for (let k = 0; k < oplist.length; k++) {
     const outputs = oplist[k].outputs;
     let inputs, inputs_hex, outputs_hex;
-
+    console.log(k, outputs)
     if (k === 0) {
       inputs = outputs;
       inputs_hex = new Array(NINPUT).fill('0x0');
@@ -210,7 +210,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
       inputs_hex = new Array(inputs.length).fill('0x0');
       outputs_hex = new Array(outputs.length).fill('0x0');
     }
-
+    console.log(inputs.length, NINPUT)
     if (inputs.length > NINPUT) {
       throw new Error('Too many inputs');
     }
@@ -240,6 +240,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
           slice = slice + decimalToHex(sourcevalue[i])
         }
         sourcevalue = '0x' + slice.toString().padStart(64, '0');
+        console.log(sourcevalue, outputs_hex[i])
         if (sourcevalue !== outputs_hex[i]) {
           throw new Error('source value mismatch');
         }
@@ -281,8 +282,11 @@ export function hd_dec2bin(d, n) {
   // Actual algorithm
   let e = Math.ceil(Math.log2(Math.max(Number(d))));
   let s = '';
-
+  
+  console.log('d', d.toLocaleString('fullwide', {useGrouping:false}))
   for (let i = 1 - Math.max(n, e); i <= 0; i++) {
+    // console.log((Math.pow(2, i)))
+    // console.log((BigNumber.from(Number(d) * Math.pow(2, i))))
     s += Math.floor(Number(d) * Math.pow(2, i)) % 2;
   }
 
