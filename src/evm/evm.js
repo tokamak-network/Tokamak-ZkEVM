@@ -121,16 +121,6 @@ export class EVM {
     this._isInitialized = true
   }
 
-  evalEVM (pt) {
-    this.getActiveOpcodes()
-    const op_pointer = pt[0]
-    const wire_pointer = pt[1]
-    const byte_size = pt[3]
-
-
-
-  }
-
   getActiveOpcodes() {
     const data = getOpcodesForHF(this._common, this._customOpcodes)
     this._opcodes = data.opcodes

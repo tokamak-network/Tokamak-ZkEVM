@@ -283,10 +283,10 @@ export function hd_dec2bin(d, n) {
   let e = Math.ceil(Math.log2(Math.max(Number(d))));
   let s = '';
   
-  console.log('d', d.toLocaleString('fullwide', {useGrouping:false}))
+  // console.log('d', d.toLocaleString('fullwide', {useGrouping:false}))
   for (let i = 1 - Math.max(n, e); i <= 0; i++) {
     // console.log((Math.pow(2, i)))
-    // console.log((BigNumber.from(Number(d) * Math.pow(2, i))))
+    // console.log((Number(d) * Math.pow(2, i)))
     s += Math.floor(Number(d) * Math.pow(2, i)) % 2;
   }
 
