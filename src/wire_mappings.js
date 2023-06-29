@@ -5,7 +5,7 @@ export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, conf
   const decoder = new Decoder({})
   decoder.getEnv(code, config)
   if (op === '1c') {
-    console.log(stack_pt)
+    // console.log(stack_pt)
     const target_val = decoder.evalEVM(stack_pt[1])
     const threshold = 2**248
     const flag = Number(target_val) < threshold ? true : false
@@ -22,6 +22,7 @@ export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, conf
   // console.log('op',op, stack_pt)
   let checks = 0
   oplist[0].opcode = 'fff'
+  console.log('stack_pt', op, stack_pt)
   for (let i = 0; i < d; i++) {
     if (stack_pt[i][0] === 0) {
       let data = stack_pt[i]

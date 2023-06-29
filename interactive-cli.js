@@ -11,6 +11,7 @@ import Logger from 'logplease';
 const logger = Logger.create('UniGro16js', {showTimestamp: false});
 import { exec } from 'child_process';
 import { Decoder } from './src/decode.js';
+import fs from 'fs'
 
 Logger.setLogLevel('INFO');
 
@@ -261,6 +262,14 @@ function derive() {
 }
 
 function decode() {
+  const circuitNameList = fromDir('/resource/circuits/', '*');
+  function searchCircuitName(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy.filter(input, circuitNameList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
   inquirer
     .prompt([
       // {
@@ -268,21 +277,28 @@ function decode() {
       //   name: ''
       // }
       {
-        type: 'input',
-        name: 'directory',
-        message: 'What is the name of the opcode name?'
+        type: 'autocomplete',
+        name: 'circuitName',
+        suggestOnly: true,
+        message: 'Which circuit will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchCircuitName,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
       },
-      {
-        type: 'input',
-        name: 'opcode',
-        message: 'What is the opcode you want to decode?'
-      }
     ])
     .then(answers => {
+      const json = fs.readFileSync(`${answers.circuitName}/config.json`, 'utf8')
+      const jsonData = JSON.parse(json);
+      const { config, code } = jsonData
       const decode = new Decoder()
       return decode.runCode(
-        answers.directory,
-        Buffer.from(answers.opcode, 'hex')
+        Buffer.from(code.join(''), 'hex'),
+        config,
+        answers.circuitName
       )
     })
 }

@@ -170,7 +170,7 @@ export function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCe
 
 export function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) {
   
-  !fs.existsSync(dir) && fs.mkdirSync(dir)
+  // !fs.existsSync(dir) && fs.mkdirSync(dir)
 
   const fdset1 = fs.openSync(`${dir}/Set_I_V.bin`, 'w');
   const fdset2 = fs.openSync(`${dir}/Set_I_P.bin`, 'w');
@@ -200,7 +200,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
   for (let k = 0; k < oplist.length; k++) {
     const outputs = oplist[k].outputs;
     let inputs, inputs_hex, outputs_hex;
-    console.log(k, outputs)
+    // console.log(k, outputs)
     if (k === 0) {
       inputs = outputs;
       inputs_hex = new Array(NINPUT).fill('0x0');
@@ -210,7 +210,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
       inputs_hex = new Array(inputs.length).fill('0x0');
       outputs_hex = new Array(outputs.length).fill('0x0');
     }
-    console.log(inputs.length, NINPUT)
+    // console.log(inputs.length, NINPUT)
     if (inputs.length > NINPUT) {
       throw new Error('Too many inputs');
     }
@@ -220,9 +220,10 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
         inputs_hex[i] = '0x' + decimalToHex(inputs[i]).toString().padStart(64, '0');
       }
     }
-
+    // console.log('outputs',outputs)
     for (let i = 0; i < outputs_hex.length; i++) {
-      if (i < outputs.length) {
+      if (i <= outputs.length) {
+        // console.log(outputs[i])
         oplist[k].opcode === '20' 
           ? outputs_hex[i] = '0x' + outputs[i].padStart(64, '0')
           : outputs_hex[i] = '0x' + decimalToHex(outputs[i]).toString().padStart(64, '0');
@@ -234,13 +235,13 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
         let output = oplist[k].pt_outputs[i][1]
         let next = oplist[k].pt_outputs[i][2]
         let sourcevalue = codewdata.slice(output - 1, output + next - 1 )
-
+        // console.log(sourcevalue)
         let slice = ''
         for (let i=0; i < sourcevalue.length; i ++){
           slice = slice + decimalToHex(sourcevalue[i])
         }
         sourcevalue = '0x' + slice.toString().padStart(64, '0');
-        console.log(sourcevalue, outputs_hex[i])
+        // console.log(sourcevalue, outputs_hex[i])
         if (sourcevalue !== outputs_hex[i]) {
           throw new Error('source value mismatch');
         }

@@ -21,7 +21,8 @@ var hash = require('js-sha3');
 var r1csfile = require('r1csfile');
 var Logger = require('logplease');
 var child_process = require('child_process');
-var util = require('@ethereumjs/util');
+var ethers = require('ethers');
+require('@ethereumjs/util');
 var keccak_js = require('ethereum-cryptography/keccak.js');
 var utils_js = require('ethereum-cryptography/utils.js');
 
@@ -3749,7 +3750,7 @@ const subcircuit = {
 		},
 		{
 			"id": 1,
-			"opcode": "01",
+			"opcode": "1",
 			"name": "ADD",
 			"Nwires": 5,
 			"Out_idx": [
@@ -3763,7 +3764,7 @@ const subcircuit = {
 		},
 		{
 			"id": 2,
-			"opcode": "02",
+			"opcode": "2",
 			"name": "MUL",
 			"Nwires": 4,
 			"Out_idx": [
@@ -3777,7 +3778,7 @@ const subcircuit = {
 		},
 		{
 			"id": 3,
-			"opcode": "03",
+			"opcode": "3",
 			"name": "SUB",
 			"Nwires": 5,
 			"Out_idx": [
@@ -3791,9 +3792,9 @@ const subcircuit = {
 		},
 		{
 			"id": 4,
-			"opcode": "04",
+			"opcode": "4",
 			"name": "DIV",
-			"Nwires": 7,
+			"Nwires": 5,
 			"Out_idx": [
 				1,
 				1
@@ -3819,9 +3820,9 @@ const subcircuit = {
 		},
 		{
 			"id": 6,
-			"opcode": "05",
+			"opcode": "5",
 			"name": "SDIV",
-			"Nwires": 50,
+			"Nwires": 41,
 			"Out_idx": [
 				1,
 				1
@@ -3833,7 +3834,7 @@ const subcircuit = {
 		},
 		{
 			"id": 7,
-			"opcode": "06",
+			"opcode": "6",
 			"name": "MOD",
 			"Nwires": 5,
 			"Out_idx": [
@@ -3847,9 +3848,9 @@ const subcircuit = {
 		},
 		{
 			"id": 8,
-			"opcode": "07",
+			"opcode": "7",
 			"name": "SMOD",
-			"Nwires": 54,
+			"Nwires": 41,
 			"Out_idx": [
 				1,
 				1
@@ -3861,9 +3862,9 @@ const subcircuit = {
 		},
 		{
 			"id": 9,
-			"opcode": "08",
+			"opcode": "8",
 			"name": "ADDMOD",
-			"Nwires": 16,
+			"Nwires": 7,
 			"Out_idx": [
 				1,
 				1
@@ -3875,9 +3876,9 @@ const subcircuit = {
 		},
 		{
 			"id": 10,
-			"opcode": "09",
+			"opcode": "9",
 			"name": "MULMOD",
-			"Nwires": 17,
+			"Nwires": 8,
 			"Out_idx": [
 				1,
 				1
@@ -3889,7 +3890,7 @@ const subcircuit = {
 		},
 		{
 			"id": 11,
-			"opcode": "0a",
+			"opcode": "a",
 			"name": "EXP",
 			"Nwires": 32,
 			"Out_idx": [
@@ -3903,62 +3904,6 @@ const subcircuit = {
 		},
 		{
 			"id": 12,
-			"opcode": "10",
-			"name": "LT",
-			"Nwires": 255,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 13,
-			"opcode": "11",
-			"name": "GT",
-			"Nwires": 255,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 14,
-			"opcode": "12",
-			"name": "SLT",
-			"Nwires": 294,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 15,
-			"opcode": "13",
-			"name": "SGT",
-			"Nwires": 294,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 16,
 			"opcode": "14",
 			"name": "EQ",
 			"Nwires": 5,
@@ -3972,7 +3917,7 @@ const subcircuit = {
 			]
 		},
 		{
-			"id": 17,
+			"id": 13,
 			"opcode": "15",
 			"name": "ISZERO",
 			"Nwires": 4,
@@ -3986,63 +3931,7 @@ const subcircuit = {
 			]
 		},
 		{
-			"id": 18,
-			"opcode": "16",
-			"name": "AND",
-			"Nwires": 760,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 19,
-			"opcode": "17",
-			"name": "OR",
-			"Nwires": 760,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 20,
-			"opcode": "18",
-			"name": "XOR",
-			"Nwires": 760,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 21,
-			"opcode": "19",
-			"name": "NOT",
-			"Nwires": 255,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				1
-			]
-		},
-		{
-			"id": 22,
+			"id": 14,
 			"opcode": "1b",
 			"name": "SHL",
 			"Nwires": 18,
@@ -4056,10 +3945,10 @@ const subcircuit = {
 			]
 		},
 		{
-			"id": 23,
+			"id": 15,
 			"opcode": "1c1",
 			"name": "SHR-L",
-			"Nwires": 21,
+			"Nwires": 19,
 			"Out_idx": [
 				1,
 				1
@@ -4070,10 +3959,10 @@ const subcircuit = {
 			]
 		},
 		{
-			"id": 24,
+			"id": 16,
 			"opcode": "1c2",
 			"name": "SHR-H",
-			"Nwires": 21,
+			"Nwires": 19,
 			"Out_idx": [
 				1,
 				1
@@ -4084,9 +3973,79 @@ const subcircuit = {
 			]
 		},
 		{
-			"id": 25,
+			"id": 17,
+			"opcode": "10",
+			"name": "LT",
+			"Nwires": 255,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 18,
+			"opcode": "11",
+			"name": "GT",
+			"Nwires": 255,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 19,
+			"opcode": "19",
+			"name": "NOT",
+			"Nwires": 255,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				1
+			]
+		},
+		{
+			"id": 20,
+			"opcode": "1a",
+			"name": "BYTE",
+			"Nwires": 274,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 21,
 			"opcode": "1d",
 			"name": "SAR",
+			"Nwires": 286,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 22,
+			"opcode": "b",
+			"name": "SIGNEXTEND",
 			"Nwires": 288,
 			"Out_idx": [
 				1,
@@ -4098,9 +4057,9 @@ const subcircuit = {
 			]
 		},
 		{
-			"id": 26,
-			"opcode": "0b",
-			"name": "SIGNEXTEND",
+			"id": 23,
+			"opcode": "12",
+			"name": "SLT",
 			"Nwires": 290,
 			"Out_idx": [
 				1,
@@ -4112,10 +4071,52 @@ const subcircuit = {
 			]
 		},
 		{
+			"id": 24,
+			"opcode": "13",
+			"name": "SGT",
+			"Nwires": 290,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 25,
+			"opcode": "16",
+			"name": "AND",
+			"Nwires": 760,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
+			"id": 26,
+			"opcode": "17",
+			"name": "OR",
+			"Nwires": 760,
+			"Out_idx": [
+				1,
+				1
+			],
+			"In_idx": [
+				2,
+				2
+			]
+		},
+		{
 			"id": 27,
-			"opcode": "1a",
-			"name": "BYTE",
-			"Nwires": 276,
+			"opcode": "18",
+			"name": "XOR",
+			"Nwires": 760,
 			"Out_idx": [
 				1,
 				1
@@ -4127,52 +4128,6 @@ const subcircuit = {
 		}
 	]
 };
-
-const ERROR = {
-  OUT_OF_GAS : 'out of gas',
-  CODESTORE_OUT_OF_GAS : 'code store out of gas',
-  CODESIZE_EXCEEDS_MAXIMUM : 'code size to deposit exceeds maximum code size',
-  STACK_UNDERFLOW : 'stack underflow',
-  STACK_OVERFLOW : 'stack overflow',
-  INVALID_JUMP : 'invalid JUMP',
-  INVALID_OPCODE : 'invalid opcode',
-  OUT_OF_RANGE : 'value out of range',
-  REVERT : 'revert',
-  STATIC_STATE_CHANGE : 'static state change',
-  INTERNAL_ERROR : 'internal error',
-  CREATE_COLLISION : 'create collision',
-  STOP : 'stop',
-  REFUND_EXHAUSTED : 'refund exhausted',
-  VALUE_OVERFLOW : 'value overflow',
-  INSUFFICIENT_BALANCE : 'insufficient balance',
-  INVALID_BEGINSUB : 'invalid BEGINSUB',
-  INVALID_RETURNSUB : 'invalid RETURNSUB',
-  INVALID_JUMPSUB : 'invalid JUMPSUB',
-  INVALID_BYTECODE_RESULT : 'invalid bytecode deployed',
-  INVALID_EOF_FORMAT : 'invalid EOF format',
-  INITCODE_SIZE_VIOLATION : 'initcode exceeds max initcode size',
-
-  AUTHCALL_UNSET : 'attempting to AUTHCALL without AUTH set',
-  AUTHCALL_NONZERO_VALUEEXT : 'attempting to execute AUTHCALL with nonzero external value',
-  AUTH_INVALID_S : 'invalid Signature: s-values greater than secp256k1n/2 are considered invalid',
-
-  // BLS errors
-  BLS_12_381_INVALID_INPUT_LENGTH : 'invalid input length',
-  BLS_12_381_POINT_NOT_ON_CURVE : 'point not on curve',
-  BLS_12_381_INPUT_EMPTY : 'input is empty',
-  BLS_12_381_FP_NOT_IN_FIELD : 'fp point not in field',
-
-  // Point Evaluation Errors
-  POINT_GREATER_THAN_BLS_MODULUS : 'point greater than BLS modulus',
-  INVALID_COMMITMENT : 'kzg commitment does not match versioned hash',
-};
-
-class EvmError {
-  constructor(error) {
-    this.error = error;
-    this.errorType = 'EvmError';
-  }
-}
 
 /**
  * @param {bigint} base base of exponentiation
@@ -4256,7 +4211,7 @@ function getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT) {
       const iIndex = k_pt_inputs[i][0] - 1;
       const jIndex = NCONSTWIRES + k_pt_inputs[i][1] - 1;
       const input = [k + 1, NCONSTWIRES + outlen + i + 1];
-
+      // console.log(iIndex, jIndex)
       RangeCell[iIndex][jIndex] 
         ? RangeCell[iIndex][jIndex].push(input) 
         : RangeCell[iIndex][jIndex] = [[iIndex+1, jIndex+1], input];
@@ -4342,9 +4297,6 @@ function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell) {
   let SetData_I_V = [I_V_len, ...I_V, ...rowInv_I_V];
   let SetData_I_P = [I_P_len, ...I_P, ...rowInv_I_P];
   
-  // for (let i of SetData_I_V) {
-  //   console.log(i)
-  // }
   return { SetData_I_V, SetData_I_P }
 }
 
@@ -4380,7 +4332,7 @@ function makeJsonFile (dir, oplist, NINPUT, codewdata) {
   for (let k = 0; k < oplist.length; k++) {
     const outputs = oplist[k].outputs;
     let inputs, inputs_hex, outputs_hex;
-
+    console.log(k, outputs);
     if (k === 0) {
       inputs = outputs;
       inputs_hex = new Array(NINPUT).fill('0x0');
@@ -4390,7 +4342,7 @@ function makeJsonFile (dir, oplist, NINPUT, codewdata) {
       inputs_hex = new Array(inputs.length).fill('0x0');
       outputs_hex = new Array(outputs.length).fill('0x0');
     }
-
+    console.log(inputs.length, NINPUT);
     if (inputs.length > NINPUT) {
       throw new Error('Too many inputs');
     }
@@ -4411,9 +4363,16 @@ function makeJsonFile (dir, oplist, NINPUT, codewdata) {
 
     if (k === 0) {
       for (let i = 0; i < inputs.length; i++) {
-        let sourcevalue = codewdata[oplist[k].pt_outputs[i][1] - 1];
-        sourcevalue = '0x' + decimalToHex(sourcevalue).toString().padStart(64, '0');
-        
+        let output = oplist[k].pt_outputs[i][1];
+        let next = oplist[k].pt_outputs[i][2];
+        let sourcevalue = codewdata.slice(output - 1, output + next - 1 );
+
+        let slice = '';
+        for (let i=0; i < sourcevalue.length; i ++){
+          slice = slice + decimalToHex(sourcevalue[i]);
+        }
+        sourcevalue = '0x' + slice.toString().padStart(64, '0');
+        console.log(sourcevalue, outputs_hex[i]);
         if (sourcevalue !== outputs_hex[i]) {
           throw new Error('source value mismatch');
         }
@@ -4434,27 +4393,114 @@ function makeJsonFile (dir, oplist, NINPUT, codewdata) {
   }
 }
 
-function wire_mapping (op, stack_pt, d, a, oplist, op_pointer) {
+function hd_dec2bin(d, n) {
+  // Input checking
+  if (arguments.length < 1 || arguments.length > 2) {
+    throw new Error('Invalid number of arguments');
+  }
+  if (d === null || d === undefined || d === '') {
+    return '';
+  }
+
+  if (n === undefined) {
+    n = 1; // Need at least one digit even for 0.
+  } else {
+    if (typeof n !== 'number' && typeof n !== 'string' || isNaN(Number(n)) || Number(n) < 0) {
+      throw new Error('Invalid bit argument');
+    }
+    n = Math.round(Number(n)); // Make sure n is an integer.
+  }
+
+  // Actual algorithm
+  let e = Math.ceil(Math.log2(Math.max(Number(d))));
+  let s = '';
   
+  // console.log('d', d.toLocaleString('fullwide', {useGrouping:false}))
+  for (let i = 1 - Math.max(n, e); i <= 0; i++) {
+    // console.log((Math.pow(2, i)))
+    // console.log((Number(d) * Math.pow(2, i)))
+    s += Math.floor(Number(d) * Math.pow(2, i)) % 2;
+  }
+
+  return s;
+}
+
+function bin2dec(str) {
+  if (typeof str === 'string') {
+      return bin2decImpl(str);
+  } else if (Array.isArray(str) && str.every(item => typeof item === 'string')) {
+      const binaryStrings = str.map(item => bin2decImpl(item));
+      return binaryStrings;
+  } else {
+      throw new Error('Invalid input. Expected a string or an array of strings.');
+  }
+}
+
+function bin2decImpl(s) {
+  if (s.length === 0) {
+      return null;
+  }
+
+  // Remove significant spaces
+  let trimmed = s.replace(/\s/g, '');
+  const leadingZeros = s.length - trimmed.length;
+  trimmed = '0'.repeat(leadingZeros) + trimmed;
+
+  // Check for illegal binary strings
+  if (!/^[01]+$/.test(trimmed)) {
+      throw new Error('Illegal binary string');
+  }
+
+  const n = trimmed.length;
+  let x = 0;
+
+  for (let i = 0; i < n; i++) {
+      const digit = parseInt(trimmed.charAt(i), 10);
+      x += digit * Math.pow(2, n - 1 - i);
+  }
+
+  return x;
+}
+
+function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {
+  const decoder = new Decoder({});
+  decoder.getEnv(code, config);
+  if (op === '1c') {
+    console.log(stack_pt);
+    const target_val = decoder.evalEVM(stack_pt[1]);
+    const threshold = 2**248;
+    const flag = Number(target_val) < threshold ? true : false;
+    const shiftamount = decoder.evalEVM(stack_pt[0]);
+    if (flag) {
+      op = '1c1';
+    } else if (!flag && Number(shiftamount)>=8) {
+      op= '1c2';
+    } else {
+      console.log('error');
+      return
+    }
+  }
+  // console.log('op',op, stack_pt)
   let checks = 0;
   oplist[0].opcode = 'fff';
-  for (let i=0; i<d; i++) {
-
+  for (let i = 0; i < d; i++) {
     if (stack_pt[i][0] === 0) {
       let data = stack_pt[i];
       let checkArray = [];
-      // if (i==1 && (op === '1c1' || op === '1c2')) {
-      //   let original_bytelength = data[2]
-      //   if (op === '1c1') data[0] = data[0] + max(original_bytelength-data[2], 0)
-      // }
+      if (i==1 && (op === '1c1' || op === '1c2')) {
+        let original_bytelength = data[2];
+        data[2] = Math.min(31, original_bytelength);
+        
+        if (op === '1c1') {
+          data[0] = data[0] + max(original_bytelength-data[2], 0);
+        }
+      }
 
       if (oplist[0].pt_outputs.length == 0) {
         checks = 0;
       } else {
-        
         for (let i=0; i<oplist[0].pt_outputs.length; i ++) {
           if (oplist[0].pt_outputs[i] === data) {
-            
             checks = checks + 1;
             checkArray.push(1);
           } else {
@@ -4485,221 +4531,24 @@ function wire_mapping (op, stack_pt, d, a, oplist, op_pointer) {
   return oplist
 }
 
-/**
- * Implementation of the stack used in evm.
- */
-class Stack {
-  constructor(maxHeight) {
-    this._store = [];
-    this._maxHeight = maxHeight ?? 1024;
-  }
-
-  get length() {
-    return this._store.length
-  }
-
-  push(value) {
-    if (typeof value !== 'bigint') {
-      throw new EvmError(ERROR.INTERNAL_ERROR)
-    }
-
-    if (value > util.MAX_INTEGER_BIGINT) {
-      throw new EvmError(ERROR.OUT_OF_RANGE)
-    }
-
-    if (this._store.length >= this._maxHeight) {
-      throw new EvmError(ERROR.STACK_OVERFLOW)
-    }
-
-    this._store.push(value);
-  }
-
-  pop() {
-    if (this._store.length < 1) {
-      throw new EvmError(ERROR.STACK_UNDERFLOW)
-    }
-
-    // Length is checked above, so pop shouldn't return undefined
-    const res = this._store.pop();
-    if (res === undefined) {
-      throw new EvmError(ERROR.STACK_UNDERFLOW)
-    }
-    return res
-  }
-
-  /**
-   * Pop multiple items from stack. Top of stack is first item
-   * in returned array.
-   * @param num - Number of items to pop
-   */
-  popN (num) {
-    num = num ?? 1;
-    if (this._store.length < num) {
-      throw new EvmError(ERROR.STACK_UNDERFLOW)
-    }
-
-    if (num === 0) {
-      return []
-    }
-
-    return this._store.splice(-1 * num).reverse()
-  }
-
-  /**
-   * Return items from the stack
-   * @param num Number of items to return
-   * @throws {@link ERROR.STACK_UNDERFLOW}
-   */
-  peek (num) {
-    num = num ?? 1;
-    const peekArray = [];
-
-    for (let peek = 1; peek <= num; peek++) {
-      const index = this._store.length - peek;
-      if (index < 0) {
-        throw new EvmError(ERROR.STACK_UNDERFLOW)
-      }
-      peekArray.push(this._store[index]);
-    }
-    return peekArray
-  }
-
-  /**
-   * Swap top of stack with an item in the stack.
-   * @param position - Index of item from top of the stack (0-indexed)
-   */
-  swap(position) {
-    if (this._store.length <= position) {
-      throw new EvmError(ERROR.STACK_UNDERFLOW)
-    }
-
-    const head = this._store.length - 1;
-    const i = this._store.length - position - 1;
-
-    const tmp = this._store[head];
-    this._store[head] = this._store[i];
-    this._store[i] = tmp;
-  }
-
-  /**
-   * Pushes a copy of an item in the stack.
-   * @param position - Index of item to be copied (1-indexed)
-   */
-  // I would say that we do not need this method any more
-  // since you can't copy a primitive data type
-  // Nevertheless not sure if we "loose" something here?
-  // Will keep commented out for now
-  dup(position) {
-    if (this._store.length < position) {
-      throw new EvmError(ERROR.STACK_UNDERFLOW)
-    }
-    const i = this._store.length - position;
-    this.push(this._store[i]);
-  }
-}
-
-/**
- * 
- * @param {number} value 
- * @param {number} ceiling 
- * @returns {number} ceil value
- */
-const ceil = (value, ceiling) => {
-  const r = value % ceiling;
-  if (r === 0) {
-    return value
-  } else {
-    return value + ceiling - r
-  }
-};
-
-const CONTAINER_SIZE = 8192;
-
-/**
- * Memory implements a simple memory model
- * for the ethereum virtual machine.
- */
-class Memory {
-  constructor() {
-    this._store = Buffer.alloc(0);
-  }
-
-  /**
-   * Extends the memory given an offset and size. Rounds extended
-   * memory to word-size.
-   * @param {number} offset - Starting position
-   * @param {number} size - How many bytes to extend
-   */
-  extend(offset, size) {
-    if (size === 0) {
-      return
-    }
-
-    const newSize = ceil(offset + size, 32);
-    const sizeDiff = newSize - this._store.length;
-    if (sizeDiff > 0) {
-      this._store = Buffer.concat([
-        this._store,
-        Buffer.alloc(Math.ceil(sizeDiff / CONTAINER_SIZE) * CONTAINER_SIZE),
-      ]);
-    }
-  }
-
-  /**
-   * Writes a byte array with length `size` to memory, starting from `offset`.
-   * @param {number} offset - Starting position
-   * @param {number} size - How many bytes to write
-   * @param {Buffer} value - Value
-   */
-  write(offset, size, value) {
-    if (size === 0) {
-      return
-    }
-
-    this.extend(offset, size);
-
-    if (value.length !== size) throw new Error('Invalid value size')
-    if (offset + size > this._store.length) throw new Error('Value exceeds memory capacity')
-
-    value.copy(this._store, offset);
-  }
-
-  /**
-   * Reads a slice of memory from `offset` till `offset + size` as a `Buffer`.
-   * It fills up the difference between memory's length and `offset + size` with zeros.
-   * @param {number} offset - Starting position
-   * @param {number} size - How many bytes to read
-   * @param {boolean} avoidCopy - Avoid memory copy if possible for performance reasons (optional)
-   * @returns {Buffer}
-   */
-  read(offset, size, avoidCopy) {
-    this.extend(offset, size);
-
-    const loaded = this._store.slice(offset, offset + size);
-    if (avoidCopy === true) {
-      return loaded
-    }
-
-    return Buffer.from(loaded)
-  }
-}
-
 // import transaction from '../resource/circuits/schnorr_prove/transaction1.json' assert {type: 'json'};
 
 class Decoder {
   constructor () {
-
   }
 
-  getEnv(code) {
+  getEnv(code, config) {
     const codelen = code.length;
     const callcode_suffix_raw = '63fffffffd5447101561040163fffffffe541016';
-    const callcode_suffix_pt = codelen + 1;
+    const callcode_suffix_pt = code.length + 1;
     
     const callcode_suffix = Buffer.from(callcode_suffix_raw, 'hex'); 
     const callcode_suffix_len = callcode_suffix_raw.length / 2;
-  
-    const Iddata = '45152ae300000000000000000000000000000000000000000000000000000000';
+    const {
+      Iddata, Isdata, storagedata, storageKeys
+    } = config;
+    
+    const padData = ''; 
   
     const pc_pt = callcode_suffix_pt + callcode_suffix_len;
     const pc_len = 4;
@@ -4708,10 +4557,12 @@ class Decoder {
     const Iv_len = 32;
     const Id_pt = Iv_pt + Iv_len;
     const Id_len = Iddata.length / 2;
-    const Id_lendata = '0020'; // TODO: lower(dec2hex(environ_pts.Id_len,environ_pts.Id_len_info_len*2));
-    
     const Id_len_info_pt = Id_pt + Id_len;
     const Id_len_info_len = 2;
+
+    const lendata = decimalToHex(Id_len);
+    const Id_lendata = lendata.padStart(Id_len_info_len*2, '0');
+    
     const Is_pt = Id_len_info_pt + Id_len_info_len;
     const Is_len = 32;
     const od_pt = Is_pt + Is_len;
@@ -4728,17 +4579,15 @@ class Decoder {
     const zerodata = '00';
     const zero_pt = balance_pt + balance_len;
     const zero_len = 1;
-  
-    const storagedata = ['03', '06',  '05', '11'];
+    
     let storage_pts = [0, 0, 0, 0];
     let storage_lens = [0, 0, 0, 0];
     
     storage_pts[0] = zero_pt + zero_len;
     storage_lens[0] = storagedata[0].length / 2;
-    
     for (let i=1; i < storagedata.length ; i++) {
       storage_pts[i] = storage_pts[i-1] + storage_lens[i-1];
-      storage_lens[i] = storagedata[i].length / 2;
+      storage_lens[i] = storagedata[1].length / 2;
     }
   
     const environ_pts = {
@@ -4768,8 +4617,8 @@ class Decoder {
       storage_lens: storage_lens
     };
     
-    const Isdata = '0000000000000000000000005B38Da6a701c568545dCfcB03FcB875f56beddC4';
-    const padData = ''; 
+    // const Isdata = '0000000000000000000000005B38Da6a701c568545dCfcB03FcB875f56beddC4'
+    
     const od_lendata = od_len.toString(16);
     const pcdata = padData.padStart(pc_len * 2, '0');
     const Ivdata = padData.padStart(Iv_len*2, '0');
@@ -4779,12 +4628,7 @@ class Decoder {
     const balance = 1000000;
     const balancedata = balance.toString(16).padStart(balance_len * 2, '0');
   
-    const storage_keys = [
-      '0000000000000000000000000000000000000000000000000000000000000000',
-      '0000000000000000000000000000000000000000000000000000000000000001',
-      '0000000000000000000000000000000000000000000000000000000000000002',
-      '0000000000000000000000000000000000000000000000000000000000000003'
-    ];
+    const storage_keys = storageKeys;
     
     let storage_pt = {};
     for (let i = 0; i < storage_keys.length; i++) {
@@ -4812,6 +4656,7 @@ class Decoder {
     
     const codewdata = Buffer.concat([code, callcode_suffix, environData]);
     const callDepth = '1'.padStart(calldepth_len * 2, '0');
+    
     call_pt.push([1, codelen]);
 
     this.oplist = [{
@@ -4841,11 +4686,12 @@ class Decoder {
     return { environ_pts, callcode_suffix }
   }
 
-  runCode (dirname, code) {
-    this.decode(code);
-
+  runCode (code, config, dirname) {
+    this.decode(code, config);
+    
     const listLength = this.oplist.length;
     const oplist = this.oplist;
+    // console.log(oplist)
     const { NWires, wireIndex } = getWire(this.oplist);
     
     const NCONSTWIRES=1;
@@ -4853,21 +4699,38 @@ class Decoder {
 
     const RangeCell = getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT);
     const WireListm = getWireList(NWires, RangeCell, listLength); 
+    // console.log(wireIndex)
     let mWires = WireListm.length;
     
     const { SetData_I_V, SetData_I_P } = getIVIP(WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell);
 
-    const dir = `${process.cwd()}/resource/circuits/${dirname}`;
+    // const dir = `${process.cwd()}/resource/circuits/${dirname}`
+    
+    // console.log(listLength, NWires, wireIndex, NINPUT)
+    // console.log(wireIndex)
+    // for (let i=0; i < WireListm.length; i ++) {
+    //   console.log(WireListm[i])
+    // }
+
+    // console.log(SetData_I_V)
+    // for (let i=0; i < SetData_I_V.length; i++) {
+    //   console.log(i, SetData_I_V[i])
+    // }
+
+    const dir = dirname;
+    
     makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, WireListm);
     makeJsonFile (dir, oplist, NINPUT, this.codewdata);
   }
 
-  decode (code) {
+  decode (code, config) {
     let outputs_pt = [];
     let stack_pt = [];
-    this.getEnv(code);
-    const {
+    this.getEnv(code, config);
+    let {
       Iv_pt,
+      Id_pt,
+      Id_len,
       Iv_len,
       Id_len_info_pt,
       Id_len_info_len,
@@ -4877,20 +4740,22 @@ class Decoder {
       balance_len,
       zero_pt,
       zero_len,
+      cjmp_pointer,
     } = this.environ_pts;
     
     let storage_pt = this.storage_pt;
     let call_pt = this.call_pt;
     let calldepth = this.callDepth;
     let codelen = code.length;
-    console.log('codelen', codelen);
-    this.codewdata;
+  
+    const codewdata = this.codewdata;
     let mem_pt = {};
 
     let pc = 0;
-
+    // console.log(code)
     while (pc < codelen) {
       const op = decimalToHex(code[pc]);
+      console.log('op',pc ,op);
       pc = pc + 1;
       
       let d = 0;
@@ -4900,7 +4765,10 @@ class Decoder {
       if (hexToInteger(op) - hexToInteger('60') >= 0 
         && hexToInteger(op) - hexToInteger('60') < 32) {
         const pushlen = hexToInteger(op) - hexToInteger('60') + 1;
+        
+        // if (op === '61') console.log('push1', hexToInteger(op), [0, pc+call_pt[calldepth - 1][0], pushlen], pushlen, pc)
         stack_pt.unshift([0, pc+call_pt[calldepth - 1][0], pushlen]);
+        // console.log('push stack', stack_pt)
         pc = pc + pushlen;
       } else if (hexToInteger(op) === hexToInteger('50')) {
         d = 1;
@@ -4918,24 +4786,25 @@ class Decoder {
         // if (mem_pt.length === 0) {
 
         // }
-        // console.log('51', addr, mem_pt[addr])
-        stack_pt.unshift(mem_pt[addr]);
+        
+        stack_pt.unshift(mem_pt[Number(addr)]);
       } else if (hexToInteger(op) === hexToInteger('52')) { //mstore
         d = 2;
         a = 0;
+        console.log(stack_pt[0]);
         const addr = this.evalEVM(stack_pt[0]) + 1;
         const data = stack_pt[1];
-        mem_pt[addr] = data;
+        mem_pt[Number(addr)] = data;
 
         stack_pt = pop_stack(stack_pt, d);
       } else if (hexToInteger(op) === hexToInteger('53')) {
         d = 2;
         a = 0;
         const addr = this.evalEVM(stack_pt[0]) + 1;
-        // console.log('addr',addr)
+        
         const data = stack_pt[1];
         data[2] = 1;
-        mem_pt[addr] = data;
+        mem_pt[Number(addr)] = data;
         
         stack_pt = pop_stack(stack_pt, d);
       }
@@ -4947,8 +4816,8 @@ class Decoder {
         stack_pt = pop_stack(stack_pt, d);
         
         let sdata_pt;
-        if (storage_pt[addr]) {
-          sdata_pt = storage_pt[addr];
+        if (storage_pt[Number(addr)]) {
+          sdata_pt = storage_pt[Number(addr)];
         } else {
           sdata_pt = [0, zero_pt, zero_len];
         }
@@ -4961,7 +4830,7 @@ class Decoder {
         const sdata_pt = stack_pt[1];
         stack_pt = pop_stack(stack_pt, d);
 
-        storage_pt[addr] = sdata_pt;
+        storage_pt[Number(addr)] = sdata_pt;
         
       } else if (hexToInteger(op) === hexToInteger('33')) { // caller
         d = 0;
@@ -4976,18 +4845,25 @@ class Decoder {
       } else if (hexToInteger(op) === hexToInteger('35')) { // calldataload
         d = 1;
         a = 1;
-
-        stack_pt.unshift([0, Is_pt, Is_len]);
+        const offset = this.evalEVM(stack_pt[0]);
+        
+        let pt = Id_pt + Number(offset);
+        let chose_data_len = Math.min(Id_len - Number(offset), 32);
+        console.log(offset, pt, chose_data_len);
+        stack_pt = pop_stack(stack_pt, d);
+        if (pt >= Id_pt && pt + chose_data_len - 1 <= Id_pt + Id_len - 1) {
+          stack_pt.unshift([0, pt, chose_data_len]);
+        }
       } else if (hexToInteger(op) === hexToInteger('36')) { // calldatasize
         d = 0;
         a = 1;
-        // console.log('36', [0, Id_len_info_pt, Id_len_info_len])
+
         stack_pt.unshift([0, Id_len_info_pt, Id_len_info_len]);
       } else if (hexToInteger(op) === hexToInteger('47')) { // selfbalance
         d = 0;
         a = 1;
 
-        // console.log('47', [0, balance_pt, balance_len])
+
         stack_pt.unshift([0, balance_pt, balance_len]);
       } else if (hexToInteger(op) - hexToInteger('80') >= 0 
         && hexToInteger(op) - hexToInteger('80') < 16) { // duplicate
@@ -5006,8 +4882,8 @@ class Decoder {
         stack_pt[0] = stack_pt[target_index];
         stack_pt[target_index] = temp;
       } 
-      else if (hexToInteger(op) < hexToInteger('11') 
-          || (hexToInteger(op) >= hexToInteger('16') && hexToInteger(op) <= hexToInteger('29'))
+      else if (hexToInteger(op) < '11'
+          || (hexToInteger(op) >= '16' && hexToInteger(op) <= '29')
           || (hexToInteger(op) == 32)
       ) {
         const numberOfInputs = getNumberOfInputs(op);
@@ -5030,9 +4906,9 @@ class Decoder {
 
             stack_pt = pop_stack(stack_pt, 2);
 
-            let len_left = len;
+            let len_left = Number(len);
             let target_mem = [];
-            let target_addr = addr;
+            let target_addr = Number(addr);
 
             while (len_left > 0) {
               const target = mem_pt[target_addr];
@@ -5046,7 +4922,7 @@ class Decoder {
               stack_pt.push(target_mem[i]);
             }
         }
-        
+        // console.log('0p',op)
         this.op_pointer = this.op_pointer + 1;
         this.oplist.push({
           opcode: '',
@@ -5055,28 +4931,28 @@ class Decoder {
           inputs: [],
           outputs: [],
         });
-        
-        this.oplist = wire_mapping(op, stack_pt, d, a, this.oplist, this.op_pointer);
+        this.oplist = wire_mapping(op, stack_pt, d, a, this.oplist, this.op_pointer, code, config);
 
         stack_pt = pop_stack(stack_pt, d);
         stack_pt.unshift(this.oplist[this.op_pointer].pt_outputs);
+        // console.log('wiremap', stack_pt)
+        // console.log('stack_pt input', this.oplist[0].pt_outputs)
       }
       else if (hexToInteger(op) == hexToInteger('f3') || hexToInteger(op) == hexToInteger('fd')) {
         d=2;
         a=0;
-
-        const addr_offset = this.evalEVM(stack_pt[0]) + 1;
+        const addr_offset = this.evalEVM(stack_pt[0]) + (1);
         const addr_len = this.evalEVM(stack_pt[1]);
 
         outputs_pt = [];
-        let len_left = addr_len;
-        let addr = addr_offset;
+        let len_left = Number(addr_len);
+        let addr = Number(addr_offset);
 
         while (len_left > 0) {
           let target_data = mem_pt[addr];
           outputs_pt.push(target_data);
           len_left = len_left - target_data[2];
-          addr = addr_offset + target_data[2];
+          addr = addr + target_data[2];
         }
         stack_pt = pop_stack(stack_pt, d);
         pc = codelen;
@@ -5087,6 +4963,45 @@ class Decoder {
         a = 0;
         outputs_pt=[];
         pc = codelen;
+      } else if (hexToInteger(op) == hexToInteger('56')) {
+        d = 1;
+        a = 0;
+        const target_pc = this.evalEVM(stack_pt[0]);
+        pc = Number(target_pc);
+
+        stack_pt = pop_stack(stack_pt, d);
+      } else if (hexToInteger(op) == hexToInteger('57')) {
+        cjmp_pointer = cjmp_pointer + 1;
+
+        d = 2;
+        a = 0;
+
+        const target_pc = this.evalEVM(stack_pt[0]);
+        const condition = this.evalEVM(stack_pt[1]);
+        console.log('condition', stack_pt[1], condition, target_pc);
+        if (Number(condition) !== 0) {
+          console.log('target', target_pc);
+          pc = Number(target_pc);
+          // if (code.slice(calldepth - 1,target_pc)) {
+
+          // }
+        }
+        stack_pt = pop_stack(stack_pt, d);
+      } else if (hexToInteger(op) == hexToInteger('58')) {
+        d = 0;
+        a = 1;
+
+        codewdata[pc_pt];
+        stack_pt.unshift([0, pc_pt, pc_len]);
+      } else if (hexToInteger(op) == hexToInteger('5b')) ;
+      else if (hexToInteger(op) == hexToInteger('a0')) {
+        const lognum = hexToInteger(op) - hexToInteger('a0') + 1;
+        d = lognum + 2;
+        a = 0;
+        stack_pt=pop_stack(stack_pt, d);
+      }
+      else {
+        console.log('xxxx', op);
       }
 
       // const newStackSize = stack_pt.length
@@ -5095,16 +5010,19 @@ class Decoder {
       // }
       this.vmTraceStep = this.vmTraceStep + 1;
     }
-    this.oplist[0].pt_inputs = outputs_pt[0];
-    
+    outputs_pt[0] ? this.oplist[0].pt_inputs = outputs_pt[0] : this.oplist[0].pt_inputs = [];
     for (let i = 0; i < this.oplist.length ;i ++) {
       let k_pt_inputs = this.oplist[i].pt_inputs;
-
-      k_pt_inputs = k_pt_inputs[0][0] ? k_pt_inputs[0] : [k_pt_inputs];
+      k_pt_inputs = this.oplist[i].opcode == 'fff' && !k_pt_inputs[0]
+                    ? [] 
+                    : k_pt_inputs[0][0] 
+                    ? k_pt_inputs[0] 
+                    : [k_pt_inputs];
       let k_inputs = [];
 
       for (let j=0; j<k_pt_inputs.length ; j++) {
         const a = this.evalEVM(k_pt_inputs[j]);
+        // console.log('inpupt',k_pt_inputs[j], a, this.oplist[i].outputs)
         k_inputs.push(a);
       }
       let k_pt_outputs = this.oplist[i].pt_outputs;
@@ -5114,12 +5032,19 @@ class Decoder {
       let k_outputs = [];
       for (let j = 0; j < k_pt_outputs.length ; j ++) {
         let k_output = this.evalEVM(k_pt_outputs[j]);
+        k_output = k_output === undefined ? 0 : k_output;
+        // console.log('aaa', k_pt_outputs[j], k_output)
         k_outputs.push(k_output);
       }
       this.oplist[i].inputs=k_inputs;
       this.oplist[i].outputs=k_outputs;
-
+      // console.log('k_inputs', k_inputs)
+      // console.log('k_outputs',k_outputs)
+      
     }
+    // console.log(this.oplist)
+    // console.log('input check',this.oplist[2].inputs)
+    // console.log('input check',this.oplist[2].outputs)
     return outputs_pt
   }
 
@@ -5128,62 +5053,200 @@ class Decoder {
     // console.log(pt)
     const op_pointer = pt[0];
     const wire_pointer = pt[1];
-    pt[3];
+    const byte_size = pt[2];
 
     if (op_pointer == 0) {
-      return codewdata[wire_pointer - 1]
+      // console.log(wire_pointer, byte_size)
+      const slice = codewdata.slice(wire_pointer - 1, wire_pointer + byte_size - 1);
+      let output = '';
+      for (let i=0; i < slice.length; i ++){
+        output = output + decimalToHex(slice[i]);
+      }
+      // console.log(
+      //   output, 
+      //   BigNumber.from('0x' +output).toString(), 
+      //   Number(BigNumber.from('0x' +output).toString()),
+      //   BigInt('0x' + output).toLocaleString('fullwide', { useGrouping: false })
+      // )
+      
+      return ethers.BigNumber.from('0x' + output).toString()
+      // return Number(BigInt('0x' + output).toString())
     }
     
     let t_oplist = this.oplist[op_pointer - 1];
-
     const op = t_oplist.opcode;
     if (t_oplist.outputs.length !== 0) {
       return t_oplist.outputs[wire_pointer - 1]
     }
-    
+    if (op_pointer === 2) console.log(t_oplist);
     try {
-      const RunState = {
-        opcode: 0x00,
-        programCounter: -1,
-        stack: new Stack(),
-        memory: new Memory(),
-        code: [],
-      };
-
       if (hexToInteger(op) == hexToInteger('fff')) {
         let new_pt = t_oplist.pt_outputs[wire_pointer - 1];
+        
         const value = this.evalEVM(new_pt);
         return value
       } else {
         let inputlen = t_oplist.pt_inputs[0].length;
         let inputs = [];
+        let outputs;
+        // if (op_pointer === 2) console.log('333', wire_pointer, byte_size)
         let pt_inputs = t_oplist.pt_inputs[0][0][0] ? t_oplist.pt_inputs[0] : t_oplist.pt_inputs;
+        // if (op==='2') console.log('pt_inputs', pt_inputs)
         for (let i=0; i < inputlen; i ++) {
+          // if(op==='2') console.log('inputs 19', pt_inputs[i], this.evalEVM(pt_inputs[i]))
           inputs.push(this.evalEVM(pt_inputs[i]));
         }
+        // if (op_pointer === 3) console.log('333', inputs, op)
+        if (op_pointer === 16) console.log(inputs, op);
+
         if (op === '01') {
-          return inputs[0] + inputs[1]
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = inputs[0] + inputs[1];
         }
         if (op === '02') {
-          return inputs[0] * inputs[1]
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = inputs[0] * inputs[1];
         }
         if (op === '03') {
-          return inputs[0] - inputs[1]
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = inputs[0] - inputs[1];
         }
         if (op === '04') {
-          return inputs[0] / inputs[1]
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = inputs[0] / inputs[1];
         }
         if (op === '05') {
+          if (inputlen !== 2) throw new Error("Invalid input length");
           const result = inputs[1] === 0 ? 0 : inputs[0] / inputs[1];
-          return result
+          outputs = result;
         }
         if (op === '06') {
+          if (inputlen !== 2) throw new Error("Invalid input length");
           const result = inputs[1] === 0 ? inputs[1] : inputs[0] % inputs[1];
-          return result
+          outputs = result;
         }
         if (op === '0a') {
-          return inputs[0] ** inputs[1]
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = inputs[0] ** inputs[1];
+        } 
+        if (op === '10') {
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          inputs[0] = inputs[0] % (2**256);
+          inputs[1] = inputs[1] % (2**256);
+         
+          outputs = inputs[0] < inputs[2] ? 1 : 0;
         }
+        if (op === '11') {
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          inputs[0] = inputs[0] % (2**256);
+          inputs[1] = inputs[1] % (2**256);
+         
+          outputs = inputs[0] > inputs[2] ? 1 : 0;
+        }
+        if (op === '12') { // slt: signed less than
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var inputlengths = [pt_inputs[0][2], pt_inputs[1][2]];
+          var bin_input = [];
+          
+          bin_input[0] = hd_dec2bin(inputs[0], inputlengths[0] * 8);
+          bin_input[1] = hd_dec2bin(inputs[1], inputlengths[1] * 8);
+          
+          var signed_inputs = new Array(2);
+          
+          for (var i = 0; i < 2; i++) {
+            var temp = bin_input[i];
+            signed_inputs[i] = -bin2dec(temp[0]) * Math.pow(2, inputlengths[i] * 8 - 1) + bin2dec(temp.slice(1));
+          }
+          
+          outputs = Number(signed_inputs[0] < signed_inputs[1]); 
+          console.log(12, outputs, signed_inputs[0], signed_inputs[1]);       
+        }
+        if (op === '13') { // sgt: signed greater than
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var inputlengths = [pt_inputs[0][2], pt_inputs[1][2]];
+          var bin_input = [];
+          
+          bin_input[0] = hd_dec2bin(inputs[0], inputlengths[0] * 8);
+          bin_input[1] = hd_dec2bin(inputs[1], inputlengths[1] * 8);
+          
+          var signed_inputs = new Array(2);
+          
+          for (var i = 0; i < 2; i++) {
+            var temp = bin_input[i];
+            signed_inputs[i] = -bin2dec(temp[0]) * Math.pow(2, inputlengths[i] * 8 - 1) + bin2dec(temp.slice(1));
+          }
+          
+          outputs = Number(signed_inputs[0] > signed_inputs[1]);
+          
+        }
+        if (op === '14') { // equality
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          // console.log('14', inputs[0], inputs[1])
+          outputs = Number(Number(inputs[0]) === Number(inputs[1]));
+          
+        }
+        if (op === '15') { // iszero
+          if (inputlen !== 1) throw new Error("Invalid input length");
+          outputs = Number(Number(inputs[0]) === 0);
+          console.log('output',Number(inputs[0]), outputs);
+        }
+        if (op === '16') { // and
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var bin_input = [];
+          bin_input[0] = hd_dec2bin(inputs[0], 253);
+          bin_input[1] = hd_dec2bin(inputs[1], 253);
+          
+          var bin_and_result = bin_input[0].split('').map((digit, index) => {
+            return (Number(digit) * Number(bin_input[1][index])).toString();
+          }).join('');
+          
+          outputs = Number(bin2dec(bin_and_result));
+          console.log(inputs[0]);
+          console.log(inputs[1]);
+          console.log(bin_input[1],bin_and_result, outputs);
+        }
+        if (op === '17') { // or
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var bin_input = [];
+          bin_input[0] = hd_dec2bin(inputs[0], 253);
+          bin_input[1] = hd_dec2bin(inputs[1], 253);
+          
+          var bin_or_result = bin_input[0].split('').map((digit, index) => {
+            return (Math.floor(0.5 * (Number(digit) + Number(bin_input[1][index])))).toString();
+          }).join('');
+          
+          outputs = Number(bin2dec(bin_or_result));
+          
+        }
+        if (op === '18') { // xor
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var bin_input = [];
+          bin_input[0] = hd_dec2bin(inputs[0], 253);
+          bin_input[1] = hd_dec2bin(inputs[1], 253);
+          
+          var bin_not_result = bin_input[0].split('').map((digit, index) => {
+            return (Number(digit) + Number(bin_input[1][index])) % 2;
+          }).join('');
+          
+          outputs = Number(bin2dec(bin_not_result));
+          
+        }
+        if (op === '19') { // not
+          if (inputlen !== 1) throw new Error("Invalid input length");
+          
+          var bin_input = hd_dec2bin(inputs[0], 253);
+          var bin_not_result = bin_input.split('').map((digit) => {
+            return (Number(digit) + 1) % 2;
+          }).join('');
+          
+          outputs = Number(bin2dec(bin_not_result));
+        }
+        
         if (op === '20') {
           //padData.padStart(pc_len * 2, '0')
           const inputLen = inputs.length;
@@ -5192,9 +5255,40 @@ class Decoder {
           }
           const input_con = Buffer.from(inputs.join(''), 'hex');
           const hex = utils_js.bytesToHex(keccak_js.keccak256(input_con));
-          return hex
-        }  
+          outputs = hex;
+        } 
+        if (op === '1a') {
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          
+          var hex_input2 = hd_dec2hex(inputs[1], 64);
+          var input1 = Number(inputs[0]);
+          
+          if (input1 >= 32) {
+            outputs = Number(0);
+          } else {
+            var pos = input1 * 2 + 1;
+            outputs = Number(hex2dec(hex_input2.slice(pos, pos + 2)));
+          }
+        }
+        if (op === '1b' || op === '1c1' || op === '1c2') {
+          
+          inputs[1] = typeof inputs[1] == 'bigint' ? Number(BigInt('0x' + inputs[1]).toString()) : inputs[1];
+          // console.log(inputs)
+          inputs[0] = inputs[0] % (2 ** 256);
+          inputs[1] = inputs[1] % (2 ** 256);
+          if (op === '1b') {
+            outputs = inputs[1] * (2 ** inputs[0]);
+          } else if (op === '1c1') {
+            outputs = Math.floor(inputs[1] / (2 ** inputs[0]));
+          } if (op === '1c2') {
+            return  Math.floor(inputs[1] / (2 ** (inputs[0] - 8)))
+          }
+        }
+        // console.log('ouputsss', outputs, op_pointer, op)
+        this.oplist[op_pointer - 1].outputs = outputs;
+        return outputs;
       }
+
     } catch(e) {
       console.log(e);
     }
@@ -5207,6 +5301,8 @@ function getNumberOfInputs (op) {
     const opcode = subcircuits[i].opcode;
     if (hexToInteger(opcode) === hexToInteger(op)) {
       return subcircuits[i].In_idx[1];
+    } else if (op === '1c') {
+      return 2
     }
   }
   return -1;
@@ -5464,6 +5560,14 @@ function derive() {
 }
 
 function decode() {
+  const circuitNameList = fromDir('/resource/circuits/', '*');
+  function searchCircuitName(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy__default["default"].filter(input, circuitNameList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
   inquirer__default["default"]
     .prompt([
       // {
@@ -5471,21 +5575,28 @@ function decode() {
       //   name: ''
       // }
       {
-        type: 'input',
-        name: 'directory',
-        message: 'What is the name of the opcode name?'
+        type: 'autocomplete',
+        name: 'circuitName',
+        suggestOnly: true,
+        message: 'Which circuit will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchCircuitName,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
       },
-      {
-        type: 'input',
-        name: 'opcode',
-        message: 'What is the opcode you want to decode?'
-      }
     ])
     .then(answers => {
+      const json = fs__default["default"].readFileSync(`${answers.circuitName}/config.json`, 'utf8');
+      const jsonData = JSON.parse(json);
+      const { config, code } = jsonData;
       const decode = new Decoder();
       return decode.runCode(
-        answers.directory,
-        Buffer.from(answers.opcode, 'hex')
+        Buffer.from(code.join(''), 'hex'),
+        config,
+        answers.circuitName
       )
     });
 }
