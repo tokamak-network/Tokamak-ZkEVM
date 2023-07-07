@@ -279,19 +279,9 @@ export function hd_dec2bin(d, n) {
     }
     n = Math.round(Number(n)); // Make sure n is an integer.
   }
-
-  // Actual algorithm
   let e = Math.ceil(Math.log2(Math.max(Number(d))));
-  let s = '';
-  
-  // console.log('d', d.toLocaleString('fullwide', {useGrouping:false}))
-  for (let i = 1 - Math.max(n, e); i <= 0; i++) {
-    // console.log((Math.pow(2, i)))
-    // console.log((Number(d) * Math.pow(2, i)))
-    s += Math.floor(Number(d) * Math.pow(2, i)) % 2;
-  }
 
-  return s;
+  return BigInt(d).toString(2).padStart(Math.max(n, e), '0');
 }
 
 export function dec2bin(d, n) {
@@ -350,12 +340,13 @@ function bin2decImpl(s) {
   if (s.length === 0) {
       return null;
   }
-
+  // console.log(s)
   // Remove significant spaces
   let trimmed = s.replace(/\s/g, '');
   const leadingZeros = s.length - trimmed.length;
+  // console.log('trimmed',  trimmed)
   trimmed = '0'.repeat(leadingZeros) + trimmed;
-
+  
   // Check for illegal binary strings
   if (!/^[01]+$/.test(trimmed)) {
       throw new Error('Illegal binary string');
