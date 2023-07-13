@@ -26,7 +26,8 @@ import {
   makeBinFile, 
   makeJsonFile,
   hd_dec2bin,
-  bin2dec
+  bin2dec,
+  bin2decimal
 } from './utils/convert.js';
 
 export class Decoder {
@@ -710,10 +711,6 @@ export class Decoder {
           bin_input[0] = hd_dec2bin(inputs[0], 253);
           bin_input[1] = hd_dec2bin(inputs[1], 253);
           
-          // var bin_or_result = bin_input[0].split('').map((digit, index) => {
-          //   return (Math.floor(0.5 * (Number(digit) + Number(bin_input[1][index])))).toString();
-          // }).join('');
-          
           const bin_or_result = BigInt(inputs[0]) | BigInt(inputs[1])
           outputs = bin_or_result.toString();
           
@@ -728,13 +725,13 @@ export class Decoder {
           var bin_not_result = bin_input[0].split('').map((digit, index) => {
             return (Number(digit) + Number(bin_input[1][index])) % 2;
           }).join('');
-          console.log('op 18')
-          console.log('inputs[0]', inputs[0])
-          console.log('bin_input[0]', bin_input[0])
-          console.log('inputs[1]', inputs[1])
-          console.log('bin_input[1]', bin_input[1])
-          console.log(BigInt(inputs[0]) ^ BigInt(inputs[1]))
-          console.log('')
+          // console.log('op 18')
+          // console.log('inputs[0]', inputs[0])
+          // console.log('bin_input[0]', bin_input[0])
+          // console.log('inputs[1]', inputs[1])
+          // console.log('bin_input[1]', bin_input[1])
+          // console.log(BigInt(inputs[0]) ^ BigInt(inputs[1]))
+          // console.log('')
           outputs = Number(bin2dec(bin_not_result));  
         }
         if (op === '19') { // not
@@ -742,15 +739,10 @@ export class Decoder {
           
           var bin_input = hd_dec2bin(inputs[0], 253);
           var bin_not_result = bin_input.split('').map((digit) => {
-            return (Number(digit) + 1) % 2;
+            return digit === '0' ? '1' : '0'
           }).join('');
-          console.log('op 19')
-          console.log('inputs', BigInt(inputs[0]).toString())
-          console.log('inputs[0]', BigInt(inputs[0]).toString(2))
-          console.log('bin_input[0]', hd_dec2bin(BigInt(inputs[0]).toString(), 253))
-          console.log(~BigInt(inputs[0]))
-          console.log('')
-          outputs = Number(bin2dec(bin_not_result));
+          
+          outputs = bin2decimal(bin_not_result).toString()
         }
         
         if (op === '20') {

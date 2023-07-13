@@ -362,3 +362,11 @@ function bin2decImpl(s) {
 
   return x;
 }
+
+export function bin2decimal(binStr) {
+  const lastIndex = binStr.length - 1;
+
+  return Array.from(binStr).reduceRight((total, currValue, index) => (
+      (currValue === '1') ? total + (BigInt(2) ** BigInt(lastIndex - index)) : total
+  ), BigInt(0));
+}
