@@ -251,7 +251,7 @@ export class Decoder {
     while (pc < codelen) {
       const op = decimalToHex(code[pc])
       pc = pc + 1
-      console.log('op',op, pc )
+      // console.log('op',op, pc )
       
       let d = 0
       let a = 0
@@ -404,22 +404,22 @@ export class Decoder {
             let data_lengths = [];
             let target_mem = []
             let target_addr = addr.toString()
-            console.log('mem_pt', addr, mem_pt, mem_pt['1'], len_left)
+            // console.log('mem_pt', addr, mem_pt, mem_pt['1'], len_left)
             while (len_left > 0) {
               const target = mem_pt[target_addr]
-              console.log('target', target, len_left, target_addr)
+              // console.log('target', target, len_left, target_addr)
               target_mem.push(target)
               len_left = len_left - 32
               target_addr = Number(target_addr) + 32
             }
 
             d = target_mem.length
-            console.log('op 20 target', target_mem)
+            // console.log('op 20 target', target_mem)
             for (let i = target_mem.length ; i > 0; i --) {
               stack_pt.unshift(target_mem[i - 1])
             }
         }
-        console.log('0p',op, pc, stack_pt)
+        // console.log('0p',op, pc, stack_pt)
         this.op_pointer = this.op_pointer + 1
         this.oplist.push({
           opcode: '',
@@ -475,7 +475,7 @@ export class Decoder {
 
         const target_pc = this.evalEVM(stack_pt[0])
         const condition = this.evalEVM(stack_pt[1])
-        console.log('target', pc, target_pc, condition, stack_pt[1])
+        // console.log('target', pc, target_pc, condition, stack_pt[1])
         if (Number(condition) !== 0) {
           pc = Number(target_pc)
           // if (code.slice(calldepth - 1,target_pc)) {
@@ -676,9 +676,7 @@ export class Decoder {
         }
         if (op === '14') { // equality
           if (inputlen !== 2) throw new Error("Invalid input length");
-          // console.log('14', inputs[0], inputs[1])
           outputs = Number(Number(inputs[0]) === Number(inputs[1]));
-          
         }
         if (op === '15') { // iszero
           if (inputlen !== 1) throw new Error("Invalid input length");
@@ -691,18 +689,18 @@ export class Decoder {
           bin_input[0] = hd_dec2bin(inputs[0], 253);
           bin_input[1] = hd_dec2bin(inputs[1], 253);
           
-          var bin_and_result = bin_input[0].split('').map((digit, index) => {
-            return (Number(digit) * Number(bin_input[1][index])).toString();
-          }).join('');
+          // var bin_and_result = bin_input[0].split('').map((digit, index) => {
+          //   return (Number(digit) * Number(bin_input[1][index])).toString();
+          // }).join('');
           let bin_and_result1 = BigInt(inputs[0]) & BigInt(inputs[1])
-          console.log('inputs[0]', inputs[0])
-          console.log('bin_input[0]', bin_input[0])
-          console.log('inputs[1]', inputs[1])
-          console.log('bin_input[1]', bin_input[1])
+          // console.log('inputs[0]', inputs[0])
+          // console.log('bin_input[0]', bin_input[0])
+          // console.log('inputs[1]', inputs[1])
+          // console.log('bin_input[1]', bin_input[1])
           // console.log('bin_and_result', bin_and_result, Number(bin2dec(bin_and_result)), bin_and_result1, hd_dec2bin(bin_and_result1, 253))
           // outputs = Number(bin2dec(bin_and_result));
-          console.log('output',bin_and_result1.toString())
-          console.log('')
+          // console.log('output',bin_and_result1.toString())
+          // console.log('')
           outputs = bin_and_result1.toString()
         }
         if (op === '17') { // or
@@ -712,11 +710,12 @@ export class Decoder {
           bin_input[0] = hd_dec2bin(inputs[0], 253);
           bin_input[1] = hd_dec2bin(inputs[1], 253);
           
-          var bin_or_result = bin_input[0].split('').map((digit, index) => {
-            return (Math.floor(0.5 * (Number(digit) + Number(bin_input[1][index])))).toString();
-          }).join('');
+          // var bin_or_result = bin_input[0].split('').map((digit, index) => {
+          //   return (Math.floor(0.5 * (Number(digit) + Number(bin_input[1][index])))).toString();
+          // }).join('');
           
-          outputs = Number(bin2dec(bin_or_result));
+          const bin_or_result = BigInt(inputs[0]) | BigInt(inputs[1])
+          outputs = bin_or_result.toString();
           
         }
         if (op === '18') { // xor
@@ -729,9 +728,14 @@ export class Decoder {
           var bin_not_result = bin_input[0].split('').map((digit, index) => {
             return (Number(digit) + Number(bin_input[1][index])) % 2;
           }).join('');
-          
-          outputs = Number(bin2dec(bin_not_result));
-          
+          console.log('op 18')
+          console.log('inputs[0]', inputs[0])
+          console.log('bin_input[0]', bin_input[0])
+          console.log('inputs[1]', inputs[1])
+          console.log('bin_input[1]', bin_input[1])
+          console.log(BigInt(inputs[0]) ^ BigInt(inputs[1]))
+          console.log('')
+          outputs = Number(bin2dec(bin_not_result));  
         }
         if (op === '19') { // not
           if (inputlen !== 1) throw new Error("Invalid input length");
@@ -740,7 +744,12 @@ export class Decoder {
           var bin_not_result = bin_input.split('').map((digit) => {
             return (Number(digit) + 1) % 2;
           }).join('');
-          
+          console.log('op 19')
+          console.log('inputs', BigInt(inputs[0]).toString())
+          console.log('inputs[0]', BigInt(inputs[0]).toString(2))
+          console.log('bin_input[0]', hd_dec2bin(BigInt(inputs[0]).toString(), 253))
+          console.log(~BigInt(inputs[0]))
+          console.log('')
           outputs = Number(bin2dec(bin_not_result));
         }
         
