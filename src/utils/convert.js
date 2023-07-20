@@ -1,6 +1,6 @@
 import { subcircuit } from "../../resource/subcircuits/subcircuit_info.js"
 import fs from 'fs'
-import { BigNumber } from 'ethers'
+import { keccak256 } from 'ethereum-cryptography/keccak.js'
 
 
 export function hexToInteger(hex) {
@@ -370,3 +370,82 @@ export function bin2decimal(binStr) {
       (currValue === '1') ? total + (BigInt(2) ** BigInt(lastIndex - index)) : total
   ), BigInt(0));
 }
+
+export function SHA3 (N, d) {
+  // N is a string of any length, d is 224, 256, 384, or 512
+  // Output, H, is a hex string.
+
+  if (N.length % 2 !== 0) {
+    N = '0' + N;
+  }
+  const N2 = [];
+  for (let i = 0; i < N.length; i += 2) {
+    N2.push(N.slice(i, i + 2));
+  }
+
+  // Convert message text to binary array
+  let N_bin = '';
+  for (let i = 0; i < N2.length; i++) {
+    N_bin += ('00000000' + parseInt(N2[i], 16).toString(2)).slice(-8);
+  }
+  N_bin = N_bin.split('').reverse().join('');
+
+  // Append 0, 1 to the message for SHA-3 (Keccak)
+  const B = N_bin.split('').map(bit => parseInt(bit, 10));
+
+  // Compute the SHA-3 using the SPONGE function
+  const Z = SPONGE(B, d);
+
+  // Pad with zeros based on SHA-3 standard
+  const T = Z.concat(Array.from({ length: (-d % 8) }, () => 0));
+
+  // Convert binary digest to hex
+  let H = '';
+  for (let i = 0; i < T.length; i += 8) {
+    const chunk = T.slice(i, i + 8).join('');
+    const hexValue = parseInt(chunk, 2).toString(16).toUpperCase();
+    H += ('00' + hexValue).slice(-2);
+  }
+
+  return H.toLowerCase(); // Convert digest to lower case
+  
+}
+
+function SPONGE(N, d) {
+  // Sponge construction uses the KECCAK function as the underlying function
+  // that works on a fixed-length binary vector. A parameter called the rate
+  // (r) is determined by the output digest length (d).
+
+  const r = 1600 - 2 * d;
+  const P = N.concat(pad(r, N.length)); // Padding message
+  const n = P.length / r;
+  let S = new Array(1600).fill(0);
+  let Z = [];
+
+  // Absorbing ...
+  for (let i = 0; i < n; i++) {
+    const messageSlice = P.slice(i * r, (i + 1) * r);
+    const xorResult = messageSlice.map((bit, index) => bit ^ S[index]);
+    S = keccak256(xorResult.concat(S.slice(r)));
+  }
+
+  // Squeezing ...
+  while (d > Z.length) {
+    Z = Z.concat(S.slice(0, r));
+    S = keccak256(S);
+  }
+
+  return Z.slice(0, d); // Output digest of length d
+}
+
+// Assume the KECCAK function is implemented elsewhere.
+// You need to define the KECCAK function separately.
+
+function pad(x, m) {
+  // This is the padding function used by the sponge function to establish the
+  // proper message length such that the message length is an integer multiple
+  // of the rate (r).
+  const j = ((-m - 2) % x + x) % x;
+  return [1, ...new Array(j).fill(0), 1];
+}
+

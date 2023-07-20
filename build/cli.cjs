@@ -4755,7 +4755,6 @@ class Decoder {
     // console.log(code)
     while (pc < codelen) {
       const op = decimalToHex(code[pc]);
-      console.log('op',pc ,op);
       pc = pc + 1;
       
       let d = 0;
@@ -5190,7 +5189,7 @@ class Decoder {
         if (op === '15') { // iszero
           if (inputlen !== 1) throw new Error("Invalid input length");
           outputs = Number(Number(inputs[0]) === 0);
-          console.log('output',Number(inputs[0]), outputs);
+          console.log('15 output',Number(inputs[0]), outputs);
         }
         if (op === '16') { // and
           if (inputlen !== 2) throw new Error("Invalid input length");

@@ -26,6 +26,7 @@ export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, conf
   for (let i = 0; i < d; i++) {
     if (stack_pt[i][0] === 0) {
       let data = stack_pt[i]
+      
       let checkArray = []
       if (i==1 && (op === '1c1' || op === '1c2')) {
         let original_bytelength = data[2]
@@ -40,7 +41,7 @@ export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, conf
         checks = 0
       } else {
         for (let i = 0; i < oplist[0].pt_outputs.length; i ++) {
-          // if (op === '03') console.log('pt_output',oplist[0].pt_outputs[i], data, oplist[0].pt_outputs[i] == data, compare(oplist[0].pt_outputs[i], data))
+          // if (op === 'fff') console.log('pt_output',oplist[0].pt_outputs[i], data, oplist[0].pt_outputs[i] == data, compare(oplist[0].pt_outputs[i], data))
           if (compare(oplist[0].pt_outputs[i], data)) {
             checks = checks + 1
             checkArray.push(1)
@@ -51,7 +52,7 @@ export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, conf
       }
       
       const index = checkArray.findIndex(check => check === 1)
-      
+      if (op === 'fff') console.log('pt_output',oplist[0].pt_outputs[i], data, oplist[0].pt_outputs[i] == data, compare(oplist[0].pt_outputs[i], data))
       if (index == -1 || checks == 0) {
         oplist[0].pt_outputs.push(data)
         stack_pt[i] = [1, oplist[0].pt_outputs.length, 32]
