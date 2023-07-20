@@ -118,8 +118,8 @@ export function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCe
       inlen = NINPUT;
       outlen = NINPUT;
     } else {
-      inlen = oplist_k.pt_inputs.length;
-      outlen = oplist_k.pt_outputs.length;
+      inlen = oplist_k.pt_inputs[0].length;
+      outlen = oplist_k.pt_outputs[0][0] ? oplist_k.pt_outputs.length : 1;
     }
 
     if (wireIdx >= NCONSTWIRES && wireIdx < NCONSTWIRES + outlen) {
@@ -211,7 +211,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
       outputs_hex = new Array(outputs.length).fill('0x0000000000000000000000000000000000000000000000000000000000000000');
     }
     // console.log(inputs.length, NINPUT)
-    // console.log(outpu)
+    // console.log('output hex',outputs_hex)
     if (inputs.length > NINPUT) {
       throw new Error('Too many inputs');
     }

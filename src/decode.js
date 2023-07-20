@@ -314,14 +314,8 @@ export class Decoder {
         const addr = this.evalEVM(stack_pt[0]).toString().padStart(64, '0')
         stack_pt = pop_stack(stack_pt, d)
 
-        // let sdata_pt;
-        // if (storage_pt[addr]) {
-        //   sdata_pt = storage_pt[addr]
-        // } else {
-        //   sdata_pt = [0, zero_pt, zero_len]
-        // }
         const sdata_pt = storage_pt[addr] ? storage_pt[addr] : [0, zero_pt, zero_len]
-        // console.log(sdata_pt)
+
         stack_pt.unshift(sdata_pt)
       } else if (hexToInteger(op) === hexToInteger('55')) { // store
         d = 2;
@@ -480,7 +474,7 @@ export class Decoder {
 
         const target_pc = this.evalEVM(stack_pt[0])
         const condition = this.evalEVM(stack_pt[1])
-        console.log('target', pc, target_pc, condition, stack_pt[1])
+        // console.log('target', pc, target_pc, condition, stack_pt[1])
         if (Number(condition) !== 0) {
           pc = Number(target_pc)
           // if (code.slice(calldepth - 1,target_pc)) {
