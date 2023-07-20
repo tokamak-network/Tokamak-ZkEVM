@@ -217,19 +217,20 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
 
     for (let i = 0; i < inputs_hex.length; i++) {
       if (i < inputs.length) {
-        inputs_hex[i] = '0x' + decimalToHex(inputs[i]).toString().padStart(64, '0');
+        inputs_hex[i] = '0x' + BigInt(inputs[i]).toString(16).padStart(64, '0');
       }
     }
     // console.log('outputs',outputs)
     for (let i = 0; i < outputs_hex.length; i++) {
       if (i <= outputs.length) {
-        // console.log(outputs[i])
-        oplist[k].opcode === '20' 
-          ? outputs_hex[i] = '0x' + outputs[i].padStart(64, '0')
-          : outputs_hex[i] = '0x' + decimalToHex(outputs[i]).toString().padStart(64, '0');
+        if (outputs[i]) {
+          oplist[k].opcode === '20' 
+            ? outputs_hex[i] = '0x' + outputs[i].padStart(64, '0')
+            : outputs_hex[i] = '0x' + BigInt(outputs[i]).toString(16).padStart(64, '0');
+        }
       }
     }
-
+    // console.log(outputs_hex.length)
     if (k === 0) {
       for (let i = 0; i < inputs.length; i++) {
         let output = oplist[k].pt_outputs[i][1]
@@ -238,10 +239,10 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
         // console.log(sourcevalue)
         let slice = ''
         for (let i=0; i < sourcevalue.length; i ++){
-          slice = slice + decimalToHex(sourcevalue[i])
+          slice = slice + BigInt(sourcevalue[i]).toString(16)
         }
         sourcevalue = '0x' + slice.toString().padStart(64, '0');
-        // console.log(sourcevalue, outputs_hex[i])
+        
         if (sourcevalue !== outputs_hex[i]) {
           throw new Error('source value mismatch');
         }

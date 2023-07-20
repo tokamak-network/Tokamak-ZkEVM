@@ -194,7 +194,8 @@ export class Decoder {
     const { NWires, wireIndex } = getWire(this.oplist)
     
     const NCONSTWIRES=1
-    const NINPUT = (NWires[0] - NCONSTWIRES)/2
+    // const NINPUT = (NWires[0] - NCONSTWIRES)/2
+    const NINPUT = 70
 
     const RangeCell = getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT)
     const WireListm = getWireList(NWires, RangeCell, listLength) 
@@ -596,25 +597,15 @@ export class Decoder {
         let inputlen = t_oplist.pt_inputs[0].length
         let inputs = []
         let outputs
-        // console.log('pt', pt, t_oplist.pt_inputs)
         let pt_inputs = t_oplist.pt_inputs[0][0][0] ? t_oplist.pt_inputs[0] : t_oplist.pt_inputs
 
         for (let i=0; i < inputlen; i ++) {
-          if (op_pointer === 31) console.log(op_pointer, pt_inputs[i], this.evalEVM(pt_inputs[i]))
-          // if (op_pointer === 18) console.log(op_pointer, pt_inputs[i], this.evalEVM(pt_inputs[i]))
-          // console.log('pt_inputs', inputlen, pt_inputs, this.evalEVM(pt_inputs[i]))
           inputs.push(this.evalEVM(pt_inputs[i]))
         }
 
         if (op === '01') {
           if (inputlen !== 2) throw new Error("Invalid input length");
-          // if (op_pointer === 31) 
-          
           outputs = BigInt(inputs[0]) + BigInt(inputs[1])
-          console.log('add', inputs, outputs, pt_inputs)
-          console.log('output', this.oplist[op_pointer - 1].outputs)
-          // this.oplist[op_pointer - 1].outputs = outputs;
-          // return outputs
         }
         if (op === '02') {
           if (inputlen !== 2) throw new Error("Invalid input length");
