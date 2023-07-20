@@ -11,12 +11,13 @@ import { wire_mapping } from './wire_mappings.js';
 import { Stack } from './evm/stack.js';
 import { Memory } from './evm/memory.js';
 import { handlers } from './evm/functions.js';
-import { keccak256 } from 'ethereum-cryptography/keccak.js'
+// import { keccak256 } from 'ethereum-cryptography/keccak.js'
 import { bytesToHex } from 'ethereum-cryptography/utils.js'
-import { sha256 } from "ethereum-cryptography/sha256.js";
+// import { sha256 } from "ethereum-cryptography/sha256.js";
 
+import hash from 'js-sha3';
 import { BigNumber } from 'ethers'
-import { SHA3 } from 'sha3';
+// import { SHA3 } from 'sha3';
 
 import { 
   hexToInteger, 
@@ -31,6 +32,7 @@ import {
   hd_dec2bin,
   bin2dec,
   bin2decimal,
+  hexToString,
 } from './utils/convert.js';
 
 export class Decoder {
@@ -308,17 +310,18 @@ export class Decoder {
       else if (hexToInteger(op) === hexToInteger('54')) { //sload
         d = 1
         a = 1
-        console.log('54 ',this.evalEVM(stack_pt[0]), stack_pt[0])
+
         const addr = this.evalEVM(stack_pt[0]).toString().padStart(64, '0')
         stack_pt = pop_stack(stack_pt, d)
-        console.log('addr', addr, storage_pt)
-        let sdata_pt;
-        if (storage_pt[addr]) {
-          sdata_pt = storage_pt[addr]
-        } else {
-          sdata_pt = [0, zero_pt, zero_len]
-        }
-        // console.log('sdata_pt', addr, storage_pt[addr],  sdata_pt)
+
+        // let sdata_pt;
+        // if (storage_pt[addr]) {
+        //   sdata_pt = storage_pt[addr]
+        // } else {
+        //   sdata_pt = [0, zero_pt, zero_len]
+        // }
+        const sdata_pt = storage_pt[addr] ? storage_pt[addr] : [0, zero_pt, zero_len]
+        // console.log(sdata_pt)
         stack_pt.unshift(sdata_pt)
       } else if (hexToInteger(op) === hexToInteger('55')) { // store
         d = 2;
@@ -401,31 +404,27 @@ export class Decoder {
           case '20': // keccak256
             a=1;
             const addr = Number(this.evalEVM(stack_pt[0])) + 1
-            console.log('20',stack_pt[1], this.evalEVM(stack_pt[1]))
             let len = Number(this.evalEVM(stack_pt[1]))
-            console.log(len, stack_pt[1], this.evalEVM(stack_pt[1]), Number(this.evalEVM(stack_pt[1])))
             stack_pt = pop_stack(stack_pt, 2)
             
             let len_left = len
             let data_lengths = [];
             let target_mem = []
             let target_addr = addr.toString()
-            // console.log('mem_pt', addr, mem_pt, mem_pt['1'], len_left)
+            console.log('target_addr',target_addr)
             while (len_left > 0) {
               const target = mem_pt[target_addr]
-              // console.log('target', target, len_left, target_addr)
               target_mem.push(target)
               len_left = len_left - 32
               target_addr = Number(target_addr) + 32
             }
 
             d = target_mem.length
-            // console.log('op 20 target', target_mem)
             for (let i = target_mem.length ; i > 0; i --) {
               stack_pt.unshift(target_mem[i - 1])
             }
         }
-        console.log('0p',op, pc, stack_pt)
+        // console.log('0p',op, pc, stack_pt)
         this.op_pointer = this.op_pointer + 1
         this.oplist.push({
           opcode: '',
@@ -580,12 +579,6 @@ export class Decoder {
     if (t_oplist.outputs.length !== 0) {
       return t_oplist.outputs[wire_pointer - 1]
     }
-
-    // if (op_pointer === 41) console.log('41', t_oplist, t_oplist.pt_inputs)
-    // if (op_pointer === 42) console.log('42', t_oplist, t_oplist.pt_inputs)
-    if (op_pointer === 33) console.log('33', t_oplist, t_oplist.pt_inputs)
-    if (op_pointer === 30) console.log('30', t_oplist, t_oplist.pt_inputs)
-    if (op_pointer === 31) console.log('31', t_oplist, t_oplist.pt_inputs)
 
     try {
       if (hexToInteger(op) == hexToInteger('fff')) {
@@ -747,19 +740,15 @@ export class Decoder {
         }
         
         if (op === '20') {
-          //padData.padStart(pc_len * 2, '0')
           const inputLen = inputs.length
           for (let i = 0; i < inputLen; i ++) {
-            inputs[i] = inputs[i].toString().padStart(64, '0')
+            inputs[i] = BigInt(inputs[i]).toString(16).padStart(64, '0')
           }
-          const input_con = Buffer.from(inputs.join(''), 'hex')
-          const hex = bytesToHex(keccak256(input_con))
-          const hash = new SHA3(256);
-
-          hash.update(hex)
-          const res = hash.digest('binary');
-          console.log('op 20', inputs, input_con, bytesToHex(input_con), hex)
-          console.log('res', res, bytesToHex(res), bytesToHex(sha256(input_con)))
+          const { keccak256 } = hash;
+          const input_con = inputs.join('')
+          const hToString = hexToString(input_con)
+          const hex = keccak256(hToString)
+          
           outputs = hex
         } 
         if (op === '1a') {

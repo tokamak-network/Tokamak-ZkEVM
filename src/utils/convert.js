@@ -200,7 +200,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
   for (let k = 0; k < oplist.length; k++) {
     const outputs = oplist[k].outputs;
     let inputs, inputs_hex, outputs_hex;
-    // console.log(k, outputs)
+    // console.log(1, k, outputs)
     if (k === 0) {
       inputs = outputs;
       inputs_hex = new Array(NINPUT).fill('0x0');
@@ -208,9 +208,10 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
     } else {
       inputs = oplist[k].inputs;
       inputs_hex = new Array(inputs.length).fill('0x0');
-      outputs_hex = new Array(outputs.length).fill('0x0');
+      outputs_hex = new Array(outputs.length).fill('0x0000000000000000000000000000000000000000000000000000000000000000');
     }
     // console.log(inputs.length, NINPUT)
+    // console.log(outpu)
     if (inputs.length > NINPUT) {
       throw new Error('Too many inputs');
     }
@@ -221,16 +222,22 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
       }
     }
     // console.log('outputs',outputs)
+    // console.log(outputs_hex.length)
     for (let i = 0; i < outputs_hex.length; i++) {
+      // console.log(outputs.length)
       if (i <= outputs.length) {
         if (outputs[i]) {
+          // console.log(2, oplist[k].opcode, outputs[i])
           oplist[k].opcode === '20' 
             ? outputs_hex[i] = '0x' + outputs[i].padStart(64, '0')
             : outputs_hex[i] = '0x' + BigInt(outputs[i]).toString(16).padStart(64, '0');
+          // console.log(outputs_hex[i])
         }
+      } else {
+        outputs_hex[i] = '0x0'
       }
     }
-    // console.log(outputs_hex.length)
+    // console.log(3, outputs, outputs_hex)
     if (k === 0) {
       for (let i = 0; i < inputs.length; i++) {
         let output = oplist[k].pt_outputs[i][1]
@@ -239,16 +246,16 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
         // console.log(sourcevalue)
         let slice = ''
         for (let i=0; i < sourcevalue.length; i ++){
-          slice = slice + BigInt(sourcevalue[i]).toString(16)
+          slice = slice + decimalToHex(sourcevalue[i]).toString(16)
         }
         sourcevalue = '0x' + slice.toString().padStart(64, '0');
-        
+        // console.log(sourcevalue, outputs_hex[i])
         if (sourcevalue !== outputs_hex[i]) {
           throw new Error('source value mismatch');
         }
       }
     }
-
+    // console.log(outputs_hex)
     InstanceFormatIn.push({ in: inputs_hex });
     InstanceFormatOut.push({ out: outputs_hex });
     !fs.existsSync(`${dir}/instance`) && fs.mkdirSync(`${dir}/instance`)
@@ -372,81 +379,17 @@ export function bin2decimal(binStr) {
   ), BigInt(0));
 }
 
-export function SHA3 (N, d) {
-  // N is a string of any length, d is 224, 256, 384, or 512
-  // Output, H, is a hex string.
-
-  if (N.length % 2 !== 0) {
-    N = '0' + N;
+export function hexToString(hex) {
+  if (!hex.match(/^[0-9a-fA-F]+$/)) {
+    throw new Error('is not a hex string.');
   }
-  const N2 = [];
-  for (let i = 0; i < N.length; i += 2) {
-    N2.push(N.slice(i, i + 2));
+  if (hex.length % 2 !== 0) {
+    hex = '0' + hex;
   }
-
-  // Convert message text to binary array
-  let N_bin = '';
-  for (let i = 0; i < N2.length; i++) {
-    N_bin += ('00000000' + parseInt(N2[i], 16).toString(2)).slice(-8);
+  const bytes = [];
+  for (let n = 0; n < hex.length; n += 2) {
+    const code = parseInt(hex.substr(n, 2), 16);
+    bytes.push(code);
   }
-  N_bin = N_bin.split('').reverse().join('');
-
-  // Append 0, 1 to the message for SHA-3 (Keccak)
-  const B = N_bin.split('').map(bit => parseInt(bit, 10));
-
-  // Compute the SHA-3 using the SPONGE function
-  const Z = SPONGE(B, d);
-
-  // Pad with zeros based on SHA-3 standard
-  const T = Z.concat(Array.from({ length: (-d % 8) }, () => 0));
-
-  // Convert binary digest to hex
-  let H = '';
-  for (let i = 0; i < T.length; i += 8) {
-    const chunk = T.slice(i, i + 8).join('');
-    const hexValue = parseInt(chunk, 2).toString(16).toUpperCase();
-    H += ('00' + hexValue).slice(-2);
-  }
-
-  return H.toLowerCase(); // Convert digest to lower case
-  
+  return bytes;
 }
-
-function SPONGE(N, d) {
-  // Sponge construction uses the KECCAK function as the underlying function
-  // that works on a fixed-length binary vector. A parameter called the rate
-  // (r) is determined by the output digest length (d).
-
-  const r = 1600 - 2 * d;
-  const P = N.concat(pad(r, N.length)); // Padding message
-  const n = P.length / r;
-  let S = new Array(1600).fill(0);
-  let Z = [];
-
-  // Absorbing ...
-  for (let i = 0; i < n; i++) {
-    const messageSlice = P.slice(i * r, (i + 1) * r);
-    const xorResult = messageSlice.map((bit, index) => bit ^ S[index]);
-    S = keccak256(xorResult.concat(S.slice(r)));
-  }
-
-  // Squeezing ...
-  while (d > Z.length) {
-    Z = Z.concat(S.slice(0, r));
-    S = keccak256(S);
-  }
-
-  return Z.slice(0, d); // Output digest of length d
-}
-
-// Assume the KECCAK function is implemented elsewhere.
-// You need to define the KECCAK function separately.
-
-function pad(x, m) {
-  // This is the padding function used by the sponge function to establish the
-  // proper message length such that the message length is an integer multiple
-  // of the rate (r).
-  const j = ((-m - 2) % x + x) % x;
-  return [1, ...new Array(j).fill(0), 1];
-}
-
