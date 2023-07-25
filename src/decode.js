@@ -63,7 +63,7 @@ export class Decoder {
     const Id_len_info_len = 2
 
     const lendata = decimalToHex(Id_len)
-    const Id_lendata = lendata.padStart(Id_len_info_len*2, '0')
+    const Id_lendata = lendata.padStart(Id_len_info_len * 2, '0')
     
     const Is_pt = Id_len_info_pt + Id_len_info_len
     const Is_len = 32
@@ -188,6 +188,8 @@ export class Decoder {
   }
 
   runCode (code, config, dirname) {
+    // console.log(code)
+    // console.log(config)
     this.decode(code, config)
     
     const listLength = this.oplist.length
@@ -258,7 +260,7 @@ export class Decoder {
     while (pc < codelen) {
       const op = decimalToHex(code[pc])
       pc = pc + 1
-      // console.log('op',op, pc )
+      console.log('op',op, pc )
       
       let d = 0
       let a = 0
@@ -508,7 +510,10 @@ export class Decoder {
       // }
       this.vmTraceStep = this.vmTraceStep + 1
     }
+    // console.log(this.oplist)
+    
     outputs_pt[0] ? this.oplist[0].pt_inputs = outputs_pt[0] : this.oplist[0].pt_inputs = []
+
     for (let i = 0; i < this.oplist.length ;i ++) {
       let k_pt_inputs = this.oplist[i].pt_inputs
       k_pt_inputs = this.oplist[i].opcode == 'fff' && !k_pt_inputs[0]

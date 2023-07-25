@@ -5,6 +5,7 @@ import { DefaultStateManager } from '@ethereumjs/statemanager'
 import { EEI } from '@ethereumjs/vm'
 import { Decoder } from '../../decode.js'
 // import { config } from '../../../resource/circuits/erc20_transfer/config.json' 
+import { Buffer } from 'node:buffer';
 import fs from 'fs'
 
 
@@ -34,7 +35,10 @@ const main = async () => {
     // Note that data.stack is not immutable, i.e. it is a reference to the vm's internal stack object
     console.log(`Opcode: ${data.opcode.name}\tStack: ${data.stack}`)
   })
-
+  const concatCode = code.join('')
+  // console.log(Buffer.from('37874feda14610065578063fc735e9914610081575b600080fd5b61004e6100a0565b60405161005c929190610884565b', 'hex'))
+  // console.log(concatCode)
+  // console.log(Buffer.from(concatCode, 'hex'))
   decoder.runCode(
     Buffer.from(code.join(''), 'hex'),
     config,
