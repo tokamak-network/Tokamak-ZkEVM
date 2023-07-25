@@ -510,7 +510,7 @@ export class Decoder {
       // }
       this.vmTraceStep = this.vmTraceStep + 1
     }
-    // console.log(this.oplist)
+    console.log(this.oplist.length)
     
     outputs_pt[0] ? this.oplist[0].pt_inputs = outputs_pt[0] : this.oplist[0].pt_inputs = []
 
