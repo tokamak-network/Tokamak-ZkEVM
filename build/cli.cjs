@@ -21,10 +21,8 @@ var hash = require('js-sha3');
 var r1csfile = require('r1csfile');
 var Logger = require('logplease');
 var child_process = require('child_process');
+var os = require('os');
 var ethers = require('ethers');
-require('@ethereumjs/util');
-var keccak_js = require('ethereum-cryptography/keccak.js');
-var utils_js = require('ethereum-cryptography/utils.js');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -62,6 +60,7 @@ var fastFile__namespace = /*#__PURE__*/_interopNamespace(fastFile);
 var appRootPath__default = /*#__PURE__*/_interopDefaultLegacy(appRootPath);
 var hash__default = /*#__PURE__*/_interopDefaultLegacy(hash);
 var Logger__default = /*#__PURE__*/_interopDefaultLegacy(Logger);
+var os__default = /*#__PURE__*/_interopDefaultLegacy(os);
 
 /* global window */
 
@@ -3439,7 +3438,7 @@ async function groth16Verify(
     hexInputArray[0] = hexKeccakInstance[i][2].slice(2);
     hexInputArray[1] = hexKeccakInstance[i][3].slice(2);
     const conHexIn = hexInputArray[0] + hexInputArray[1];
-    const strInput = hexToString(conHexIn);
+    const strInput = hexToString$1(conHexIn);
 
     const hexHashOut = keccak256(strInput);
     res2 = res2 && (hexExpected == hexHashOut);
@@ -3466,7 +3465,7 @@ async function groth16Verify(
   process.exit(0);
   // return res && res2;
 }
-function hexToString(hex) {
+function hexToString$1(hex) {
   if (!hex.match(/^[0-9a-fA-F]+$/)) {
     throw new Error('is not a hex string.');
   }
@@ -3732,410 +3731,6 @@ async function buildQAP$1(curveName, sD, minSMax, logger) {
   process.exit(0);
 }
 
-const subcircuit = {
-	"wire-list": [
-		{
-			"id": 0,
-			"opcode": "fff",
-			"name": "LOAD",
-			"Nwires": 33,
-			"Out_idx": [
-				1,
-				16
-			],
-			"In_idx": [
-				17,
-				16
-			]
-		},
-		{
-			"id": 1,
-			"opcode": "1",
-			"name": "ADD",
-			"Nwires": 5,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 2,
-			"opcode": "2",
-			"name": "MUL",
-			"Nwires": 4,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 3,
-			"opcode": "3",
-			"name": "SUB",
-			"Nwires": 5,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 4,
-			"opcode": "4",
-			"name": "DIV",
-			"Nwires": 5,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 5,
-			"opcode": "20",
-			"name": "SHA3",
-			"Nwires": 4,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 6,
-			"opcode": "5",
-			"name": "SDIV",
-			"Nwires": 41,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 7,
-			"opcode": "6",
-			"name": "MOD",
-			"Nwires": 5,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 8,
-			"opcode": "7",
-			"name": "SMOD",
-			"Nwires": 41,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 9,
-			"opcode": "8",
-			"name": "ADDMOD",
-			"Nwires": 7,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				3
-			]
-		},
-		{
-			"id": 10,
-			"opcode": "9",
-			"name": "MULMOD",
-			"Nwires": 8,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				3
-			]
-		},
-		{
-			"id": 11,
-			"opcode": "a",
-			"name": "EXP",
-			"Nwires": 32,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 12,
-			"opcode": "14",
-			"name": "EQ",
-			"Nwires": 5,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 13,
-			"opcode": "15",
-			"name": "ISZERO",
-			"Nwires": 4,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				1
-			]
-		},
-		{
-			"id": 14,
-			"opcode": "1b",
-			"name": "SHL",
-			"Nwires": 18,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 15,
-			"opcode": "1c1",
-			"name": "SHR-L",
-			"Nwires": 19,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 16,
-			"opcode": "1c2",
-			"name": "SHR-H",
-			"Nwires": 19,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 17,
-			"opcode": "10",
-			"name": "LT",
-			"Nwires": 255,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 18,
-			"opcode": "11",
-			"name": "GT",
-			"Nwires": 255,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 19,
-			"opcode": "19",
-			"name": "NOT",
-			"Nwires": 255,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				1
-			]
-		},
-		{
-			"id": 20,
-			"opcode": "1a",
-			"name": "BYTE",
-			"Nwires": 274,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 21,
-			"opcode": "1d",
-			"name": "SAR",
-			"Nwires": 286,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 22,
-			"opcode": "b",
-			"name": "SIGNEXTEND",
-			"Nwires": 288,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 23,
-			"opcode": "12",
-			"name": "SLT",
-			"Nwires": 290,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 24,
-			"opcode": "13",
-			"name": "SGT",
-			"Nwires": 290,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 25,
-			"opcode": "16",
-			"name": "AND",
-			"Nwires": 760,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 26,
-			"opcode": "17",
-			"name": "OR",
-			"Nwires": 760,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		},
-		{
-			"id": 27,
-			"opcode": "18",
-			"name": "XOR",
-			"Nwires": 760,
-			"Out_idx": [
-				1,
-				1
-			],
-			"In_idx": [
-				2,
-				2
-			]
-		}
-	]
-};
-
-/**
- * @param {bigint} base base of exponentiation
- * @param {bigint} exp exponent
- * @returns {bigint} base^exp
- */
-BigInt(115792089237316195423570985008687907853269984665640564039457584007913129639936);
-
 function hexToInteger(hex) {
   return parseInt(hex, 16);
 }  
@@ -4153,13 +3748,20 @@ function pop_stack (stack_pt, d) {
   return stack_pt.slice(d)
 }
 
+function getSubcircuit () {
+  // const fileUrl = new URL("../../resource/subcircuits/subcircuit_info.json", import.meta.url)
+  const fileUrl = new URL("../resource/subcircuits/subcircuit_info.json", (typeof document === 'undefined' ? new (require('u' + 'rl').URL)('file:' + __filename).href : (document.currentScript && document.currentScript.src || new URL('cli.cjs', document.baseURI).href)));
+  const subcircuit = JSON.parse(fs.readFileSync(fileUrl));
+  return subcircuit['wire-list']
+}
+
 function getWire(oplist) {
-  const subcircuits = subcircuit['wire-list'];
+  const subcircuits = getSubcircuit();
   const NWires = [];
   const wireIndex = [];
   oplist.map((op) => {
     const wire = subcircuits.find(circuit => {
-      if (circuit.opcode === op.opcode) return true
+      if (hexToInteger(circuit.opcode) === hexToInteger(op.opcode)) return true
     });
     NWires.push(wire.Nwires);
     wireIndex.push(wire.id);
@@ -4250,8 +3852,8 @@ function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell) {
     if (k === 0) {
       outlen = NINPUT;
     } else {
-      oplist_k.pt_inputs.length;
-      outlen = oplist_k.pt_outputs.length;
+      oplist_k.pt_inputs[0].length;
+      outlen = oplist_k.pt_outputs[0][0] ? oplist_k.pt_outputs.length : 1;
     }
 
     if (wireIdx >= NCONSTWIRES && wireIdx < NCONSTWIRES + outlen) {
@@ -4302,12 +3904,14 @@ function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell) {
 
 function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) {
   
-  !fs__default["default"].existsSync(dir) && fs__default["default"].mkdirSync(dir);
+  // !fs.existsSync(dir) && fs.mkdirSync(dir)
+  const system = os__default["default"].platform();
+  const slash = system === 'darwin' ? '/' : '\\';
 
-  const fdset1 = fs__default["default"].openSync(`${dir}/Set_I_V.bin`, 'w');
-  const fdset2 = fs__default["default"].openSync(`${dir}/Set_I_P.bin`, 'w');
-  const fdOpList = fs__default["default"].openSync(`${dir}/OpList.bin`, 'w');
-  const fdWireList = fs__default["default"].openSync(`${dir}/WireList.bin`, 'w');
+  const fdset1 = fs__default["default"].openSync(`${dir}${slash}Set_I_V.bin`, 'w');
+  const fdset2 = fs__default["default"].openSync(`${dir}${slash}Set_I_P.bin`, 'w');
+  const fdOpList = fs__default["default"].openSync(`${dir}${slash}OpList.bin`, 'w');
+  const fdWireList = fs__default["default"].openSync(`${dir}${slash}WireList.bin`, 'w');
 
   const setIDataBuffer = Buffer.from(Uint32Array.from(SetData_I_V).buffer);
   const setPDataBuffer = Buffer.from(Uint32Array.from(SetData_I_P).buffer);
@@ -4329,10 +3933,13 @@ function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) {
 function makeJsonFile (dir, oplist, NINPUT, codewdata) {
   const InstanceFormatIn = [];
   const InstanceFormatOut = [];
+  const system = os__default["default"].platform();
+  const slash = system === 'darwin' ? '/' : '\\';
+
   for (let k = 0; k < oplist.length; k++) {
     const outputs = oplist[k].outputs;
     let inputs, inputs_hex, outputs_hex;
-    console.log(k, outputs);
+    // console.log(1, k, outputs)
     if (k === 0) {
       inputs = outputs;
       inputs_hex = new Array(NINPUT).fill('0x0');
@@ -4340,50 +3947,59 @@ function makeJsonFile (dir, oplist, NINPUT, codewdata) {
     } else {
       inputs = oplist[k].inputs;
       inputs_hex = new Array(inputs.length).fill('0x0');
-      outputs_hex = new Array(outputs.length).fill('0x0');
+      outputs_hex = new Array(outputs.length).fill('0x0000000000000000000000000000000000000000000000000000000000000000');
     }
-    console.log(inputs.length, NINPUT);
+    // console.log(inputs.length, NINPUT)
+    // console.log('output hex',outputs_hex)
     if (inputs.length > NINPUT) {
       throw new Error('Too many inputs');
     }
 
     for (let i = 0; i < inputs_hex.length; i++) {
       if (i < inputs.length) {
-        inputs_hex[i] = '0x' + decimalToHex(inputs[i]).toString().padStart(64, '0');
+        inputs_hex[i] = '0x' + BigInt(inputs[i]).toString(16).padStart(64, '0');
       }
     }
-
+    // console.log('outputs',outputs)
+    // console.log(outputs_hex.length)
     for (let i = 0; i < outputs_hex.length; i++) {
-      if (i < outputs.length) {
-        oplist[k].opcode === '20' 
-          ? outputs_hex[i] = '0x' + outputs[i].padStart(64, '0')
-          : outputs_hex[i] = '0x' + decimalToHex(outputs[i]).toString().padStart(64, '0');
+      // console.log(outputs.length)
+      if (i <= outputs.length) {
+        if (outputs[i]) {
+          // console.log(2, oplist[k].opcode, outputs[i])
+          oplist[k].opcode === '20' 
+            ? outputs_hex[i] = '0x' + outputs[i].padStart(64, '0')
+            : outputs_hex[i] = '0x' + BigInt(outputs[i]).toString(16).padStart(64, '0');
+          // console.log(outputs_hex[i])
+        }
+      } else {
+        outputs_hex[i] = '0x0';
       }
     }
-
+    // console.log(3, outputs, outputs_hex)
     if (k === 0) {
       for (let i = 0; i < inputs.length; i++) {
         let output = oplist[k].pt_outputs[i][1];
         let next = oplist[k].pt_outputs[i][2];
         let sourcevalue = codewdata.slice(output - 1, output + next - 1 );
-
+        // console.log(sourcevalue)
         let slice = '';
         for (let i=0; i < sourcevalue.length; i ++){
-          slice = slice + decimalToHex(sourcevalue[i]);
+          slice = slice + decimalToHex(sourcevalue[i]).toString(16);
         }
         sourcevalue = '0x' + slice.toString().padStart(64, '0');
-        console.log(sourcevalue, outputs_hex[i]);
+        // console.log(sourcevalue, outputs_hex[i])
         if (sourcevalue !== outputs_hex[i]) {
           throw new Error('source value mismatch');
         }
       }
     }
-
+    // console.log(outputs_hex)
     InstanceFormatIn.push({ in: inputs_hex });
     InstanceFormatOut.push({ out: outputs_hex });
-    !fs__default["default"].existsSync(`${dir}/instance`) && fs__default["default"].mkdirSync(`${dir}/instance`);
-    const fdInput = fs__default["default"].openSync(`${dir}/instance/Input_opcode${k}.json`, 'w');
-    const fdOutput = fs__default["default"].openSync(`${dir}/instance/Output_opcode${k}.json`, 'w');
+    !fs__default["default"].existsSync(`${dir}${slash}instance`) && fs__default["default"].mkdirSync(`${dir}${slash}instance`);
+    const fdInput = fs__default["default"].openSync(`${dir}${slash}instance${slash}Input_opcode${k}.json`, 'w');
+    const fdOutput = fs__default["default"].openSync(`${dir}${slash}instance${slash}Output_opcode${k}.json`, 'w');
 
     fs__default["default"].writeSync(fdInput, JSON.stringify(InstanceFormatIn[k]));
     fs__default["default"].writeSync(fdOutput, JSON.stringify(InstanceFormatOut[k]));
@@ -4410,19 +4026,9 @@ function hd_dec2bin(d, n) {
     }
     n = Math.round(Number(n)); // Make sure n is an integer.
   }
-
-  // Actual algorithm
   let e = Math.ceil(Math.log2(Math.max(Number(d))));
-  let s = '';
-  
-  // console.log('d', d.toLocaleString('fullwide', {useGrouping:false}))
-  for (let i = 1 - Math.max(n, e); i <= 0; i++) {
-    // console.log((Math.pow(2, i)))
-    // console.log((Number(d) * Math.pow(2, i)))
-    s += Math.floor(Number(d) * Math.pow(2, i)) % 2;
-  }
 
-  return s;
+  return BigInt(d).toString(2).padStart(Math.max(n, e), '0');
 }
 
 function bin2dec(str) {
@@ -4440,12 +4046,13 @@ function bin2decImpl(s) {
   if (s.length === 0) {
       return null;
   }
-
+  // console.log(s)
   // Remove significant spaces
   let trimmed = s.replace(/\s/g, '');
   const leadingZeros = s.length - trimmed.length;
+  // console.log('trimmed',  trimmed)
   trimmed = '0'.repeat(leadingZeros) + trimmed;
-
+  
   // Check for illegal binary strings
   if (!/^[01]+$/.test(trimmed)) {
       throw new Error('Illegal binary string');
@@ -4462,11 +4069,34 @@ function bin2decImpl(s) {
   return x;
 }
 
+function bin2decimal(binStr) {
+  const lastIndex = binStr.length - 1;
+
+  return Array.from(binStr).reduceRight((total, currValue, index) => (
+      (currValue === '1') ? total + (BigInt(2) ** BigInt(lastIndex - index)) : total
+  ), BigInt(0));
+}
+
+function hexToString(hex) {
+  if (!hex.match(/^[0-9a-fA-F]+$/)) {
+    throw new Error('is not a hex string.');
+  }
+  if (hex.length % 2 !== 0) {
+    hex = '0' + hex;
+  }
+  const bytes = [];
+  for (let n = 0; n < hex.length; n += 2) {
+    const code = parseInt(hex.substr(n, 2), 16);
+    bytes.push(code);
+  }
+  return bytes;
+}
+
 function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {
   const decoder = new Decoder({});
   decoder.getEnv(code, config);
   if (op === '1c') {
-    console.log(stack_pt);
+    // console.log(stack_pt)
     const target_val = decoder.evalEVM(stack_pt[1]);
     const threshold = 2**248;
     const flag = Number(target_val) < threshold ? true : false;
@@ -4483,9 +4113,11 @@ function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {
   // console.log('op',op, stack_pt)
   let checks = 0;
   oplist[0].opcode = 'fff';
+  // console.log('stack_pt', op, stack_pt)
   for (let i = 0; i < d; i++) {
     if (stack_pt[i][0] === 0) {
       let data = stack_pt[i];
+      
       let checkArray = [];
       if (i==1 && (op === '1c1' || op === '1c2')) {
         let original_bytelength = data[2];
@@ -4499,8 +4131,9 @@ function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {
       if (oplist[0].pt_outputs.length == 0) {
         checks = 0;
       } else {
-        for (let i=0; i<oplist[0].pt_outputs.length; i ++) {
-          if (oplist[0].pt_outputs[i] === data) {
+        for (let i = 0; i < oplist[0].pt_outputs.length; i ++) {
+          // if (op === 'fff') console.log('pt_output',oplist[0].pt_outputs[i], data, oplist[0].pt_outputs[i] == data, compare(oplist[0].pt_outputs[i], data))
+          if (compare(oplist[0].pt_outputs[i], data)) {
             checks = checks + 1;
             checkArray.push(1);
           } else {
@@ -4510,7 +4143,7 @@ function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {
       }
       
       const index = checkArray.findIndex(check => check === 1);
-
+      if (op === 'fff') console.log('pt_output',oplist[0].pt_outputs[i], data, oplist[0].pt_outputs[i] == data, compare(oplist[0].pt_outputs[i], data));
       if (index == -1 || checks == 0) {
         oplist[0].pt_outputs.push(data);
         stack_pt[i] = [1, oplist[0].pt_outputs.length, 32];
@@ -4523,7 +4156,8 @@ function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {
       }
     }
   }
-  
+
+  // console.log('wire_map', op, stack_pt.slice(0, d), op_pointer + 1, 1, 32)
   oplist[op_pointer].opcode = op;
   oplist[op_pointer].pt_inputs.push(stack_pt.slice(0, d));
   oplist[op_pointer].pt_outputs.push(op_pointer + 1, 1, 32);
@@ -4531,7 +4165,14 @@ function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {
   return oplist
 }
 
-// import transaction from '../resource/circuits/schnorr_prove/transaction1.json' assert {type: 'json'};
+function compare(output, data) {
+  let values = [];
+  for (let i=0; i<output.length; i ++) {
+    const value = output[i] === data[i];
+    values.push(value);
+  }
+  return values[0] && values[1] && values[2]
+}
 
 class Decoder {
   constructor () {
@@ -4561,7 +4202,7 @@ class Decoder {
     const Id_len_info_len = 2;
 
     const lendata = decimalToHex(Id_len);
-    const Id_lendata = lendata.padStart(Id_len_info_len*2, '0');
+    const Id_lendata = lendata.padStart(Id_len_info_len * 2, '0');
     
     const Is_pt = Id_len_info_pt + Id_len_info_len;
     const Is_len = 32;
@@ -4575,7 +4216,6 @@ class Decoder {
     const calldepth_len = 2;
     const balance_pt = calldepth_pt + calldepth_len;
     const balance_len = 32;
-  
     const zerodata = '00';
     const zero_pt = balance_pt + balance_len;
     const zero_len = 1;
@@ -4691,31 +4331,17 @@ class Decoder {
     
     const listLength = this.oplist.length;
     const oplist = this.oplist;
-    // console.log(oplist)
     const { NWires, wireIndex } = getWire(this.oplist);
     
     const NCONSTWIRES=1;
     const NINPUT = (NWires[0] - NCONSTWIRES)/2;
+    // const NINPUT = 70
 
     const RangeCell = getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT);
     const WireListm = getWireList(NWires, RangeCell, listLength); 
-    // console.log(wireIndex)
     let mWires = WireListm.length;
     
     const { SetData_I_V, SetData_I_P } = getIVIP(WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell);
-
-    // const dir = `${process.cwd()}/resource/circuits/${dirname}`
-    
-    // console.log(listLength, NWires, wireIndex, NINPUT)
-    // console.log(wireIndex)
-    // for (let i=0; i < WireListm.length; i ++) {
-    //   console.log(WireListm[i])
-    // }
-
-    // console.log(SetData_I_V)
-    // for (let i=0; i < SetData_I_V.length; i++) {
-    //   console.log(i, SetData_I_V[i])
-    // }
 
     const dir = dirname;
     
@@ -4752,7 +4378,6 @@ class Decoder {
     let mem_pt = {};
 
     let pc = 0;
-    // console.log(code)
     while (pc < codelen) {
       const op = decimalToHex(code[pc]);
       pc = pc + 1;
@@ -4765,9 +4390,7 @@ class Decoder {
         && hexToInteger(op) - hexToInteger('60') < 32) {
         const pushlen = hexToInteger(op) - hexToInteger('60') + 1;
         
-        // if (op === '61') console.log('push1', hexToInteger(op), [0, pc+call_pt[calldepth - 1][0], pushlen], pushlen, pc)
         stack_pt.unshift([0, pc+call_pt[calldepth - 1][0], pushlen]);
-        // console.log('push stack', stack_pt)
         pc = pc + pushlen;
       } else if (hexToInteger(op) === hexToInteger('50')) {
         d = 1;
@@ -4778,32 +4401,31 @@ class Decoder {
       else if (hexToInteger(op) === hexToInteger('51')) { // mload
         d = 1;
         a = 0;
-        const addr = this.evalEVM(stack_pt[0]) + 1;
-        // console.log(addr)
+        const addr = Number(this.evalEVM(stack_pt[0])) + 1;
         stack_pt = pop_stack(stack_pt,d);
 
         // if (mem_pt.length === 0) {
 
         // }
         
-        stack_pt.unshift(mem_pt[Number(addr)]);
+        stack_pt.unshift(mem_pt[addr]);
       } else if (hexToInteger(op) === hexToInteger('52')) { //mstore
         d = 2;
         a = 0;
-        console.log(stack_pt[0]);
-        const addr = this.evalEVM(stack_pt[0]) + 1;
+
+        const addr = Number(this.evalEVM(stack_pt[0])) + 1;
         const data = stack_pt[1];
-        mem_pt[Number(addr)] = data;
+        mem_pt[addr] = data;
 
         stack_pt = pop_stack(stack_pt, d);
       } else if (hexToInteger(op) === hexToInteger('53')) {
         d = 2;
         a = 0;
-        const addr = this.evalEVM(stack_pt[0]) + 1;
+        const addr = Number(this.evalEVM(stack_pt[0])) + 1;
         
         const data = stack_pt[1];
         data[2] = 1;
-        mem_pt[Number(addr)] = data;
+        mem_pt[addr] = data;
         
         stack_pt = pop_stack(stack_pt, d);
       }
@@ -4813,13 +4435,9 @@ class Decoder {
 
         const addr = this.evalEVM(stack_pt[0]).toString().padStart(64, '0');
         stack_pt = pop_stack(stack_pt, d);
-        
-        let sdata_pt;
-        if (storage_pt[Number(addr)]) {
-          sdata_pt = storage_pt[Number(addr)];
-        } else {
-          sdata_pt = [0, zero_pt, zero_len];
-        }
+
+        const sdata_pt = storage_pt[addr] ? storage_pt[addr] : [0, zero_pt, zero_len];
+
         stack_pt.unshift(sdata_pt);
       } else if (hexToInteger(op) === hexToInteger('55')) { // store
         d = 2;
@@ -4829,7 +4447,7 @@ class Decoder {
         const sdata_pt = stack_pt[1];
         stack_pt = pop_stack(stack_pt, d);
 
-        storage_pt[Number(addr)] = sdata_pt;
+        storage_pt[addr] = sdata_pt;
         
       } else if (hexToInteger(op) === hexToInteger('33')) { // caller
         d = 0;
@@ -4844,12 +4462,13 @@ class Decoder {
       } else if (hexToInteger(op) === hexToInteger('35')) { // calldataload
         d = 1;
         a = 1;
+
         const offset = this.evalEVM(stack_pt[0]);
-        
+
         let pt = Id_pt + Number(offset);
         let chose_data_len = Math.min(Id_len - Number(offset), 32);
-        console.log(offset, pt, chose_data_len);
         stack_pt = pop_stack(stack_pt, d);
+
         if (pt >= Id_pt && pt + chose_data_len - 1 <= Id_pt + Id_len - 1) {
           stack_pt.unshift([0, pt, chose_data_len]);
         }
@@ -4900,28 +4519,27 @@ class Decoder {
             a = 1;
           case '20': // keccak256
             a=1;
-            const addr = this.evalEVM(stack_pt[0]) + 1;
-            const len = this.evalEVM(stack_pt[1]);
-
+            const addr = Number(this.evalEVM(stack_pt[0])) + 1;
+            let len = Number(this.evalEVM(stack_pt[1]));
             stack_pt = pop_stack(stack_pt, 2);
-
-            let len_left = Number(len);
+            
+            let len_left = len;
             let target_mem = [];
-            let target_addr = Number(addr);
+            let target_addr = addr.toString();
 
             while (len_left > 0) {
               const target = mem_pt[target_addr];
               target_mem.push(target);
               len_left = len_left - 32;
-              target_addr = target_addr + 32;
+              target_addr = Number(target_addr) + 32;
             }
 
             d = target_mem.length;
-            for (let i = 0; i < target_mem.length; i ++) {
-              stack_pt.push(target_mem[i]);
+            for (let i = target_mem.length ; i > 0; i --) {
+              stack_pt.unshift(target_mem[i - 1]);
             }
         }
-        // console.log('0p',op)
+        console.log('op', op, pc, stack_pt);
         this.op_pointer = this.op_pointer + 1;
         this.oplist.push({
           opcode: '',
@@ -4934,18 +4552,16 @@ class Decoder {
 
         stack_pt = pop_stack(stack_pt, d);
         stack_pt.unshift(this.oplist[this.op_pointer].pt_outputs);
-        // console.log('wiremap', stack_pt)
-        // console.log('stack_pt input', this.oplist[0].pt_outputs)
       }
       else if (hexToInteger(op) == hexToInteger('f3') || hexToInteger(op) == hexToInteger('fd')) {
         d=2;
         a=0;
-        const addr_offset = this.evalEVM(stack_pt[0]) + (1);
+        const addr_offset = Number(this.evalEVM(stack_pt[0])) + 1;
         const addr_len = this.evalEVM(stack_pt[1]);
 
         outputs_pt = [];
         let len_left = Number(addr_len);
-        let addr = Number(addr_offset);
+        let addr = addr_offset;
 
         while (len_left > 0) {
           let target_data = mem_pt[addr];
@@ -4977,9 +4593,8 @@ class Decoder {
 
         const target_pc = this.evalEVM(stack_pt[0]);
         const condition = this.evalEVM(stack_pt[1]);
-        console.log('condition', stack_pt[1], condition, target_pc);
+        
         if (Number(condition) !== 0) {
-          console.log('target', target_pc);
           pc = Number(target_pc);
           // if (code.slice(calldepth - 1,target_pc)) {
 
@@ -4993,8 +4608,9 @@ class Decoder {
         codewdata[pc_pt];
         stack_pt.unshift([0, pc_pt, pc_len]);
       } else if (hexToInteger(op) == hexToInteger('5b')) ;
-      else if (hexToInteger(op) == hexToInteger('a0')) {
-        const lognum = hexToInteger(op) - hexToInteger('a0') + 1;
+      else if (hexToInteger(op) - hexToInteger('a0') >= 0
+        && hexToInteger(op) - hexToInteger('a0') < 5) {
+        const lognum = hexToInteger(op) - hexToInteger('a0'); 
         d = lognum + 2;
         a = 0;
         stack_pt=pop_stack(stack_pt, d);
@@ -5009,9 +4625,12 @@ class Decoder {
       // }
       this.vmTraceStep = this.vmTraceStep + 1;
     }
+    
     outputs_pt[0] ? this.oplist[0].pt_inputs = outputs_pt[0] : this.oplist[0].pt_inputs = [];
+
     for (let i = 0; i < this.oplist.length ;i ++) {
       let k_pt_inputs = this.oplist[i].pt_inputs;
+      // console.log(k_pt_inputs)
       k_pt_inputs = this.oplist[i].opcode == 'fff' && !k_pt_inputs[0]
                     ? [] 
                     : k_pt_inputs[0][0] 
@@ -5020,9 +4639,8 @@ class Decoder {
       let k_inputs = [];
 
       for (let j=0; j<k_pt_inputs.length ; j++) {
-        const a = this.evalEVM(k_pt_inputs[j]);
-        // console.log('inpupt',k_pt_inputs[j], a, this.oplist[i].outputs)
-        k_inputs.push(a);
+        const result = this.evalEVM(k_pt_inputs[j]);
+        k_inputs.push(result);
       }
       let k_pt_outputs = this.oplist[i].pt_outputs;
       const opcode = this.oplist[i].opcode;
@@ -5032,18 +4650,12 @@ class Decoder {
       for (let j = 0; j < k_pt_outputs.length ; j ++) {
         let k_output = this.evalEVM(k_pt_outputs[j]);
         k_output = k_output === undefined ? 0 : k_output;
-        // console.log('aaa', k_pt_outputs[j], k_output)
         k_outputs.push(k_output);
       }
       this.oplist[i].inputs=k_inputs;
       this.oplist[i].outputs=k_outputs;
-      // console.log('k_inputs', k_inputs)
-      // console.log('k_outputs',k_outputs)
-      
     }
-    // console.log(this.oplist)
-    // console.log('input check',this.oplist[2].inputs)
-    // console.log('input check',this.oplist[2].outputs)
+    console.log('oplist length', this.oplist.length);
     return outputs_pt
   }
 
@@ -5055,95 +4667,87 @@ class Decoder {
     const byte_size = pt[2];
 
     if (op_pointer == 0) {
-      // console.log(wire_pointer, byte_size)
       const slice = codewdata.slice(wire_pointer - 1, wire_pointer + byte_size - 1);
       let output = '';
       for (let i=0; i < slice.length; i ++){
         output = output + decimalToHex(slice[i]);
       }
-      // console.log(
-      //   output, 
-      //   BigNumber.from('0x' +output).toString(), 
-      //   Number(BigNumber.from('0x' +output).toString()),
-      //   BigInt('0x' + output).toLocaleString('fullwide', { useGrouping: false })
-      // )
-      
+      // console.log('output', output,  BigNumber.from('0x' + output).toString())
       return ethers.BigNumber.from('0x' + output).toString()
-      // return Number(BigInt('0x' + output).toString())
     }
     
     let t_oplist = this.oplist[op_pointer - 1];
+    // console.log('t_oplist', pt, op_pointer, t_oplist)
     const op = t_oplist.opcode;
     if (t_oplist.outputs.length !== 0) {
       return t_oplist.outputs[wire_pointer - 1]
     }
-    if (op_pointer === 2) console.log(t_oplist);
+
     try {
       if (hexToInteger(op) == hexToInteger('fff')) {
         let new_pt = t_oplist.pt_outputs[wire_pointer - 1];
-        
+        // if (wire_pointer === 32) console.log('32', new_pt, this.evalEVM(new_pt), this.evalEVM([0, 5927, 32]), t_oplist.pt_outputs)
         const value = this.evalEVM(new_pt);
         return value
       } else {
         let inputlen = t_oplist.pt_inputs[0].length;
         let inputs = [];
         let outputs;
-        // if (op_pointer === 2) console.log('333', wire_pointer, byte_size)
         let pt_inputs = t_oplist.pt_inputs[0][0][0] ? t_oplist.pt_inputs[0] : t_oplist.pt_inputs;
-        // if (op==='2') console.log('pt_inputs', pt_inputs)
+
         for (let i=0; i < inputlen; i ++) {
-          // if(op==='2') console.log('inputs 19', pt_inputs[i], this.evalEVM(pt_inputs[i]))
           inputs.push(this.evalEVM(pt_inputs[i]));
         }
-        // if (op_pointer === 3) console.log('333', inputs, op)
-        if (op_pointer === 16) console.log(inputs, op);
 
         if (op === '01') {
           if (inputlen !== 2) throw new Error("Invalid input length");
-          outputs = inputs[0] + inputs[1];
+          outputs = BigInt(inputs[0]) + BigInt(inputs[1]);
         }
         if (op === '02') {
           if (inputlen !== 2) throw new Error("Invalid input length");
-          outputs = inputs[0] * inputs[1];
+          outputs = BigInt(inputs[0]) * BigInt(inputs[1]);
         }
         if (op === '03') {
           if (inputlen !== 2) throw new Error("Invalid input length");
-          outputs = inputs[0] - inputs[1];
+          if (op_pointer === 45) console.log('45', inputs[0], inputs[1], pt_inputs);
+          outputs = BigInt(inputs[0]) - BigInt(inputs[1]);
         }
         if (op === '04') {
           if (inputlen !== 2) throw new Error("Invalid input length");
-          outputs = inputs[0] / inputs[1];
+          if (op_pointer == 35) console.log('35 input',inputs);
+          outputs = BigInt(inputs[0]) / BigInt(inputs[1]);
         }
         if (op === '05') {
           if (inputlen !== 2) throw new Error("Invalid input length");
-          const result = inputs[1] === 0 ? 0 : inputs[0] / inputs[1];
+          const result = BigInt(inputs[1]) === 0 ? 0 : BigInt(inputs[0]) / BigInt(inputs[1]);
           outputs = result;
         }
         if (op === '06') {
           if (inputlen !== 2) throw new Error("Invalid input length");
-          const result = inputs[1] === 0 ? inputs[1] : inputs[0] % inputs[1];
+          const result = BigInt(inputs[1]) === 0 ? BigInt(inputs[1]) : BigInt(inputs[0]) % BigInt(inputs[1]);
           outputs = result;
         }
         if (op === '0a') {
           if (inputlen !== 2) throw new Error("Invalid input length");
-          outputs = inputs[0] ** inputs[1];
+          outputs = BigInt(inputs[0]) ** BigInt(inputs[1]);
         } 
         if (op === '10') {
           if (inputlen !== 2) throw new Error("Invalid input length");
-          inputs[0] = inputs[0] % (2**256);
-          inputs[1] = inputs[1] % (2**256);
+          inputs[0] = BigInt(inputs[0]) % BigInt((2**256));
+          inputs[1] = BigInt(inputs[1]) % BigInt(2**256);
          
           outputs = inputs[0] < inputs[2] ? 1 : 0;
         }
         if (op === '11') {
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          inputs[0] = inputs[0] % (2**256);
-          inputs[1] = inputs[1] % (2**256);
+          if (inputlen !== 2 && !inputs[0] && !inputs[1]) throw new Error("Invalid input length");
+          console.log('11', inputs);
+          inputs[0] = BigInt(inputs[0]) % BigInt(2**256);
+          inputs[1] = BigInt(inputs[1]) % BigInt(2**256);
          
           outputs = inputs[0] > inputs[2] ? 1 : 0;
         }
         if (op === '12') { // slt: signed less than
-          if (inputlen !== 2) throw new Error("Invalid input length");
+          if (inputlen !== 2 && !inputs[0] && !inputs[1]) throw new Error("Invalid input length");
           
           var inputlengths = [pt_inputs[0][2], pt_inputs[1][2]];
           var bin_input = [];
@@ -5158,11 +4762,10 @@ class Decoder {
             signed_inputs[i] = -bin2dec(temp[0]) * Math.pow(2, inputlengths[i] * 8 - 1) + bin2dec(temp.slice(1));
           }
           
-          outputs = Number(signed_inputs[0] < signed_inputs[1]); 
-          console.log(12, outputs, signed_inputs[0], signed_inputs[1]);       
+          outputs = BigInt(signed_inputs[0] < signed_inputs[1]);      
         }
         if (op === '13') { // sgt: signed greater than
-          if (inputlen !== 2) throw new Error("Invalid input length");
+          if (inputlen !== 2 && !inputs[0] && !inputs[1]) throw new Error("Invalid input length");
           
           var inputlengths = [pt_inputs[0][2], pt_inputs[1][2]];
           var bin_input = [];
@@ -5177,19 +4780,15 @@ class Decoder {
             signed_inputs[i] = -bin2dec(temp[0]) * Math.pow(2, inputlengths[i] * 8 - 1) + bin2dec(temp.slice(1));
           }
           
-          outputs = Number(signed_inputs[0] > signed_inputs[1]);
-          
+          outputs = BigInt(signed_inputs[0] > signed_inputs[1]);  
         }
         if (op === '14') { // equality
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          // console.log('14', inputs[0], inputs[1])
-          outputs = Number(Number(inputs[0]) === Number(inputs[1]));
-          
+          if (inputlen !== 2 && inputs[0] && inputs[1]) throw new Error("Invalid input length");
+          outputs = BigInt(inputs[0]) === BigInt(inputs[1]);
         }
         if (op === '15') { // iszero
           if (inputlen !== 1) throw new Error("Invalid input length");
-          outputs = Number(Number(inputs[0]) === 0);
-          console.log('15 output',Number(inputs[0]), outputs);
+          outputs = BigInt(Number(inputs[0]) === 0);
         }
         if (op === '16') { // and
           if (inputlen !== 2) throw new Error("Invalid input length");
@@ -5198,14 +4797,12 @@ class Decoder {
           bin_input[0] = hd_dec2bin(inputs[0], 253);
           bin_input[1] = hd_dec2bin(inputs[1], 253);
           
-          var bin_and_result = bin_input[0].split('').map((digit, index) => {
-            return (Number(digit) * Number(bin_input[1][index])).toString();
-          }).join('');
+          // var bin_and_result = bin_input[0].split('').map((digit, index) => {
+          //   return (BigInt(digit) * BigInt(bin_input[1][index])).toString();
+          // }).join('');
+          let bin_and_result1 = BigInt(inputs[0]) & BigInt(inputs[1]);
           
-          outputs = Number(bin2dec(bin_and_result));
-          console.log(inputs[0]);
-          console.log(inputs[1]);
-          console.log(bin_input[1],bin_and_result, outputs);
+          outputs = bin_and_result1.toString();
         }
         if (op === '17') { // or
           if (inputlen !== 2) throw new Error("Invalid input length");
@@ -5213,12 +4810,9 @@ class Decoder {
           var bin_input = [];
           bin_input[0] = hd_dec2bin(inputs[0], 253);
           bin_input[1] = hd_dec2bin(inputs[1], 253);
-          
-          var bin_or_result = bin_input[0].split('').map((digit, index) => {
-            return (Math.floor(0.5 * (Number(digit) + Number(bin_input[1][index])))).toString();
-          }).join('');
-          
-          outputs = Number(bin2dec(bin_or_result));
+          const bin_or_result = BigInt(inputs[0]) | BigInt(inputs[1]);
+
+          outputs = bin_or_result.toString();
           
         }
         if (op === '18') { // xor
@@ -5229,62 +4823,63 @@ class Decoder {
           bin_input[1] = hd_dec2bin(inputs[1], 253);
           
           var bin_not_result = bin_input[0].split('').map((digit, index) => {
-            return (Number(digit) + Number(bin_input[1][index])) % 2;
+            return (BigInt(digit) + BigInt(bin_input[1][index])) % 2;
           }).join('');
           
-          outputs = Number(bin2dec(bin_not_result));
-          
+          outputs = BigInt(bin2dec(bin_not_result));  
         }
         if (op === '19') { // not
           if (inputlen !== 1) throw new Error("Invalid input length");
           
           var bin_input = hd_dec2bin(inputs[0], 253);
           var bin_not_result = bin_input.split('').map((digit) => {
-            return (Number(digit) + 1) % 2;
+            return digit === '0' ? '1' : '0'
           }).join('');
           
-          outputs = Number(bin2dec(bin_not_result));
+          outputs = bin2decimal(bin_not_result).toString();
         }
         
         if (op === '20') {
-          //padData.padStart(pc_len * 2, '0')
           const inputLen = inputs.length;
           for (let i = 0; i < inputLen; i ++) {
-            inputs[i] = inputs[i].toString().padStart(64, '0');
+            inputs[i] = BigInt(inputs[i]).toString(16).padStart(64, '0');
           }
-          const input_con = Buffer.from(inputs.join(''), 'hex');
-          const hex = utils_js.bytesToHex(keccak_js.keccak256(input_con));
+          const { keccak256 } = hash__default["default"];
+          const input_con = inputs.join('');
+          const hToString = hexToString(input_con);
+          const hex = keccak256(hToString);
+          
           outputs = hex;
         } 
         if (op === '1a') {
-          if (inputlen !== 2) throw new Error("Invalid input length");
+          if (inputlen !== 2 && inputs[0] && inputs[1]) throw new Error("Invalid input length");
           
           var hex_input2 = hd_dec2hex(inputs[1], 64);
-          var input1 = Number(inputs[0]);
+          var input1 = BigInt(inputs[0]);
           
           if (input1 >= 32) {
-            outputs = Number(0);
+            outputs = BigInt(0);
           } else {
             var pos = input1 * 2 + 1;
-            outputs = Number(hex2dec(hex_input2.slice(pos, pos + 2)));
+            outputs = BigInt(hex2dec(hex_input2.slice(pos, pos + 2)));
           }
         }
         if (op === '1b' || op === '1c1' || op === '1c2') {
-          
-          inputs[1] = typeof inputs[1] == 'bigint' ? Number(BigInt('0x' + inputs[1]).toString()) : inputs[1];
-          // console.log(inputs)
-          inputs[0] = inputs[0] % (2 ** 256);
-          inputs[1] = inputs[1] % (2 ** 256);
+          inputs[1] = typeof inputs[1] == 'bigint' ? BigInt(BigInt('0x' + inputs[1]).toString()) : inputs[1];
+          inputs[0] = BigInt(inputs[0]) % BigInt(2 ** 256);
+          inputs[1] = BigInt(inputs[1]) % BigInt(2 ** 256);
+
           if (op === '1b') {
             outputs = inputs[1] * (2 ** inputs[0]);
           } else if (op === '1c1') {
-            outputs = Math.floor(inputs[1] / (2 ** inputs[0]));
+            outputs = Math.floor(inputs[1] / BigInt(BigInt(2) ** inputs[0]));
           } if (op === '1c2') {
-            return  Math.floor(inputs[1] / (2 ** (inputs[0] - 8)))
+            const calc = inputs[1] / BigInt(BigInt(2) ** (inputs[0] - BigInt(8)));
+            outputs = Math.floor(Number(calc));
           }
         }
-        // console.log('ouputsss', outputs, op_pointer, op)
-        this.oplist[op_pointer - 1].outputs = outputs;
+
+        this.oplist[op_pointer - 1].outputs.push(outputs);
         return outputs;
       }
 
@@ -5295,7 +4890,7 @@ class Decoder {
 }
 
 function getNumberOfInputs (op) {
-  const subcircuits = subcircuit['wire-list'];
+  const subcircuits = getSubcircuit();
   for (let i = 0; i < subcircuits.length; i++) {
     const opcode = subcircuits[i].opcode;
     if (hexToInteger(opcode) === hexToInteger(op)) {

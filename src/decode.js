@@ -1,5 +1,5 @@
-// import transaction from '../resource/circuits/schnorr_prove/transaction1.json' assert {type: 'json'};
-import subcircuit from '../resource/subcircuits/subcircuit_info.json' assert {type: 'json'};
+import { readFileSync } from "fs";
+// import subcircuit from '../resource/subcircuits/subcircuit_info.json' assert {type: 'json'};
 import { wire_mapping } from './wire_mappings.js';
 
 import hash from 'js-sha3';
@@ -19,6 +19,7 @@ import {
   bin2dec,
   bin2decimal,
   hexToString,
+  getSubcircuit
 } from './utils/convert.js';
 
 export class Decoder {
@@ -742,7 +743,7 @@ export class Decoder {
 }
 
 function getNumberOfInputs (op) {
-  const subcircuits = subcircuit['wire-list']
+  const subcircuits = getSubcircuit()
   for (let i = 0; i < subcircuits.length; i++) {
     const opcode = subcircuits[i].opcode;
     if (hexToInteger(opcode) === hexToInteger(op)) {

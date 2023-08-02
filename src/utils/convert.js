@@ -1,5 +1,5 @@
-import { subcircuit } from "../../resource/subcircuits/subcircuit_info.js"
 import fs from 'fs'
+import { readFileSync } from "fs";
 import os from 'os';
 
 
@@ -20,13 +20,20 @@ export function pop_stack (stack_pt, d) {
   return stack_pt.slice(d)
 }
 
+export function getSubcircuit () {
+  // const fileUrl = new URL("../../resource/subcircuits/subcircuit_info.json", import.meta.url)
+  const fileUrl = new URL("../resource/subcircuits/subcircuit_info.json", import.meta.url)
+  const subcircuit = JSON.parse(readFileSync(fileUrl))
+  return subcircuit['wire-list']
+}
+
 export function getWire(oplist) {
-  const subcircuits = subcircuit['wire-list']
+  const subcircuits = getSubcircuit()
   const NWires = []
   const wireIndex = []
   oplist.map((op) => {
     const wire = subcircuits.find(circuit => {
-      if (circuit.opcode === op.opcode) return true
+      if (hexToInteger(circuit.opcode) === hexToInteger(op.opcode)) return true
     })
     NWires.push(wire.Nwires)
     wireIndex.push(wire.id)
@@ -205,7 +212,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
   for (let k = 0; k < oplist.length; k++) {
     const outputs = oplist[k].outputs;
     let inputs, inputs_hex, outputs_hex;
-    // console.log(1, k, outputs)
+
     if (k === 0) {
       inputs = outputs;
       inputs_hex = new Array(NINPUT).fill('0x0');
@@ -215,8 +222,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
       inputs_hex = new Array(inputs.length).fill('0x0');
       outputs_hex = new Array(outputs.length).fill('0x0000000000000000000000000000000000000000000000000000000000000000');
     }
-    // console.log(inputs.length, NINPUT)
-    // console.log('output hex',outputs_hex)
+
     if (inputs.length > NINPUT) {
       throw new Error('Too many inputs');
     }
@@ -226,41 +232,35 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
         inputs_hex[i] = '0x' + BigInt(inputs[i]).toString(16).padStart(64, '0');
       }
     }
-    // console.log('outputs',outputs)
-    // console.log(outputs_hex.length)
+
     for (let i = 0; i < outputs_hex.length; i++) {
-      // console.log(outputs.length)
       if (i <= outputs.length) {
         if (outputs[i]) {
-          // console.log(2, oplist[k].opcode, outputs[i])
           oplist[k].opcode === '20' 
             ? outputs_hex[i] = '0x' + outputs[i].padStart(64, '0')
             : outputs_hex[i] = '0x' + BigInt(outputs[i]).toString(16).padStart(64, '0');
-          // console.log(outputs_hex[i])
         }
       } else {
         outputs_hex[i] = '0x0'
       }
     }
-    // console.log(3, outputs, outputs_hex)
+
     if (k === 0) {
       for (let i = 0; i < inputs.length; i++) {
         let output = oplist[k].pt_outputs[i][1]
         let next = oplist[k].pt_outputs[i][2]
         let sourcevalue = codewdata.slice(output - 1, output + next - 1 )
-        // console.log(sourcevalue)
+
         let slice = ''
         for (let i=0; i < sourcevalue.length; i ++){
           slice = slice + decimalToHex(sourcevalue[i]).toString(16)
         }
         sourcevalue = '0x' + slice.toString().padStart(64, '0');
-        // console.log(sourcevalue, outputs_hex[i])
-        if (sourcevalue !== outputs_hex[i]) {
-          throw new Error('source value mismatch');
-        }
+
+        if (sourcevalue !== outputs_hex[i]) throw new Error('source value mismatch');
       }
     }
-    // console.log(outputs_hex)
+
     InstanceFormatIn.push({ in: inputs_hex });
     InstanceFormatOut.push({ out: outputs_hex });
     !fs.existsSync(`${dir}${slash}instance`) && fs.mkdirSync(`${dir}${slash}instance`)
@@ -353,11 +353,9 @@ function bin2decImpl(s) {
   if (s.length === 0) {
       return null;
   }
-  // console.log(s)
   // Remove significant spaces
   let trimmed = s.replace(/\s/g, '');
   const leadingZeros = s.length - trimmed.length;
-  // console.log('trimmed',  trimmed)
   trimmed = '0'.repeat(leadingZeros) + trimmed;
   
   // Check for illegal binary strings
