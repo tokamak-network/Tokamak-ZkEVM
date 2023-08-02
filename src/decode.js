@@ -1,5 +1,5 @@
 // import transaction from '../resource/circuits/schnorr_prove/transaction1.json' assert {type: 'json'};
-import { subcircuit } from '../resource/subcircuits/subcircuit_info.js'
+import subcircuit from '../resource/subcircuits/subcircuit_info.json' assert {type: 'json'};
 import { wire_mapping } from './wire_mappings.js';
 
 import hash from 'js-sha3';
@@ -374,7 +374,7 @@ export class Decoder {
             let data_lengths = [];
             let target_mem = []
             let target_addr = addr.toString()
-            console.log('target_addr',target_addr)
+
             while (len_left > 0) {
               const target = mem_pt[target_addr]
               target_mem.push(target)
@@ -482,6 +482,7 @@ export class Decoder {
 
     for (let i = 0; i < this.oplist.length ;i ++) {
       let k_pt_inputs = this.oplist[i].pt_inputs
+      // console.log(k_pt_inputs)
       k_pt_inputs = this.oplist[i].opcode == 'fff' && !k_pt_inputs[0]
                     ? [] 
                     : k_pt_inputs[0][0] 
@@ -506,7 +507,7 @@ export class Decoder {
       this.oplist[i].inputs=k_inputs
       this.oplist[i].outputs=k_outputs
     }
-    
+    console.log('oplist length', this.oplist.length)
     return outputs_pt
   }
 

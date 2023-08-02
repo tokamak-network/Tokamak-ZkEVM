@@ -16,7 +16,7 @@ export const subcircuit = {
 		},
 		{
 			"id": 1,
-			"opcode": "01",
+			"opcode": "1",
 			"name": "ADD",
 			"Nwires": 5,
 			"Out_idx": [
@@ -30,7 +30,7 @@ export const subcircuit = {
 		},
 		{
 			"id": 2,
-			"opcode": "02",
+			"opcode": "2",
 			"name": "MUL",
 			"Nwires": 4,
 			"Out_idx": [
@@ -44,7 +44,7 @@ export const subcircuit = {
 		},
 		{
 			"id": 3,
-			"opcode": "03",
+			"opcode": "3",
 			"name": "SUB",
 			"Nwires": 5,
 			"Out_idx": [
@@ -58,7 +58,7 @@ export const subcircuit = {
 		},
 		{
 			"id": 4,
-			"opcode": "04",
+			"opcode": "4",
 			"name": "DIV",
 			"Nwires": 5,
 			"Out_idx": [
@@ -86,7 +86,7 @@ export const subcircuit = {
 		},
 		{
 			"id": 6,
-			"opcode": "05",
+			"opcode": "5",
 			"name": "SDIV",
 			"Nwires": 41,
 			"Out_idx": [
@@ -100,7 +100,7 @@ export const subcircuit = {
 		},
 		{
 			"id": 7,
-			"opcode": "06",
+			"opcode": "6",
 			"name": "MOD",
 			"Nwires": 5,
 			"Out_idx": [
@@ -114,7 +114,7 @@ export const subcircuit = {
 		},
 		{
 			"id": 8,
-			"opcode": "07",
+			"opcode": "7",
 			"name": "SMOD",
 			"Nwires": 41,
 			"Out_idx": [
@@ -128,7 +128,7 @@ export const subcircuit = {
 		},
 		{
 			"id": 9,
-			"opcode": "08",
+			"opcode": "8",
 			"name": "ADDMOD",
 			"Nwires": 7,
 			"Out_idx": [
@@ -142,7 +142,7 @@ export const subcircuit = {
 		},
 		{
 			"id": 10,
-			"opcode": "09",
+			"opcode": "9",
 			"name": "MULMOD",
 			"Nwires": 8,
 			"Out_idx": [
@@ -156,7 +156,7 @@ export const subcircuit = {
 		},
 		{
 			"id": 11,
-			"opcode": "0a",
+			"opcode": "a",
 			"name": "EXP",
 			"Nwires": 32,
 			"Out_idx": [
@@ -310,7 +310,7 @@ export const subcircuit = {
 		},
 		{
 			"id": 22,
-			"opcode": "0b",
+			"opcode": "b",
 			"name": "SIGNEXTEND",
 			"Nwires": 288,
 			"Out_idx": [

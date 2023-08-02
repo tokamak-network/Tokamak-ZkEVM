@@ -1,6 +1,6 @@
 import { subcircuit } from "../../resource/subcircuits/subcircuit_info.js"
 import fs from 'fs'
-import { keccak256 } from 'ethereum-cryptography/keccak.js'
+import os from 'os';
 
 
 export function hexToInteger(hex) {
@@ -171,11 +171,13 @@ export function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCe
 export function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) {
   
   // !fs.existsSync(dir) && fs.mkdirSync(dir)
+  const system = os.platform()
+  const slash = system === 'darwin' ? '/' : '\\'
 
-  const fdset1 = fs.openSync(`${dir}/Set_I_V.bin`, 'w');
-  const fdset2 = fs.openSync(`${dir}/Set_I_P.bin`, 'w');
-  const fdOpList = fs.openSync(`${dir}/OpList.bin`, 'w');
-  const fdWireList = fs.openSync(`${dir}/WireList.bin`, 'w');
+  const fdset1 = fs.openSync(`${dir}${slash}Set_I_V.bin`, 'w');
+  const fdset2 = fs.openSync(`${dir}${slash}Set_I_P.bin`, 'w');
+  const fdOpList = fs.openSync(`${dir}${slash}OpList.bin`, 'w');
+  const fdWireList = fs.openSync(`${dir}${slash}WireList.bin`, 'w');
 
   const setIDataBuffer = Buffer.from(Uint32Array.from(SetData_I_V).buffer);
   const setPDataBuffer = Buffer.from(Uint32Array.from(SetData_I_P).buffer);
@@ -197,6 +199,9 @@ export function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) 
 export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
   const InstanceFormatIn = [];
   const InstanceFormatOut = [];
+  const system = os.platform()
+  const slash = system === 'darwin' ? '/' : '\\'
+
   for (let k = 0; k < oplist.length; k++) {
     const outputs = oplist[k].outputs;
     let inputs, inputs_hex, outputs_hex;
@@ -258,9 +263,9 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
     // console.log(outputs_hex)
     InstanceFormatIn.push({ in: inputs_hex });
     InstanceFormatOut.push({ out: outputs_hex });
-    !fs.existsSync(`${dir}/instance`) && fs.mkdirSync(`${dir}/instance`)
-    const fdInput = fs.openSync(`${dir}/instance/Input_opcode${k}.json`, 'w');
-    const fdOutput = fs.openSync(`${dir}/instance/Output_opcode${k}.json`, 'w');
+    !fs.existsSync(`${dir}${slash}instance`) && fs.mkdirSync(`${dir}${slash}instance`)
+    const fdInput = fs.openSync(`${dir}${slash}instance${slash}Input_opcode${k}.json`, 'w');
+    const fdOutput = fs.openSync(`${dir}${slash}instance${slash}Output_opcode${k}.json`, 'w');
 
     fs.writeSync(fdInput, JSON.stringify(InstanceFormatIn[k]));
     fs.writeSync(fdOutput, JSON.stringify(InstanceFormatOut[k]));
