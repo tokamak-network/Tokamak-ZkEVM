@@ -183,7 +183,6 @@ export class Decoder {
     
     const NCONSTWIRES=1
     const NINPUT = (NWires[0] - NCONSTWIRES)/2
-    // const NINPUT = 70
 
     const RangeCell = getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT)
     const WireListm = getWireList(NWires, RangeCell, listLength) 
@@ -483,7 +482,6 @@ export class Decoder {
 
     for (let i = 0; i < this.oplist.length ;i ++) {
       let k_pt_inputs = this.oplist[i].pt_inputs
-      // console.log(k_pt_inputs)
       k_pt_inputs = this.oplist[i].opcode == 'fff' && !k_pt_inputs[0]
                     ? [] 
                     : k_pt_inputs[0][0] 
@@ -514,7 +512,6 @@ export class Decoder {
 
   evalEVM (pt) {
     const codewdata = this.codewdata
-    // console.log(pt)
     const op_pointer = pt[0]
     const wire_pointer = pt[1]
     const byte_size = pt[2]
@@ -525,12 +522,10 @@ export class Decoder {
       for (let i=0; i < slice.length; i ++){
         output = output + decimalToHex(slice[i])
       }
-      // console.log('output', output,  BigNumber.from('0x' + output).toString())
       return BigNumber.from('0x' + output).toString()
     }
     
     let t_oplist = this.oplist[op_pointer - 1]
-    // console.log('t_oplist', pt, op_pointer, t_oplist)
     const op = t_oplist.opcode
     if (t_oplist.outputs.length !== 0) {
       return t_oplist.outputs[wire_pointer - 1]
@@ -539,7 +534,6 @@ export class Decoder {
     try {
       if (hexToInteger(op) == hexToInteger('fff')) {
         let new_pt = t_oplist.pt_outputs[wire_pointer - 1]
-        // if (wire_pointer === 32) console.log('32', new_pt, this.evalEVM(new_pt), this.evalEVM([0, 5927, 32]), t_oplist.pt_outputs)
         const value = this.evalEVM(new_pt)
         return value
       } else {
