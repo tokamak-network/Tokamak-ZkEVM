@@ -20,7 +20,7 @@ const main = async () => {
   })
 
   const decoder = new Decoder({})
-  const path = '/Users/hwangjaeseung/workspace/zkp/UniGro16js/resource/circuits/erc20_approve'
+  const path = '/Users/hwangjaeseung/workspace/zkp/UniGro16js/resource/circuits/test_transfer'
   
   const json = fs.readFileSync(`${path}/config.json`, 'utf8')
   const jsonData = JSON.parse(json);

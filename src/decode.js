@@ -102,7 +102,7 @@ export class Decoder {
       zero_pt: zero_pt,
       zero_len: zero_len,
       storage_pts: storage_pts,
-      storage_lens: storage_lens
+      storage_lens: storage_lens,
     }
     
     // const Isdata = '0000000000000000000000005B38Da6a701c568545dCfcB03FcB875f56beddC4'
@@ -175,7 +175,39 @@ export class Decoder {
   }
 
   runCode (code, config, dirname) {
-    this.decode(code, config)
+    this.config = config
+    let outputs_pt = this.decode(code)
+
+    this.oplist[0].pt_inputs = outputs_pt[0] ?  outputs_pt[0] : []
+
+    for (let i = 0; i < this.oplist.length ;i ++) {
+      let k_pt_inputs = this.oplist[i].pt_inputs
+      k_pt_inputs = this.oplist[i].opcode == 'fff' && !k_pt_inputs[0]
+                    ? [] 
+                    : k_pt_inputs[0][0] 
+                    ? k_pt_inputs[0] 
+                    : [k_pt_inputs]
+      let k_inputs = []
+
+      for (let j=0; j<k_pt_inputs.length ; j++) {
+        const result = this.evalEVM(k_pt_inputs[j])
+        k_inputs.push(result)
+      }
+      let k_pt_outputs = this.oplist[i].pt_outputs;
+      const opcode = this.oplist[i].opcode
+
+      k_pt_outputs = opcode === 'fff' ? k_pt_outputs : [k_pt_outputs]
+      let k_outputs = []
+      for (let j = 0; j < k_pt_outputs.length ; j ++) {
+        let k_output = this.evalEVM(k_pt_outputs[j])
+        k_output = k_output === undefined ? 0 : k_output
+        k_outputs.push(k_output)
+      }
+      this.oplist[i].inputs=k_inputs
+      this.oplist[i].outputs=k_outputs
+    }
+    // console.log(this.oplist)
+    console.log('oplist length', this.oplist.length)
     
     const listLength = this.oplist.length
     const oplist = this.oplist
@@ -196,10 +228,10 @@ export class Decoder {
     makeJsonFile (dir, oplist, NINPUT, this.codewdata)
   }
 
-  decode (code, config) {
+  decode (code) {
     let outputs_pt = []
     let stack_pt = []
-    this.getEnv(code, config)
+    this.getEnv(code, this.config)
     let {
       Iv_pt,
       Id_pt,
@@ -230,6 +262,7 @@ export class Decoder {
     while (pc < codelen) {
       const op = decimalToHex(code[pc])
       pc = pc + 1
+      console.log('op', pc, op)
       
       let d = 0
       let a = 0
@@ -399,7 +432,7 @@ export class Decoder {
           inputs: [],
           outputs: [],
         })
-        this.oplist = wire_mapping(op, stack_pt, d, a, this.oplist, this.op_pointer, code, config)
+        this.oplist = wire_mapping(op, stack_pt, d, a, this.oplist, this.op_pointer, code, this.config)
 
         stack_pt = pop_stack(stack_pt, d)
         stack_pt.unshift(this.oplist[this.op_pointer].pt_outputs)
@@ -431,7 +464,7 @@ export class Decoder {
         d = 0;
         a = 1;
 
-        codewdata.set((pc, pc_len * 2), pc_pt);
+        codewdata.set([pc, pc_len * 2], pc_pt - 1);
         stack_pt.unshift([0, pc_pt, pc_len])
       } else if (hexToInteger(op) == hexToInteger('5b')) {
 
@@ -490,7 +523,7 @@ export class Decoder {
         d = 0
         a = 1
 
-        stack_pt.push([0, od_len_info_pt, od_len_info_len])
+        stack_pt.push([0, this.od_len_info_pt, this.od_len_info_len])
       }
       else if (hexToInteger(op) == hexToInteger('f1')) {
         d = 7;
@@ -501,12 +534,11 @@ export class Decoder {
         let value = this.evalEVM(stack_pt[2]);
         let value_pt = stack_pt[2];
         let in_offset = Number(this.evalEVM(stack_pt[3])) + 1;
-        let in_size = this.evalEVM(stack_pt[4]);
+        let in_size = Number(this.evalEVM(stack_pt[4]));
         let out_offset = Number(this.evalEVM(stack_pt[5])) + 1;
         let out_size = this.evalEVM(stack_pt[6]);
 
         stack_pt = pop_stack(stack_pt, d);
-
         let in_slots = Math.ceil(in_size / 32);
         let addrs = new Array(in_slots).fill(0);
         let mem_pt_data = new Array(in_slots).fill(0);
@@ -531,17 +563,17 @@ export class Decoder {
 
         if (calldepth < 1024 && value <= this.evalEVM([0, balance_pt, balance_len])) {
           calldepth++;
-          codewdata.set(decimalToHex(calldepth).padStart(calldepth_len * 2, '0'), calldepth_pt);
-
+          codewdata.set(['0'.padStart(calldepth_len * 2, '0'), decimalToHex(calldepth)], calldepth_pt - 1);
+          
           let curr_offset = mem_pt_data.length === 0 ? 1 : mem_pt_data[0][1];
-          let callcode_pt_offset = call_pt[calldepth - 1][0] + curr_offset - 1;
+          let callcode_pt_offset = call_pt[calldepth - 2][0] + curr_offset - 1;
           call_pt[calldepth] = [callcode_pt_offset, in_size];
 
           let next_callcode = code.slice(callcode_pt_offset, callcode_pt_offset + in_size);
-          let call_output_pt = Decode(next_callcode);
+          let call_output_pt = this.decode(next_callcode);
 
           calldepth--;
-          codewdata.set(decimalToHex(calldepth).padStart(calldepth_len * 2, '0'), calldepth_pt);
+          codewdata.set(['0'.padStart(calldepth_len * 2, '0'), decimalToHex(calldepth)], calldepth_pt - 1);
           call_pt.length = calldepth + 1;
 
           let actual_out_len = call_output_pt.reduce((acc, curr) => acc + curr[2], 0);
@@ -558,32 +590,33 @@ export class Decoder {
           }
         }
 
-        call_pointer++;
+        this.call_pointer++;
 
         storage_pt[0xfffffffe] = value_pt;
         storage_pt[0xffffffff] = [0, calldepth_pt, calldepth_len];
 
         calldepth++;
-        codewdata.set(decimalToHex(calldepth).padStart(environ_pts.calldepth_len * 2, '0'), environ_pts.calldepth_pt);
+        codewdata.set(['0'.padStart(calldepth_len * 2, '0'), decimalToHex(calldepth)], calldepth_pt - 1);
 
-        let callcode_pt_offset = callcode_suffix_pt;
-        call_pt[calldepth] = [callcode_pt_offset, callcode_suffix.length];
+        let callcode_pt_offset = this.callcode_suffix_pt;
+        call_pt[calldepth] = [callcode_pt_offset, this.callcode_suffix.length];
 
-        let next_callcode = callcode_suffix;
-        let vmTraceStep_old = vmTraceStep;
+        let next_callcode = this.callcode_suffix;
+        let vmTraceStep_old = this.vmTraceStep;
         let trash = this.decode(next_callcode);
-        vmTraceStep = vmTraceStep_old;
+        this.vmTraceStep = vmTraceStep_old;
 
         calldepth--;
-        codewdata.set(decimalToHex(calldepth).padStart(environ_pts.calldepth_len * 2, '0'), environ_pts.calldepth_pt);
+        codewdata.set(['0'.padStart(calldepth_len * 2, '0'), decimalToHex(calldepth)], calldepth_pt - 1);
         call_pt.length = calldepth + 1;
 
-        let op = this.oplist[op_pointer];
+        let op = this.oplist[this.op_pointer];
+        let x_pointer
         if (op.opcode !== '16') {
           throw new Error('error in retrieving call result');
         } else {
-          let x_pointer = op.pt_outputs;
-          callresultlist[call_pointer] = op_pointer;
+          x_pointer = op.pt_outputs;
+          this.callresultlist[this.call_pointer] = this.op_pointer;
         }
 
         stack_pt = [x_pointer, ...stack_pt];
@@ -635,36 +668,6 @@ export class Decoder {
       // }
       this.vmTraceStep = this.vmTraceStep + 1
     }
-    
-    outputs_pt[0] ? this.oplist[0].pt_inputs = outputs_pt[0] : this.oplist[0].pt_inputs = []
-
-    for (let i = 0; i < this.oplist.length ;i ++) {
-      let k_pt_inputs = this.oplist[i].pt_inputs
-      k_pt_inputs = this.oplist[i].opcode == 'fff' && !k_pt_inputs[0]
-                    ? [] 
-                    : k_pt_inputs[0][0] 
-                    ? k_pt_inputs[0] 
-                    : [k_pt_inputs]
-      let k_inputs = []
-
-      for (let j=0; j<k_pt_inputs.length ; j++) {
-        const result = this.evalEVM(k_pt_inputs[j])
-        k_inputs.push(result)
-      }
-      let k_pt_outputs = this.oplist[i].pt_outputs;
-      const opcode = this.oplist[i].opcode
-
-      k_pt_outputs = opcode === 'fff' ? k_pt_outputs : [k_pt_outputs]
-      let k_outputs = []
-      for (let j = 0; j < k_pt_outputs.length ; j ++) {
-        let k_output = this.evalEVM(k_pt_outputs[j])
-        k_output = k_output === undefined ? 0 : k_output
-        k_outputs.push(k_output)
-      }
-      this.oplist[i].inputs=k_inputs
-      this.oplist[i].outputs=k_outputs
-    }
-    console.log('oplist length', this.oplist.length)
     return outputs_pt
   }
 
