@@ -176,6 +176,7 @@ export class Decoder {
 
   runCode (code, config, dirname) {
     this.config = config
+    this.getEnv(code, this.config)
     let outputs_pt = this.decode(code)
 
     this.oplist[0].pt_inputs = outputs_pt[0] ?  outputs_pt[0] : []
@@ -231,7 +232,7 @@ export class Decoder {
   decode (code) {
     let outputs_pt = []
     let stack_pt = []
-    this.getEnv(code, this.config)
+    
     let {
       Iv_pt,
       Id_pt,
@@ -262,7 +263,7 @@ export class Decoder {
     while (pc < codelen) {
       const op = decimalToHex(code[pc])
       pc = pc + 1
-      console.log('op', pc, op)
+      // console.log('op', pc, op)
       
       let d = 0
       let a = 0
@@ -363,7 +364,6 @@ export class Decoder {
         d = 0;
         a = 1
 
-
         stack_pt.unshift([0, balance_pt, balance_len])
       } else if (hexToInteger(op) - hexToInteger('80') >= 0 
         && hexToInteger(op) - hexToInteger('80') < 16) { // duplicate
@@ -454,6 +454,7 @@ export class Decoder {
         const condition = this.evalEVM(stack_pt[1])
         
         if (Number(condition) !== 0) {
+          console.log('jumpi', target_pc, condition)
           pc = Number(target_pc)
           // if (code.slice(calldepth - 1,target_pc)) {
 
@@ -537,12 +538,11 @@ export class Decoder {
         let in_size = Number(this.evalEVM(stack_pt[4]));
         let out_offset = Number(this.evalEVM(stack_pt[5])) + 1;
         let out_size = this.evalEVM(stack_pt[6]);
-
         stack_pt = pop_stack(stack_pt, d);
+        
         let in_slots = Math.ceil(in_size / 32);
         let addrs = new Array(in_slots).fill(0);
         let mem_pt_data = new Array(in_slots).fill(0);
-
         let left_in_size = in_size;
         for (let i = 0; i < in_slots; i++) {
           addrs[i] = in_offset + i * 32;
@@ -618,7 +618,6 @@ export class Decoder {
           x_pointer = op.pt_outputs;
           this.callresultlist[this.call_pointer] = this.op_pointer;
         }
-
         stack_pt = [x_pointer, ...stack_pt];
 
       }
