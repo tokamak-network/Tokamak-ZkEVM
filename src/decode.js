@@ -462,8 +462,27 @@ export class Decoder {
 
         stack_pt = pop_stack(stack_pt, d)
       }
-      else if (hexToInteger(op) == hexToInteger('e3')) {
+      else if (hexToInteger(op) == hexToInteger('e3')) { //returndatacopy
+        d = 3
+        a = 0
 
+        let addr_offset = Number(this.evalEVM(stack_pt[0])) + 1
+        let addr_len = Number(this.evalEVM(stack_pt[2]))
+        let addr_slots = Math.ceil(addr_len / 32)
+        let addrs = new Array(addr_slots)
+        let ad_offset = od_pt + Number(this.evalEVM(stack_pt[1]))
+
+        let left_od_length = addr_len
+        for (let i=0; i< addr_slots-1 ; i ++) {
+          addrs[i] = addr_offset + i * 32
+          if (left_od_length > 32) {
+            mem_pt[addrs[i]] = [0, ad_offset + i * 32, 32]
+            left_code_length=left_code_length-32;
+          } else {
+            mem_pt[addrs[i]] = [0, ad_offset + i * 32, left_code_length]
+          }
+        }
+        stack_pt = pop_stack(stack_pt, d)
       }
       else if (hexToInteger(op) == hexToInteger('3d')) {
 
