@@ -387,6 +387,7 @@ export class Decoder {
               stack_pt.unshift(target_mem[i - 1])
             }
         }
+        // opcode 3d 추가
         console.log('op', op, pc, stack_pt)
         this.op_pointer = this.op_pointer + 1
         this.oplist.push({
@@ -401,34 +402,7 @@ export class Decoder {
         stack_pt = pop_stack(stack_pt, d)
         stack_pt.unshift(this.oplist[this.op_pointer].pt_outputs)
       }
-      else if (hexToInteger(op) == hexToInteger('f3') || hexToInteger(op) == hexToInteger('fd')) {
-        d=2
-        a=0
-        const addr_offset = Number(this.evalEVM(stack_pt[0])) + 1
-        const addr_len = this.evalEVM(stack_pt[1])
-
-        outputs_pt = []
-        let len_left = Number(addr_len)
-        let addr = addr_offset
-
-        while (len_left > 0) {
-          let target_data = mem_pt[addr]
-          outputs_pt.push(target_data)
-          len_left = len_left - target_data[2]
-          addr = addr + target_data[2]
-        }
-        stack_pt = pop_stack(stack_pt, d)
-        pc = codelen
-      } 
-      else if (hexToInteger(op) == hexToInteger('ff')) {
-
-      }
-      else if (hexToInteger(op) == hexToInteger('00')) {
-        d = 0;
-        a = 0;
-        outputs_pt=[]
-        pc = codelen
-      } else if (hexToInteger(op) == hexToInteger('56')) {
+      else if (hexToInteger(op) == hexToInteger('56')) {
         d = 1;
         a = 0;
         const target_pc = this.evalEVM(stack_pt[0])
@@ -460,6 +434,35 @@ export class Decoder {
       } else if (hexToInteger(op) == hexToInteger('5b')) {
 
       }
+      else if (hexToInteger(op) == hexToInteger('f3') || hexToInteger(op) == hexToInteger('fd')) {
+        d=2
+        a=0
+        const addr_offset = Number(this.evalEVM(stack_pt[0])) + 1
+        const addr_len = this.evalEVM(stack_pt[1])
+
+        outputs_pt = []
+        let len_left = Number(addr_len)
+        let addr = addr_offset
+
+        while (len_left > 0) {
+          let target_data = mem_pt[addr]
+          outputs_pt.push(target_data)
+          len_left = len_left - target_data[2]
+          addr = addr + target_data[2]
+        }
+        stack_pt = pop_stack(stack_pt, d)
+        pc = codelen
+      } 
+      else if (hexToInteger(op) == hexToInteger('ff')) {
+
+      }
+      else if (hexToInteger(op) == hexToInteger('00')) {
+        d = 0;
+        a = 0;
+        outputs_pt=[]
+        pc = codelen
+      } 
+      
       else if (hexToInteger(op) - hexToInteger('a0') >= 0
         && hexToInteger(op) - hexToInteger('a0') < 5) {
         const lognum = hexToInteger(op) - hexToInteger('a0') 
