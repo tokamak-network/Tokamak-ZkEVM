@@ -214,6 +214,8 @@ export class Decoder {
       zero_pt,
       zero_len,
       cjmp_pointer,
+      calldepth_pt,
+      calldepth_len,
     } = this.environ_pts
     
     let storage_pt = this.storage_pt
@@ -429,7 +431,7 @@ export class Decoder {
         d = 0;
         a = 1;
 
-        codewdata[pc_pt]
+        codewdata.set((pc, pc_len * 2), pc_pt);
         stack_pt.unshift([0, pc_pt, pc_len])
       } else if (hexToInteger(op) == hexToInteger('5b')) {
 
@@ -441,7 +443,7 @@ export class Decoder {
         let addr_offset = Number(this.evalEVM(stack_pt[0])) + 1
         let addr_len = Number(this.evalEVM(stack_pt[2]))
         let addr_slots = Math.ceil(addr_len / 32)
-        let addrs = new Array(addr_slots)
+        let addrs = new Array(addr_slots).fill(0)
         let codept_offset = Number(this.evalEVM(stack_pt[1])) + 1
 
         if (code.slice(codept_offset - 1, code.length).length < addr_len) {
@@ -469,7 +471,7 @@ export class Decoder {
         let addr_offset = Number(this.evalEVM(stack_pt[0])) + 1
         let addr_len = Number(this.evalEVM(stack_pt[2]))
         let addr_slots = Math.ceil(addr_len / 32)
-        let addrs = new Array(addr_slots)
+        let addrs = new Array(addr_slots).fill(0)
         let ad_offset = od_pt + Number(this.evalEVM(stack_pt[1]))
 
         let left_od_length = addr_len
@@ -485,9 +487,106 @@ export class Decoder {
         stack_pt = pop_stack(stack_pt, d)
       }
       else if (hexToInteger(op) == hexToInteger('3d')) {
+        d = 0
+        a = 1
 
+        stack_pt.push([0, od_len_info_pt, od_len_info_len])
       }
       else if (hexToInteger(op) == hexToInteger('f1')) {
+        d = 7;
+        a = 1;
+
+        let gas = this.evalEVM(stack_pt[0]);
+        let to = this.evalEVM(stack_pt[1]);
+        let value = this.evalEVM(stack_pt[2]);
+        let value_pt = stack_pt[2];
+        let in_offset = Number(this.evalEVM(stack_pt[3])) + 1;
+        let in_size = this.evalEVM(stack_pt[4]);
+        let out_offset = Number(this.evalEVM(stack_pt[5])) + 1;
+        let out_size = this.evalEVM(stack_pt[6]);
+
+        stack_pt = pop_stack(stack_pt, d);
+
+        let in_slots = Math.ceil(in_size / 32);
+        let addrs = new Array(in_slots).fill(0);
+        let mem_pt_data = new Array(in_slots).fill(0);
+
+        let left_in_size = in_size;
+        for (let i = 0; i < in_slots; i++) {
+          addrs[i] = in_offset + i * 32;
+          let pt = mem_pt[addrs[i]];
+          if (pt[0] !== 0) {
+            throw new Error('invalid callcode offset');
+          }
+          if (left_in_size >= 32) {
+            pt[2] = 32;
+            left_in_size -= 32;
+          } else {
+            pt[2] = left_in_size;
+          }
+          mem_pt_data[i] = pt;
+        }
+
+        let call_output_pt = [];
+
+        if (calldepth < 1024 && value <= this.evalEVM([0, balance_pt, balance_len])) {
+          calldepth++;
+          codewdata.set(decimalToHex(calldepth).padStart(calldepth_len * 2, '0'), calldepth_pt);
+
+          let curr_offset = mem_pt_data.length === 0 ? 1 : mem_pt_data[0][1];
+          let callcode_pt_offset = call_pt[calldepth - 1][0] + curr_offset - 1;
+          call_pt[calldepth] = [callcode_pt_offset, in_size];
+
+          let next_callcode = code.slice(callcode_pt_offset, callcode_pt_offset + in_size);
+          let call_output_pt = Decode(next_callcode);
+
+          calldepth--;
+          codewdata.set(decimalToHex(calldepth).padStart(calldepth_len * 2, '0'), calldepth_pt);
+          call_pt.length = calldepth + 1;
+
+          let actual_out_len = call_output_pt.reduce((acc, curr) => acc + curr[2], 0);
+          let n = Math.min(actual_out_len, out_size);
+          let out_slots = Math.ceil(n / 32);
+
+          let left_n = n;
+          for (let i = 0; i < out_slots; i++) {
+            let addr = out_offset + i * 32;
+            let pt = call_output_pt[i];
+            pt[2] = Math.min(left_n, 32);
+            mem_pt[addr] = pt;
+            left_n -= 32;
+          }
+        }
+
+        call_pointer++;
+
+        storage_pt[0xfffffffe] = value_pt;
+        storage_pt[0xffffffff] = [0, calldepth_pt, calldepth_len];
+
+        calldepth++;
+        codewdata.set(decimalToHex(calldepth).padStart(environ_pts.calldepth_len * 2, '0'), environ_pts.calldepth_pt);
+
+        let callcode_pt_offset = callcode_suffix_pt;
+        call_pt[calldepth] = [callcode_pt_offset, callcode_suffix.length];
+
+        let next_callcode = callcode_suffix;
+        let vmTraceStep_old = vmTraceStep;
+        let trash = this.decode(next_callcode);
+        vmTraceStep = vmTraceStep_old;
+
+        calldepth--;
+        codewdata.set(decimalToHex(calldepth).padStart(environ_pts.calldepth_len * 2, '0'), environ_pts.calldepth_pt);
+        call_pt.length = calldepth + 1;
+
+        let op = this.oplist[op_pointer];
+        if (op.opcode !== '16') {
+          throw new Error('error in retrieving call result');
+        } else {
+          let x_pointer = op.pt_outputs;
+          callresultlist[call_pointer] = op_pointer;
+        }
+
+        stack_pt = [x_pointer, ...stack_pt];
 
       }
       else if (hexToInteger(op) == hexToInteger('f3') || hexToInteger(op) == hexToInteger('fd')) {
