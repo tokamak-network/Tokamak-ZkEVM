@@ -434,6 +434,43 @@ export class Decoder {
       } else if (hexToInteger(op) == hexToInteger('5b')) {
 
       }
+      else if (hexToInteger(op) == hexToInteger('39')) { // codecopy
+        d = 3
+        a = 0
+
+        let addr_offset = Number(this.evalEVM(stack_pt[0])) + 1
+        let addr_len = Number(this.evalEVM(stack_pt[2]))
+        let addr_slots = Math.ceil(addr_len / 32)
+        let addrs = new Array(addr_slots)
+        let codept_offset = Number(this.evalEVM(stack_pt[1])) + 1
+
+        if (code.slice(codept_offset - 1, code.length).length < addr_len) {
+          pc = codelen
+          console.log(`codecopy is STOPED at pc ${pc}, code ${op}`)
+        } else {
+          let left_code_length = addr_len
+          for (let i=0; i< addr_slots-1 ; i ++) {
+            addrs[i] = addr_offset + i * 32
+            if (left_code_length > 32) {
+              mem_pt[addrs[i]] = [0, codept_offset + i * 32, 32]
+              left_code_length=left_code_length-32;
+            } else {
+              mem_pt[addrs[i]] = [0, codept_offset + i * 32, left_code_length]
+            }
+          }
+        }
+
+        stack_pt = pop_stack(stack_pt, d)
+      }
+      else if (hexToInteger(op) == hexToInteger('e3')) {
+
+      }
+      else if (hexToInteger(op) == hexToInteger('3d')) {
+
+      }
+      else if (hexToInteger(op) == hexToInteger('f1')) {
+
+      }
       else if (hexToInteger(op) == hexToInteger('f3') || hexToInteger(op) == hexToInteger('fd')) {
         d=2
         a=0
