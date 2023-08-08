@@ -352,7 +352,7 @@ function prove() {
         type: 'input',
         name: 'istanceId',
         message: 'What is the index of the instance of the circuit?',
-        default: '1',
+        default: '',
         validate: value => {
           return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
         }
@@ -436,7 +436,7 @@ function verify() {
         type: 'input',
         name: 'istanceId',
         message: 'What is the index of the instance of the circuit?',
-        default: '1',
+        default: '',
         validate: value => {
           return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
         }
