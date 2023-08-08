@@ -21,8 +21,8 @@ export function pop_stack (stack_pt, d) {
 }
 
 export function getSubcircuit () {
-  const fileUrl = new URL("../../resource/subcircuits/subcircuit_info.json", import.meta.url)
-  // const fileUrl = new URL("../resource/subcircuits/subcircuit_info.json", import.meta.url)
+  // const fileUrl = new URL("../../resource/subcircuits/subcircuit_info.json", import.meta.url)
+  const fileUrl = new URL("../resource/subcircuits/subcircuit_info.json", import.meta.url)
   const subcircuit = JSON.parse(readFileSync(fileUrl))
   return subcircuit['wire-list']
 }
