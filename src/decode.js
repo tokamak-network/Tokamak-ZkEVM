@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+ import { readFileSync } from "fs";
 // import subcircuit from '../resource/subcircuits/subcircuit_info.json' assert {type: 'json'};
 import { wire_mapping } from './wire_mappings.js';
 
@@ -249,6 +249,7 @@ export class Decoder {
       cjmp_pointer,
       calldepth_pt,
       calldepth_len,
+      od_pt
     } = this.environ_pts
     
     let storage_pt = this.storage_pt
@@ -507,10 +508,11 @@ export class Decoder {
         let addr_slots = Math.ceil(addr_len / 32)
         let addrs = new Array(addr_slots).fill(0)
         let ad_offset = od_pt + Number(this.evalEVM(stack_pt[1]))
-
+        // console.log('3e', addr_offset, addr_len, addr_slots, addrs, ad_offset)
         let left_od_length = addr_len
         for (let i=0; i< addr_slots-1 ; i ++) {
           addrs[i] = addr_offset + i * 32
+          // console.log('left_od_length', left_od_length)
           if (left_od_length > 32) {
             mem_pt[addrs[i]] = [0, ad_offset + i * 32, 32]
             left_code_length=left_code_length-32;
@@ -621,16 +623,18 @@ export class Decoder {
         stack_pt = [x_pointer, ...stack_pt];
 
       }
-      else if (hexToInteger(op) == hexToInteger('f3') || hexToInteger(op) == hexToInteger('fd')) {
+      else if (hexToInteger(op) == hexToInteger('f3') || 
+                hexToInteger(op) == hexToInteger('fd')) {
         d=2
         a=0
+        // console.log(stack_pt)
         const addr_offset = Number(this.evalEVM(stack_pt[0])) + 1
         const addr_len = this.evalEVM(stack_pt[1])
 
         outputs_pt = []
         let len_left = Number(addr_len)
         let addr = addr_offset
-
+        // console.log('addr', addr, mem_pt[addr],mem_pt)
         while (len_left > 0) {
           let target_data = mem_pt[addr]
           outputs_pt.push(target_data)
@@ -658,7 +662,7 @@ export class Decoder {
         stack_pt=pop_stack(stack_pt, d)
       }
       else {
-        console.log('xxxx', op)
+        console.log('xxxx', pc, op)
       }
 
       // const newStackSize = stack_pt.length
