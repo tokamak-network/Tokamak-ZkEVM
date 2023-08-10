@@ -260,6 +260,14 @@ function derive() {
 }
 
 function prove() {
+  const qapDirList = fromDir(path.join('resource','subcircuits','QAP*'), '');
+  function searchQapDirectory(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy.filter(input, qapDirList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
   const circuitNameList = fromDir(path.join('resource','circuits'), '*');
   function searchCircuitName(answers, input = '') {
     return new Promise((resolve) => {
@@ -278,6 +286,19 @@ function prove() {
   }
   inquirer
     .prompt([
+      {
+        type: 'autocomplete',
+        name: 'qapDirectory',
+        suggestOnly: true,
+        message: 'Which QAP will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchQapDirectory,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
       {
         type: 'autocomplete',
         name: 'circuitSpecificReferenceString',
@@ -325,6 +346,7 @@ function prove() {
     ])
     .then(answers => {
       return zkey.groth16Prove(
+        answers.qapDirectory,
         answers.circuitSpecificReferenceString, 
         answers.proofName, 
         answers.circuitName, 
