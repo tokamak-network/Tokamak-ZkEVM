@@ -100,14 +100,15 @@ contract transferContract {
 - The degree of QAP (bivariate) polynomials: (1024, 32)
 - Test results:
 
-|Results (in mins)|BuildQAP|Setup|Derive|Prove|Verify|Note|
-|:---|:---:|:---:|:---:|:---:|:---:|:---|
-|Overall time|47 secs|5.61|8.12|17.92|0.9 secs||
-|Time for EC exponentiations|-|4.67|1.92|25.20 secs|0|Pippenger's algorithm is not applied|
-|Time for polynomial arithmetics w/o division|24.5 secs|-|2.15|2.50|-||
-|Time for polynomial division|-|-|-|11.74|-||
-|Time for storage access|22.05 secs|46.59 secs|3.90|3.02|0||
+|Results (in mins)  |BuildQAP |Setup  |Derive |Prove  |Verify |Note |
+|:---               |:---:    |:---:  |:---:  |:---:  |:---:  |:--- |
+|Overall time       |47 secs  |5.61   |8.12   |52 secs   |0.9 secs|    |
+|Time for EC exponentiations|-|4.67|1.92      |0.6 secs|0     |For Prove, 25.88 secs with naive MSM => 0.6 secs with batched MSM using WASM|
+|Time for polynomial arithmetics w/o division|24.5 secs|-|2.15|47 secs|-|For Prove, 10.78 mins with convolution => 2.15 mins with FFT => 47 seconds with direct derivation of circuit polynomials|
+|Time for polynomial division|-|-|-|0.1 secs|-|For Prove, 4.8 hours with convolution => 11.74 mins with FFT => 68ms with [this algorithm](https://drive.google.com/file/d/1mhSafDcquDRZpaBX_0pHL1uuzH-rfym1/view?usp=share_link)|
+|Time for storage access|22.05 secs|46.59 secs|3.1|2.62 secs|0|For Prove, 3.17 mins => 2.62 secs with direct derivation of circuit polynomials|
 |Time for pairing and hashing|-|-|-|-|0||
+|Note|-|-|-||-|-|
 
 # 3. Input Node.js commands to reproduce the results
 - How to use UniGro16js can be found [here](https://github.com/Onther-Tech/UniGro16js/blob/master/README.md)

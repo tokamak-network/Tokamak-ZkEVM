@@ -31,6 +31,7 @@ inquirer
         'Derive',
         'Prove',
         'Verify',
+        'Test (for developers)'
       ],
     },
     {
@@ -49,6 +50,7 @@ inquirer
     if (answers.phase === 'Derive') derive();
     if (answers.phase === 'Prove') prove();
     if (answers.phase === 'Verify') verify();
+    if (answers.phase === 'Test (for developers)') tests();
   })
   .catch(error => {
     if (error.isTtyError) {
@@ -61,7 +63,7 @@ inquirer
   })
 
 function compile(verbose) {
-  exec('resource/subcircuits/compile.sh',
+  exec(path.join('resource','subcircuits','compile.sh'),
         (error, stdout, stderr) => {
           
           if (verbose) console.log(stdout);
@@ -113,7 +115,7 @@ function buildQAP() {
 }
 
 function setup() {
-  const parameterFileList = fromDir('/resource/subcircuits/', '*.dat');
+  const parameterFileList = fromDir(path.join('resource','subcircuits'), '*.dat');
   function searchParameterFile(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -122,7 +124,7 @@ function setup() {
     });
   }
 
-  const qapDirList = fromDir('/resource/subcircuits/QAP', '*');
+  const qapDirList = fromDir(path.join('resource','subcircuits','QAP*'), '');
   function searchQapDirectory(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -175,7 +177,7 @@ function setup() {
 }
 
 function derive() {
-  const circuitNameList = fromDir('/resource/circuits/', '*');
+  const circuitNameList = fromDir(path.join('resource','circuits'), '*');
   function searchCircuitName(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -183,7 +185,7 @@ function derive() {
       }, Math.random() * 470 + 30);
     });
   }
-  const referenceStringList = fromDir('/resource/universal_rs/', '*.urs');
+  const referenceStringList = fromDir(path.join('resource','universal_rs'), '*.urs');
   function searchReferenceString(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -191,7 +193,7 @@ function derive() {
       }, Math.random() * 470 + 30);
     });
   }
-  const qapDirList = fromDir('/resource/subcircuits/QAP', '*');
+  const qapDirList = fromDir(path.join('resource','subcircuits','QAP*'), '');
   function searchQapDirectory(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -304,7 +306,15 @@ function decode() {
 }
 
 function prove() {
-  const circuitNameList = fromDir('/resource/circuits/', '*');
+  const qapDirList = fromDir(path.join('resource','subcircuits','QAP*'), '');
+  function searchQapDirectory(answers, input = '') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy.filter(input, qapDirList).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
+  const circuitNameList = fromDir(path.join('resource','circuits'), '*');
   function searchCircuitName(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -312,7 +322,7 @@ function prove() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = fromDir('/resource/circuits/**/', '*.crs');
+  const circuitSpecificReferenceStringList = fromDir(path.join('resource','circuits','**'), '*.crs');
   function searchCircuitSpecificReferenceString(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -322,6 +332,19 @@ function prove() {
   }
   inquirer
     .prompt([
+      {
+        type: 'autocomplete',
+        name: 'qapDirectory',
+        suggestOnly: true,
+        message: 'Which QAP will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchQapDirectory,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
       {
         type: 'autocomplete',
         name: 'circuitSpecificReferenceString',
@@ -369,6 +392,7 @@ function prove() {
     ])
     .then(answers => {
       return zkey.groth16Prove(
+        answers.qapDirectory,
         answers.circuitSpecificReferenceString, 
         answers.proofName, 
         answers.circuitName, 
@@ -379,7 +403,7 @@ function prove() {
 }
 
 function verify() {
-  const circuitNameList = fromDir('/resource/circuits/', '*');
+  const circuitNameList = fromDir(path.join('resource','circuits'), '*');
   function searchCircuitName(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -387,7 +411,7 @@ function verify() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = fromDir('/resource/circuits/**/', '*.crs');
+  const circuitSpecificReferenceStringList = fromDir(path.join('resource','circuits','**'), '*.crs');
   function searchCircuitSpecificReferenceString(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -395,7 +419,7 @@ function verify() {
       }, Math.random() * 470 + 30);
     });
   }
-  const proofFileList = fromDir('/resource/circuits/**/', '*.proof');
+  const proofFileList = fromDir(path.join('resource','circuits','**'), '*.proof');
   function searchProofFile(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -403,7 +427,6 @@ function verify() {
       }, Math.random() * 470 + 30);
     });
   }
-
   inquirer
     .prompt([
       {
@@ -466,10 +489,28 @@ function verify() {
       )
     })
 }
+function tests() {
+  inquirer
+  .prompt([
+    {
+      type: 'input',
+      name: 'password',
+      message: 'Enter password',
+      default: '',
+      validate: value => {
+        return value ? true : 'Please enter a valid password';
+      }
+    },
+  ])
+  .then(answers => {
+    return zkey.tests(logger);
+  })
+}
 
 // get file names from directory
 function fromDir (directory = '', filter = '/*') {
   const __dirname = path.resolve();
-  const res = glob.sync(__dirname + directory + filter);
+  const __searchkey = path.join(__dirname, directory, filter)
+  const res = glob.sync(__searchkey.replace(/\\/g, '/'));
   return res;
 }
