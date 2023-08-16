@@ -21,7 +21,7 @@ var hash = require('js-sha3');
 var r1csfile = require('r1csfile');
 var Logger = require('logplease');
 var child_process = require('child_process');
-var os = require('os');
+var os$1 = require('os');
 var ethers = require('ethers');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
@@ -60,7 +60,7 @@ var fastFile__namespace = /*#__PURE__*/_interopNamespace(fastFile);
 var appRootPath__default = /*#__PURE__*/_interopDefaultLegacy(appRootPath);
 var hash__default = /*#__PURE__*/_interopDefaultLegacy(hash);
 var Logger__default = /*#__PURE__*/_interopDefaultLegacy(Logger);
-var os__default = /*#__PURE__*/_interopDefaultLegacy(os);
+var os__default = /*#__PURE__*/_interopDefaultLegacy(os$1);
 
 /* global window */
 
@@ -4115,7 +4115,6 @@ function makeJsonFile (dir, oplist, NINPUT, codewdata, instanceId) {
     InstanceFormatOut.push({ out: outputs_hex });
     !fs__default["default"].existsSync(path__default["default"].join(dir, `instance${instanceId}`)) && fs__default["default"].mkdirSync(path__default["default"].join(dir, `instance${instanceId}`));
     const fdInput = fs__default["default"].openSync(path__default["default"].join(dir, `instance${instanceId}`, `Input_opcode${k}.json`), 'w');
-    path__default["default"].join(dir, `instance${instanceId}`, `Input_opcode${k}.json`);
     const fdOutput = fs__default["default"].openSync(path__default["default"].join(dir, `instance${instanceId}`, `Output_opcode${k}.json`), 'w');
 
     fs__default["default"].writeSync(fdInput, JSON.stringify(InstanceFormatIn[k]));
@@ -5459,7 +5458,9 @@ function decode() {
       },
     ])
     .then(answers => {
-      const json = fs__default["default"].readFileSync(`${answers.circuitName}/config.json`, 'utf8');
+      const system = os.platform();
+      const slash = system === 'darwin' ? '/' : '\\';
+      const json = fs__default["default"].readFileSync(`${answers.circuitName}${slash}config.json`, 'utf8');
       const jsonData = JSON.parse(json);
       const { config, code } = jsonData;
       const decode = new Decoder();
