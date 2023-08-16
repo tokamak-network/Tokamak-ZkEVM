@@ -4396,7 +4396,7 @@ class Decoder {
       storage_pt[storage_keys[i]] = [0, storage_pts[i], storage_lens[i]];
     }
 
-    const data = pcdata 
+    let data = pcdata 
                 + Ivdata 
                 + Iddata 
                 + Id_lendata 
@@ -4406,11 +4406,13 @@ class Decoder {
                 + sddata 
                 + calldepthdata 
                 + balancedata 
-                + zerodata
-                + storagedata[0]
-                + storagedata[1]
-                + storagedata[2]
-                + storagedata[3];
+                + zerodata;
+                // + storagedata[0]
+                // + storagedata[1]
+                // + storagedata[2]
+                // + storagedata[3]
+    
+    for (let i = 0; i < storagedata.length; i ++) data = data + storagedata[i];
     
     const environData = Buffer.from(data, 'hex');
     let call_pt = [];
@@ -4965,7 +4967,6 @@ class Decoder {
         let inputs = [];
         let outputs;
         let pt_inputs = t_oplist.pt_inputs[0][0][0] ? t_oplist.pt_inputs[0] : t_oplist.pt_inputs;
-
         for (let i=0; i < inputlen; i ++) {
           inputs.push(this.evalEVM(pt_inputs[i]));
         }
