@@ -12,6 +12,7 @@ const logger = Logger.create('UniGro16js', {showTimestamp: false});
 import { exec } from 'child_process';
 import { Decoder } from './src/decode.js';
 import fs from 'fs'
+import os from 'os';
 
 Logger.setLogLevel('INFO');
 
@@ -265,7 +266,7 @@ function derive() {
 }
 
 function decode() {
-  const circuitNameList = fromDir('/resource/circuits/', '*');
+  const circuitNameList = fromDir(path.join('resource','circuits'), '*');
   function searchCircuitName(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -305,7 +306,11 @@ function decode() {
     .then(answers => {
       const system = os.platform()
       const slash = system === 'darwin' ? '/' : '\\'
-      const json = fs.readFileSync(`${answers.circuitName}${slash}config.json`, 'utf8')
+      // const json = fs.readFileSync(`${answers.circuitName}${slash}config.json`, 'utf8')
+      const dir = fromDir2(answers.circuitName, 'config.json')
+      console.log(dir[0])
+      // console.log(`${answers.circuitName}${slash}config.json`)
+      const json = fs.readFileSync(dir[0], 'utf8')
       const jsonData = JSON.parse(json);
       const { config, code } = jsonData
       const decode = new Decoder()

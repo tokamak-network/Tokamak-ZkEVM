@@ -21,7 +21,7 @@ var hash = require('js-sha3');
 var r1csfile = require('r1csfile');
 var Logger = require('logplease');
 var child_process = require('child_process');
-var os$1 = require('os');
+var os = require('os');
 var ethers = require('ethers');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
@@ -60,7 +60,7 @@ var fastFile__namespace = /*#__PURE__*/_interopNamespace(fastFile);
 var appRootPath__default = /*#__PURE__*/_interopDefaultLegacy(appRootPath);
 var hash__default = /*#__PURE__*/_interopDefaultLegacy(hash);
 var Logger__default = /*#__PURE__*/_interopDefaultLegacy(Logger);
-var os__default = /*#__PURE__*/_interopDefaultLegacy(os$1);
+var os__default = /*#__PURE__*/_interopDefaultLegacy(os);
 
 /* global window */
 
@@ -3872,8 +3872,8 @@ function pop_stack (stack_pt, d) {
 }
 
 function getSubcircuit () {
-  // const fileUrl = new URL("../../resource/subcircuits/subcircuit_info.json", import.meta.url)
-  const fileUrl = new URL("../resource/subcircuits/subcircuit_info.json", (typeof document === 'undefined' ? new (require('u' + 'rl').URL)('file:' + __filename).href : (document.currentScript && document.currentScript.src || new URL('cli.cjs', document.baseURI).href)));
+  const dir = fromDir$1(path__default["default"].join('resource', 'subcircuits'), 'subcircuit_info.json');
+  const fileUrl = new URL(dir[0], (typeof document === 'undefined' ? new (require('u' + 'rl').URL)('file:' + __filename).href : (document.currentScript && document.currentScript.src || new URL('cli.cjs', document.baseURI).href)));
   const subcircuit = JSON.parse(fs.readFileSync(fileUrl));
   return subcircuit['wire-list']
 }
@@ -4204,6 +4204,13 @@ function hexToString(hex) {
     bytes.push(code);
   }
   return bytes;
+}
+
+function fromDir$1 (directory = '', filter = '/*') {
+  const __dirname = path__default["default"].resolve();
+  const __searchkey = path__default["default"].join(__dirname, directory, filter);
+  const res = glob__default["default"].sync(__searchkey.replace(/\\/g, '/'));
+  return res;
 }
 
 function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {
@@ -5420,7 +5427,7 @@ function derive() {
 }
 
 function decode() {
-  const circuitNameList = fromDir('/resource/circuits/', '*');
+  const circuitNameList = fromDir(path__default["default"].join('resource','circuits'), '*');
   function searchCircuitName(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -5458,9 +5465,12 @@ function decode() {
       },
     ])
     .then(answers => {
-      const system = os.platform();
-      const slash = system === 'darwin' ? '/' : '\\';
-      const json = fs__default["default"].readFileSync(`${answers.circuitName}${slash}config.json`, 'utf8');
+      os__default["default"].platform();
+      // const json = fs.readFileSync(`${answers.circuitName}${slash}config.json`, 'utf8')
+      const dir = fromDir2(answers.circuitName, 'config.json');
+      console.log(dir[0]);
+      // console.log(`${answers.circuitName}${slash}config.json`)
+      const json = fs__default["default"].readFileSync(dir[0], 'utf8');
       const jsonData = JSON.parse(json);
       const { config, code } = jsonData;
       const decode = new Decoder();

@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs'
 import { readFileSync } from "fs";
 import os from 'os';
+import glob from 'glob';
 
 
 export function hexToInteger(hex) {
@@ -22,8 +23,8 @@ export function pop_stack (stack_pt, d) {
 }
 
 export function getSubcircuit () {
-  // const fileUrl = new URL("../../resource/subcircuits/subcircuit_info.json", import.meta.url)
-  const fileUrl = new URL("../resource/subcircuits/subcircuit_info.json", import.meta.url)
+  const dir = fromDir(path.join('resource', 'subcircuits'), 'subcircuit_info.json')
+  const fileUrl = new URL(dir[0], import.meta.url)
   const subcircuit = JSON.parse(readFileSync(fileUrl))
   return subcircuit['wire-list']
 }
@@ -396,4 +397,11 @@ export function hexToString(hex) {
     bytes.push(code);
   }
   return bytes;
+}
+
+function fromDir (directory = '', filter = '/*') {
+  const __dirname = path.resolve();
+  const __searchkey = path.join(__dirname, directory, filter)
+  const res = glob.sync(__searchkey.replace(/\\/g, '/'));
+  return res;
 }
