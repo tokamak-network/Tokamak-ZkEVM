@@ -84,6 +84,9 @@ async function setup(params, options) {
 
   return zkey.setup(paramName, RSName, QAPName, logger);
 }
+async function decode() {
+
+}
 async function derive(params, options) {
   const RSName = params[0];
   const cRSName = params[1];
@@ -95,14 +98,15 @@ async function derive(params, options) {
   return zkey.derive(RSName, cRSName, circuitName, QAPName, logger);
 }
 async function groth16Prove(params, options) {
-  const cRSName = params[0];
-  const proofName = params[1];
-  const circuitName = params[2];
-  const instanceId = params[3];
+  const qapName = params[0]
+  const cRSName = params[1];
+  const proofName = params[2];
+  const circuitName = params[3];
+  const instanceId = params[4];
 
   if (options.verbose) Logger.setLogLevel("DEBUG");
 
-  return zkey.groth16Prove(cRSName, proofName, circuitName, instanceId, logger);
+  return zkey.groth16Prove(qapName, cRSName, proofName, circuitName, instanceId, logger);
 }
 async function groth16Verify(params, options) {
   const proofName = params[0];

@@ -43,9 +43,9 @@ jobs:
     
     - name: prove
       run : |
-            node cli.js prove resource/circuits/schnorr_prove/crsSchnorr_prove.crs proof1 resource/circuits/schnorr_prove 1 -v
-            node cli.js prove resource/circuits/schnorr_prove/crsSchnorr_prove.crs proof2 resource/circuits/schnorr_prove 2 -v
-            node cli.js prove resource/circuits/schnorr_verify/crsSchnorr_verify.crs proof resource/circuits/schnorr_verify 1 -v
+            node cli.js prove resource/subcircuits/QAP_12_18 resource/circuits/schnorr_prove/crsSchnorr_prove.crs proof1 resource/circuits/schnorr_prove 1 -v
+            node cli.js prove resource/subcircuits/QAP_12_18 resource/circuits/schnorr_prove/crsSchnorr_prove.crs proof2 resource/circuits/schnorr_prove 2 -v
+            node cli.js prove resource/subcircuits/QAP_12_18 resource/circuits/schnorr_verify/crsSchnorr_verify.crs proof resource/circuits/schnorr_verify 1 -v
       
     - name: verify
       run : |
