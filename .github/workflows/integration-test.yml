@@ -43,7 +43,9 @@ jobs:
     
     - name: decode
       run : |
-            node cli.js decode 
+            node cli.js decode resource/circuits/schnorr_prove 1 -v
+            node cli.js decode resource/circuits/schnorr_prove 2 -v
+            node cli.js decode resource/circuits/schnorr_verify 1 -v
     
     - name: prove
       run : |
