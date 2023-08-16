@@ -1,5 +1,7 @@
 import {processConstraints} from './zkey_utils.js';
 import * as binFileUtils from '@iden3/binfileutils';
+import {Scalar, BigBuffer} from 'ffjavascript';
+import * as timer from './timer.js';
 
 /**
  *
@@ -181,6 +183,8 @@ export async function filterPoly(Fr, coefs1, vect, dir) {
  * @returns
  */
 export async function scalePoly(Fr, coefs, scaler) {
+  if(Fr.eq(scaler, Fr.zero)) return [[Fr.zero]];
+  if(Fr.eq(scaler, Fr.one)) return coefs;
   const nSlotX = coefs.length;
   const nSlotY = coefs[0].length;
 
@@ -206,26 +210,32 @@ export async function addPoly(Fr, coefs1, coefs2) {
   const N3_X = Math.max(N1_X, N2_X);
   const N3_Y = Math.max(N1_Y, N2_Y);
 
-  const res = new Array(N3_X);
+  const res = Array.from(Array(N3_X), () => new Array(N3_Y));
 
   for (let i = 0; i < N3_X; i++) {
-    const temprow = new Array(N3_Y);
     for (let j = 0; j < N3_Y; j++) {
-      let _arg1 = Fr.zero;
-      if (coefs1[i] !== undefined) {
-        if (coefs1[i][j] !== undefined) {
-          _arg1 = coefs1[i][j];
+      if (coefs1[i] == undefined){
+        if (coefs2[i][j] == undefined){
+          res[i][j] = Fr.zero;
+        } else {
+          res[i][j] = coefs2[i][j];
+        }
+      } else if (coefs2[i] == undefined){
+        if (coefs1[i][j] == undefined){
+          res[i][j] = Fr.zero;
+        } else {
+          res[i][j] = coefs1[i][j];
+        }
+      } else{
+        if (coefs1[i][j] !== undefined && coefs2[i][j] !== undefined){
+          res[i][j] = Fr.add(coefs1[i][j], coefs2[i][j]);
+        } else if(coefs1[i][j] == undefined){
+          res[i][j] = coefs2[i][j];
+        } else if(coefs2[i][j] == undefined){
+          res[i][j] = coefs1[i][j];
         }
       }
-      let _arg2 = Fr.zero;
-      if (coefs2[i] !== undefined) {
-        if (coefs2[i][j] !== undefined) {
-          _arg2 = coefs2[i][j];
-        }
-      }
-      temprow[j] = Fr.add(_arg1, _arg2);
     }
-    res[i] = temprow;
   }
   return res;
 }
@@ -399,6 +409,102 @@ export async function divPoly(Fr, coefs1, coefs2, objectFlag) {
   }
 }
 
+export function _transpose(A){
+  return A[0].map((_, colIndex) => A.map(row => row[colIndex]));
+  /*
+  const res = Array.from(
+    Array(A.length),
+    () => new Array(A[0].length),
+  );
+  for (let i = 0; i < res.length; i++) {
+    for (let j = 0; j < res[0].length; j++) {
+      res[]
+    }
+  }
+  */
+}
+
+export async function QapDiv(Fr, QAPcoefs, objectFlag) {
+  // Assume divisors are t(X) = X^(n-1) - 1, t(Y) = Y^(s_{max}-1) - 1
+  // p(X,Y) = t(Y)*HY(X,Y) + r(X)
+  // r(X) = t(X)*HX(X)
+  let P = reduceDimPoly(Fr, _autoTransFromObject(Fr, QAPcoefs));
+  const PXDeg = P.length - 1;
+  const PYDeg = P[0].length - 1;
+  const nX = (PXDeg + 2)/2;
+  const nY = (PYDeg + 2)/2;
+  if (Math.round(nX) != nX || Math.round(nY) != nY){
+    throw new Error(`Error in QapDivOnY: X degree is not equal to 2n-2`)
+  }
+  if (P.length != 2*nX-1 || P[0].length != 2*nY-1) {
+    throw new Error(`Error in QapDivOnY: QAP polynomial degree mismatch`)
+  }
+
+  P = _transpose(P);
+  let P1, P2, P3;
+  P3 = P.slice(0, nY-1);
+  P2 = [P[nY-1]];
+  P1 = P.slice(nY, 2*nY-1);
+
+  const ZeroVector = Array.from(
+    Array(1),
+    () => new Array(P1[0].length),
+  );
+  for (let j = 0; j < P1[0].length; j++) {
+    ZeroVector[0][j] = Fr.zero;
+  }
+  let SL = P3;
+  SL.push(...P2);
+  let SR = P1;
+  SR.push(...ZeroVector);
+  const S = await addPoly(Fr, SL, SR);
+
+  const R = _transpose(S);
+  let R1, R2, R3;
+  R3 = R.slice(0, nX-1);
+  R2 = [R[nX-1]];
+  R1 = R.slice(nX, 2*nX-1);
+
+  for (let j = 0; j < R1[0].length; j++) {
+    if (await Fr.eq(R2[0][j], Fr.zero) == false){
+      throw new Error(`Error in QapDivOnY: P(X,Y) is not divisible (1)`)
+    }
+    for (let i = 0; i < R1.length; i++) {
+      if ((await Fr.eq(R1[i][j], await Fr.neg(R3[i][j])) == false)){
+        throw new Error(`Error in QapDivOnY: P(X,Y) is not divisible (2)`)
+      }
+    }
+  }
+
+  const HY = _transpose(P1);
+  const HX = R1;
+
+  if (!((objectFlag === undefined) || (objectFlag == false))) {
+    HX = _transToObject(Fr, HX);
+    HY = _transToObject(Fr, HY);
+  }
+
+  //return {HX, HY};
+  
+  const HY_buff = new BigBuffer((2*nX-1)*(nY-1) * Fr.n8);
+  const buff_temp = new Uint8Array(Fr.n8);
+  for (let i = 0; i < 2*nX-1; i++){
+    for (let j = 0; j < nY-1; j++){
+      await Fr.toRprLE(buff_temp, 0, HY[i][j]);
+      HY_buff.set(buff_temp, (j + (nY-1)*i) * Fr.n8);
+    }
+  }
+  const HX_buff = new BigBuffer((nX-1)*nY * Fr.n8);
+  for (let i = 0; i < nX-1; i++){
+    for (let j = 0; j < nY; j++){
+      await Fr.toRprLE(buff_temp, 0, HX[i][j]);
+      HX_buff.set(buff_temp, (j + nY*i) * Fr.n8);
+    }
+  }
+
+  return {HX_buff, HY_buff};
+}
+
 export async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
   coefs1 = _autoTransFromObject(Fr, coefs1);
   coefs2 = _autoTransFromObject(Fr, coefs2);
@@ -535,7 +641,7 @@ export async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
  * @param {*} dir
  * @return output order is the highest order in dictionary order
  */
-function _findOrder(Fr, coefs, dir) {
+export function _findOrder(Fr, coefs, dir) {
   const N_X = coefs.length;
   const N_Y = coefs[0].length;
   const NumEl=N_X*N_Y;
@@ -659,59 +765,42 @@ export async function readQAP(qapDirPath, k, m, n, n8r) {
   return {uX, vX, wX};
 }
 
-export async function readCircuitQAP(
-    Fr,
-    fdQAP,
-    sectionsQAP,
-    i,
-    n,
-    sMax,
-    n8r,
+export async function LoadAndComputeQAP(
+  Fr,  
+  fdQAP,
+  cWtns_buff,
+  p1XY,
+  i,
+  n,
+  sMax,
 ) {
-  await binFileUtils.startReadUniqueSection(fdQAP, sectionsQAP, 2+i);
-
-  let degreeX;
-  let degreeY;
-
-  degreeX = await fdQAP.readULE32();
-  degreeY = await fdQAP.readULE32();
-  const uXY = Array.from(
-      Array(degreeX),
-      () => new Array(degreeY),
-  );
-  for (let i = 0; i < degreeX; i++) {
-    for (let j = 0; j < degreeY; j++) {
-      uXY[i][j] = await fdQAP.read(n8r);
+  let qapLoadTimeAccum = 0;
+  let qapLoadTimeStart = timer.start();
+  const length_flag = await fdQAP.readULE32();
+  qapLoadTimeAccum += timer.end(qapLoadTimeStart);
+  var xlength, ylength;
+  if (length_flag == 0){
+    xlength = 1;
+    ylength = 1;
+  } else if(length_flag == 1){
+    xlength = n;
+    ylength = sMax;
+  }
+  const cWtns_i = Fr.fromRprLE(cWtns_buff.slice(i*Fr.n8, i*Fr.n8 + Fr.n8), 0, Fr.n8);
+  for (let ii=0; ii<xlength; ii++){
+    for (let jj=0; jj<ylength; jj++){
+      qapLoadTimeStart = timer.start();
+      const uXY_i_ii_jj = await fdQAP.read(Fr.n8);
+      qapLoadTimeAccum += timer.end(qapLoadTimeStart);
+      if (Fr.eq(cWtns_i, Fr.zero)){ }      
+      else if (Fr.eq(cWtns_i, Fr.one)){
+        p1XY[ii][jj] = Fr.add(p1XY[ii][jj], uXY_i_ii_jj);  
+      } else{
+        p1XY[ii][jj] = Fr.add(p1XY[ii][jj], Fr.mul(uXY_i_ii_jj, cWtns_i));
+      }
     }
   }
-
-  degreeX = await fdQAP.readULE32();
-  degreeY = await fdQAP.readULE32();
-  const vXY = Array.from(
-      Array(degreeX),
-      () => new Array(degreeY),
-  );
-  for (let i = 0; i < degreeX; i++) {
-    for (let j = 0; j < degreeY; j++) {
-      vXY[i][j] = await fdQAP.read(n8r);
-    }
-  }
-
-  degreeX = await fdQAP.readULE32();
-  degreeY = await fdQAP.readULE32();
-  const wXY = Array.from(
-      Array(degreeX),
-      () => new Array(degreeY),
-  );
-  for (let i = 0; i < degreeX; i++) {
-    for (let j = 0; j < degreeY; j++) {
-      wXY[i][j] = await fdQAP.read(n8r);
-    }
-  }
-
-  await binFileUtils.endReadSection(fdQAP);
-
-  return {uXY, vXY, wXY};
+  return qapLoadTimeAccum
 }
 
 /**
@@ -722,13 +811,21 @@ export async function readCircuitQAP(
  * @returns
  */
 export async function tensorProduct(Fr, _array1, _array2) {
-  const product = new Array(_array1.length);
-  for (let i = 0; i < _array1.length; i++) {
-    const temprow = new Array(_array2[0].length);
-    for (let j = 0; j<_array2[0].length; j++) {
-      temprow[j] = Fr.mul(_array2[0][j], _array1[i][0]);
+  if (_array1.length == 1 && _array1[0].length == 1){
+    if (Fr.eq(_array1[0][0], Fr.zero)){
+      return [[Fr.zero]];
     }
-    product[i] = temprow;
+  }
+  if (_array2.length == 1 && _array2[0].length == 1){
+    if (Fr.eq(_array2[0][0], Fr.zero)){
+      return [[Fr.zero]];
+    }
+  } 
+  const product = Array.from(Array(_array1.length), () => new Array(_array2.length));
+  for (let i = 0; i < _array1.length; i++) {
+    for (let j = 0; j<_array2[0].length; j++) {
+      product[i][j] = Fr.mul(_array2[0][j], _array1[i][0]);
+    }
   }
   return product;
 }

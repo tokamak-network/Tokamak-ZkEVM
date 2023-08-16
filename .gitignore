@@ -1,6 +1,8 @@
 # Big files: QAP, URS
 *.qap
 *.urs
+*.crs
+*.proof
 
 vk_proof.json
 vk_verifier.json

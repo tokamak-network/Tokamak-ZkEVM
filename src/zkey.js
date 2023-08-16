@@ -5,3 +5,4 @@ export {default as groth16Verify} from './verify.js';
 export {default as buildQAP} from './build_qap.js';
 export {default as buildSingleQAP} from './build_single_qap.js';
 // export {default as decode} from './decode.js'
+export {default as tests} from './tests.js';

@@ -51,14 +51,26 @@ export async function read(fileName) {
   const {n8, nWitness} = await readHeader(fd, sections);
 
   await binFileUtils.startReadUniqueSection(fd, sections, 2);
-  const res = [];
-  for (let i=0; i<nWitness; i++) {
+  //const res_buff = new BigBuffer(nWitness*n8);
+  //await fd.readToBuffer(res_buff,0,nWitness*n8);
+  
+  const res = new Array(nWitness);
+  for (let i=0; i<nWitness; i++) { 
+    const buff_temp = new Uint8Array(n8);
+    await fd.readToBuffer(buff_temp,0,n8);
+    res[i] = buff_temp;
+  }
+  
+  /*
+  let res=[];
+  for (let i=0; i<nWitness; i++) { 
     const v = await binFileUtils.readBigInt(fd, n8);
     res.push(v);
   }
   await binFileUtils.endReadSection(fd);
 
   await fd.close();
+  */
 
   return res;
 }

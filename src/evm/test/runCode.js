@@ -20,7 +20,7 @@ const main = async () => {
   })
 
   const decoder = new Decoder({})
-  const path = '/Users/hwangjaeseung/workspace/zkp/UniGro16js/resource/circuits/schnorr_prove'
+  const path = '/Users/hwangjaeseung/workspace/zkp/UniGro16js/resource/circuits/test_transfer'
   
   const json = fs.readFileSync(`${path}/config.json`, 'utf8')
   const jsonData = JSON.parse(json);
@@ -28,7 +28,6 @@ const main = async () => {
     config,
     code
   } = jsonData
-  
   evm.events.on('step', function (data) {
     // Note that data.stack is not immutable, i.e. it is a reference to the vm's internal stack object
     console.log(`Opcode: ${data.opcode.name}\tStack: ${data.stack}`)

@@ -329,20 +329,28 @@ async function readRS(fd, sections, rsParam, rsType, toObject) {
   }
   rsContent.sigmaG.vk1XyPows = vk1XyPows;
 
-  const vk1XyPowsT1g = Array.from(Array(n-1), () => new Array(2*sMax-1));
+  const vk1XyPowsT1g = new ffjavascript.BigBuffer((n-1)*sMax*curve.G1.F.n8*2);
+  await fd.readToBuffer(vk1XyPowsT1g, 0, (n-1)*sMax*curve.G1.F.n8*2);
+  /*
+  const vk1XyPowsT1g = Array.from(Array(n-1), () => new Array(sMax));
   for (let i = 0; i < n-1; i++) {
-    for (let j=0; j<2*sMax-1; j++) {
+    for (let j=0; j<sMax; j++) {
       vk1XyPowsT1g[i][j] = await readG1(fd, curve, toObject);
     }
   }
+  */
   rsContent.sigmaG.vk1XyPowsT1g = vk1XyPowsT1g;
 
-  const vk1XyPowsT2g = Array.from(Array(n), () => new Array(sMax-1));
-  for (let i = 0; i < n; i++) {
+  const vk1XyPowsT2g = new ffjavascript.BigBuffer((2*n-1)*(sMax-1)*curve.G1.F.n8*2);
+  await fd.readToBuffer(vk1XyPowsT2g, 0, (2*n-1)*(sMax-1)*curve.G1.F.n8*2);
+  /*
+  const vk1XyPowsT2g = Array.from(Array(2*n-1), () => new Array(sMax-1));
+  for (let i = 0; i < 2*n-1; i++) {
     for (let j=0; j<sMax-1; j++) {
       vk1XyPowsT2g[i][j] = await readG1(fd, curve, toObject);
     }
   }
+  */
   rsContent.sigmaG.vk1XyPowsT2g = vk1XyPowsT2g;
 
   await binFileUtils__namespace.endReadSection(fd);
@@ -431,6 +439,7 @@ async function readRS(fd, sections, rsParam, rsType, toObject) {
     const mPrivate = await fd.readULE32();
     rsContent.crs.param.mPrivate = mPrivate;
 
+    /*
     const vk1Uxy1d = new Array(m);
     const vk1Vxy1d = new Array(m);
     const vk1Zxy1d = new Array(mPublic);
@@ -454,6 +463,20 @@ async function readRS(fd, sections, rsParam, rsType, toObject) {
     for (let i=0; i<m; i++) {
       vk2Vxy1d[i] = await readG2(fd, curve, toObject);
     }
+    */
+
+    const vk1Uxy1d = new ffjavascript.BigBuffer(m*curve.G1.F.n8*2);
+    const vk1Vxy1d = new ffjavascript.BigBuffer(m*curve.G1.F.n8*2);
+    const vk1Zxy1d = new ffjavascript.BigBuffer(mPublic*curve.G1.F.n8*2);
+    const vk1Axy1d = new ffjavascript.BigBuffer(mPrivate*curve.G1.F.n8*2);
+    const vk2Vxy1d = new ffjavascript.BigBuffer(m*curve.G2.F.n8*2);
+    await fd.readToBuffer(vk1Uxy1d, 0, m*curve.G1.F.n8*2);
+    await fd.readToBuffer(vk1Vxy1d, 0, m*curve.G1.F.n8*2);
+    await fd.readToBuffer(vk1Zxy1d, 0, mPublic*curve.G1.F.n8*2);
+    await fd.readToBuffer(vk1Axy1d, 0, mPrivate*curve.G1.F.n8*2);
+    await fd.readToBuffer(vk2Vxy1d, 0, m*curve.G2.F.n8*2);
+    
+
     await binFileUtils__namespace.endReadSection(fd);
 
     rsContent.crs.vk1Uxy1d = vk1Uxy1d;
@@ -662,6 +685,8 @@ async function filterPoly(Fr, coefs1, vect, dir) {
  * @returns
  */
 async function scalePoly(Fr, coefs, scaler) {
+  if(Fr.eq(scaler, Fr.zero)) return [[Fr.zero]];
+  if(Fr.eq(scaler, Fr.one)) return coefs;
   const nSlotX = coefs.length;
   const nSlotY = coefs[0].length;
 
@@ -687,26 +712,32 @@ async function addPoly(Fr, coefs1, coefs2) {
   const N3_X = Math.max(N1_X, N2_X);
   const N3_Y = Math.max(N1_Y, N2_Y);
 
-  const res = new Array(N3_X);
+  const res = Array.from(Array(N3_X), () => new Array(N3_Y));
 
   for (let i = 0; i < N3_X; i++) {
-    const temprow = new Array(N3_Y);
     for (let j = 0; j < N3_Y; j++) {
-      let _arg1 = Fr.zero;
-      if (coefs1[i] !== undefined) {
-        if (coefs1[i][j] !== undefined) {
-          _arg1 = coefs1[i][j];
+      if (coefs1[i] == undefined){
+        if (coefs2[i][j] == undefined){
+          res[i][j] = Fr.zero;
+        } else {
+          res[i][j] = coefs2[i][j];
+        }
+      } else if (coefs2[i] == undefined){
+        if (coefs1[i][j] == undefined){
+          res[i][j] = Fr.zero;
+        } else {
+          res[i][j] = coefs1[i][j];
+        }
+      } else {
+        if (coefs1[i][j] !== undefined && coefs2[i][j] !== undefined){
+          res[i][j] = Fr.add(coefs1[i][j], coefs2[i][j]);
+        } else if(coefs1[i][j] == undefined){
+          res[i][j] = coefs2[i][j];
+        } else if(coefs2[i][j] == undefined){
+          res[i][j] = coefs1[i][j];
         }
       }
-      let _arg2 = Fr.zero;
-      if (coefs2[i] !== undefined) {
-        if (coefs2[i][j] !== undefined) {
-          _arg2 = coefs2[i][j];
-        }
-      }
-      temprow[j] = Fr.add(_arg1, _arg2);
     }
-    res[i] = temprow;
   }
   return res;
 }
@@ -775,133 +806,100 @@ function _autoTransFromObject(Fr, coefs) {
   return res;
 }
 
-async function divPolyByX(Fr, coefs1, coefs2, objectFlag) {
-  coefs1 = _autoTransFromObject(Fr, coefs1);
-  coefs2 = _autoTransFromObject(Fr, coefs2);
-  const dictOrder = 0;
-  const denom = coefs2;
-  const {
-    xId: deOrderX,
-    yId: deOrderY,
-    coef: deHighCoef,
-  } = _findOrder(Fr, denom, dictOrder);
-
-  let numer = coefs1;
-  let res = [[Fr.zero]];
-
-  let prevOrderX;
-  let prevOrderY;
-
-  while (1) {
-    const {
-      xId: nuOrderX,
-      yId: nuOrderY,
-      coef: nuHighCoef,
-    } = _findOrder(Fr, numer, dictOrder);
-    if ((prevOrderX <= nuOrderX) && prevOrderY <= nuOrderY) {
-      throw new Error(`infinite loop`);
+function _transpose(A){
+  return A[0].map((_, colIndex) => A.map(row => row[colIndex]));
+  /*
+  const res = Array.from(
+    Array(A.length),
+    () => new Array(A[0].length),
+  );
+  for (let i = 0; i < res.length; i++) {
+    for (let j = 0; j < res[0].length; j++) {
+      res[]
     }
-    if (
-      (!((nuOrderX>=deOrderX) && (nuOrderY>=deOrderY))) ||
-      Fr.eq(nuHighCoef, Fr.zero)
-    ) break;
-
-    const diffOrderX = nuOrderX - deOrderX;
-    const quoXY = Array.from(
-        Array(diffOrderX + 1),
-        () => new Array(nuOrderY+1),
-    );
-    for (let i = 0; i < nuOrderY + 1; i++) {
-      for (let j = 0; j < diffOrderX; j++) {
-        quoXY[j][i]=Fr.zero;
-      }
-      quoXY[diffOrderX][i] = Fr.mul(
-          numer[nuOrderX][i],
-          await Fr.inv(deHighCoef),
-      );
-    }
-
-    const energy = await fftMulPoly(Fr, quoXY, denom);
-    const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
-
-    res = await addPoly(Fr, res, quoXY);
-    numer = rem;
-
-    prevOrderX = nuOrderX;
-    prevOrderY = nuOrderY;
   }
-  let finalrem = numer;
-
-  if (!((objectFlag === undefined) || (objectFlag == false))) {
-    res = _transToObject(Fr, res);
-    finalrem = _transToObject(Fr, finalrem);
-  }
-  return {res, finalrem};
+  */
 }
 
-async function divPolyByY(Fr, coefs1, coefs2, objectFlag) {
-  coefs1 = _autoTransFromObject(Fr, coefs1);
-  coefs2 = _autoTransFromObject(Fr, coefs2);
-  const dictOrder = 1;
-  const denom = coefs2;
-  const {
-    xId: deOrderX,
-    yId: deOrderY,
-    coef: deHighCoef,
-  } = _findOrder(Fr, denom, dictOrder);
-
-  let numer = coefs1;
-  let res = [[Fr.zero]];
-
-  let prevOrderX;
-  let prevOrderY;
-
-  while (1) {
-    const {
-      xId: nuOrderX,
-      yId: nuOrderY,
-      coef: nuHighCoef,
-    } = _findOrder(Fr, numer, dictOrder);
-    if ((prevOrderX <= nuOrderX) && prevOrderY <= nuOrderY) {
-      throw new Error(`infinite loop`);
-    }
-
-    if (
-      (!((nuOrderX>=deOrderX) && (nuOrderY>=deOrderY))) ||
-      Fr.eq(nuHighCoef, Fr.zero)
-    ) break;
-
-    const diffOrderY = nuOrderY - deOrderY;
-    const quoXY = Array.from(
-        Array(nuOrderX + 1),
-        () => new Array(diffOrderY + 1),
-    );
-    for (let i = 0; i < nuOrderX + 1; i++) {
-      for (let j = 0; j < diffOrderY; j++) {
-        quoXY[i][j] = Fr.zero;
-      }
-      quoXY[i][diffOrderY] = Fr.mul(
-          numer[i][nuOrderY],
-          await Fr.inv(deHighCoef),
-      );
-    }
-
-    const energy = await fftMulPoly(Fr, quoXY, denom);
-    const rem = reduceDimPoly(Fr, await subPoly(Fr, numer, energy));
-
-    res = await addPoly(Fr, res, quoXY);
-    numer = rem;
-
-    prevOrderX = nuOrderX;
-    prevOrderY = nuOrderY;
+async function QapDiv(Fr, QAPcoefs, objectFlag) {
+  // Assume divisors are t(X) = X^(n-1) - 1, t(Y) = Y^(s_{max}-1) - 1
+  // p(X,Y) = t(Y)*HY(X,Y) + r(X)
+  // r(X) = t(X)*HX(X)
+  let P = reduceDimPoly(Fr, _autoTransFromObject(Fr, QAPcoefs));
+  const PXDeg = P.length - 1;
+  const PYDeg = P[0].length - 1;
+  const nX = (PXDeg + 2)/2;
+  const nY = (PYDeg + 2)/2;
+  if (Math.round(nX) != nX || Math.round(nY) != nY){
+    throw new Error(`Error in QapDivOnY: X degree is not equal to 2n-2`)
   }
-  let finalrem = numer;
+  if (P.length != 2*nX-1 || P[0].length != 2*nY-1) {
+    throw new Error(`Error in QapDivOnY: QAP polynomial degree mismatch`)
+  }
+
+  P = _transpose(P);
+  let P1, P2, P3;
+  P3 = P.slice(0, nY-1);
+  P2 = [P[nY-1]];
+  P1 = P.slice(nY, 2*nY-1);
+
+  const ZeroVector = Array.from(
+    Array(1),
+    () => new Array(P1[0].length),
+  );
+  for (let j = 0; j < P1[0].length; j++) {
+    ZeroVector[0][j] = Fr.zero;
+  }
+  let SL = P3;
+  SL.push(...P2);
+  let SR = P1;
+  SR.push(...ZeroVector);
+  const S = await addPoly(Fr, SL, SR);
+
+  const R = _transpose(S);
+  let R1, R2, R3;
+  R3 = R.slice(0, nX-1);
+  R2 = [R[nX-1]];
+  R1 = R.slice(nX, 2*nX-1);
+
+  for (let j = 0; j < R1[0].length; j++) {
+    if (await Fr.eq(R2[0][j], Fr.zero) == false){
+      throw new Error(`Error in QapDivOnY: P(X,Y) is not divisible (1)`)
+    }
+    for (let i = 0; i < R1.length; i++) {
+      if ((await Fr.eq(R1[i][j], await Fr.neg(R3[i][j])) == false)){
+        throw new Error(`Error in QapDivOnY: P(X,Y) is not divisible (2)`)
+      }
+    }
+  }
+
+  const HY = _transpose(P1);
+  const HX = R1;
 
   if (!((objectFlag === undefined) || (objectFlag == false))) {
-    res = _transToObject(Fr, res);
-    finalrem = _transToObject(Fr, finalrem);
+    HX = _transToObject(Fr, HX);
+    HY = _transToObject(Fr, HY);
   }
-  return {res, finalrem};
+
+  //return {HX, HY};
+  
+  const HY_buff = new ffjavascript.BigBuffer((2*nX-1)*(nY-1) * Fr.n8);
+  const buff_temp = new Uint8Array(Fr.n8);
+  for (let i = 0; i < 2*nX-1; i++){
+    for (let j = 0; j < nY-1; j++){
+      await Fr.toRprLE(buff_temp, 0, HY[i][j]);
+      HY_buff.set(buff_temp, (j + (nY-1)*i) * Fr.n8);
+    }
+  }
+  const HX_buff = new ffjavascript.BigBuffer((nX-1)*nY * Fr.n8);
+  for (let i = 0; i < nX-1; i++){
+    for (let j = 0; j < nY; j++){
+      await Fr.toRprLE(buff_temp, 0, HX[i][j]);
+      HX_buff.set(buff_temp, (j + nY*i) * Fr.n8);
+    }
+  }
+
+  return {HX_buff, HY_buff};
 }
 
 /**
@@ -1035,61 +1033,6 @@ async function readQAP(qapDirPath, k, m, n, n8r) {
   return {uX, vX, wX};
 }
 
-async function readCircuitQAP(
-    Fr,
-    fdQAP,
-    sectionsQAP,
-    i,
-    n,
-    sMax,
-    n8r,
-) {
-  await binFileUtils__namespace.startReadUniqueSection(fdQAP, sectionsQAP, 2+i);
-
-  let degreeX;
-  let degreeY;
-
-  degreeX = await fdQAP.readULE32();
-  degreeY = await fdQAP.readULE32();
-  const uXY = Array.from(
-      Array(degreeX),
-      () => new Array(degreeY),
-  );
-  for (let i = 0; i < degreeX; i++) {
-    for (let j = 0; j < degreeY; j++) {
-      uXY[i][j] = await fdQAP.read(n8r);
-    }
-  }
-
-  degreeX = await fdQAP.readULE32();
-  degreeY = await fdQAP.readULE32();
-  const vXY = Array.from(
-      Array(degreeX),
-      () => new Array(degreeY),
-  );
-  for (let i = 0; i < degreeX; i++) {
-    for (let j = 0; j < degreeY; j++) {
-      vXY[i][j] = await fdQAP.read(n8r);
-    }
-  }
-
-  degreeX = await fdQAP.readULE32();
-  degreeY = await fdQAP.readULE32();
-  const wXY = Array.from(
-      Array(degreeX),
-      () => new Array(degreeY),
-  );
-  for (let i = 0; i < degreeX; i++) {
-    for (let j = 0; j < degreeY; j++) {
-      wXY[i][j] = await fdQAP.read(n8r);
-    }
-  }
-
-  await binFileUtils__namespace.endReadSection(fdQAP);
-
-  return {uXY, vXY, wXY};
-}
-
 /**
  *
  * @param {*} Fr
@@ -1098,13 +1041,21 @@ async function readCircuitQAP(
  * @returns
  */
 async function tensorProduct(Fr, _array1, _array2) {
-  const product = new Array(_array1.length);
-  for (let i = 0; i < _array1.length; i++) {
-    const temprow = new Array(_array2[0].length);
-    for (let j = 0; j<_array2[0].length; j++) {
-      temprow[j] = Fr.mul(_array2[0][j], _array1[i][0]);
+  if (_array1.length == 1 && _array1[0].length == 1){
+    if (Fr.eq(_array1[0][0], Fr.zero)){
+      return [[Fr.zero]];
     }
-    product[i] = temprow;
+  }
+  if (_array2.length == 1 && _array2[0].length == 1){
+    if (Fr.eq(_array2[0][0], Fr.zero)){
+      return [[Fr.zero]];
+    }
+  } 
+  const product = Array.from(Array(_array1.length), () => new Array(_array2.length));
+  for (let i = 0; i < _array1.length; i++) {
+    for (let j = 0; j<_array2[0].length; j++) {
+      product[i][j] = Fr.mul(_array2[0][j], _array1[i][0]);
+    }
   }
   return product;
 }
@@ -1489,12 +1440,12 @@ async function setup(
       () => new Array(sMax),
   );
   const xyPows = Array.from(
-      Array(n),
-      () => new Array(2*sMax-1),
+      Array(2*n-1),
+      () => new Array(sMax),
   ); // n by sMax 2d array
 
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < 2*sMax-1; j++) {
+  for (let i = 0; i < 2*n-1; i++) {
+    for (let j = 0; j < sMax; j++) {
       xyPows[i][j] = await Fr.mul(await Fr.exp(x, i), await Fr.exp(y, j));
     }
   }
@@ -1511,11 +1462,11 @@ async function setup(
 
   const gammaAInv=Fr.inv(tau.gamma_a);
   let xyPowsT1g;
-  const vk1XyPowsT1g = Array.from(Array(n-1), () => new Array(2*sMax-1));
+  const vk1XyPowsT1g = Array.from(Array(n-1), () => new Array(sMax));
   const t1X=Fr.sub(await Fr.exp(x, n), Fr.one);
   const t1XG=Fr.mul(t1X, gammaAInv);
   for (let i = 0; i < n-1; i++) {
-    for (let j=0; j<2*sMax-1; j++) {
+    for (let j=0; j<sMax; j++) {
       xyPowsT1g= await Fr.mul(xyPows[i][j], t1XG);
       EncTimeStart = start();
       vk1XyPowsT1g[i][j]= await G1.timesFr( buffG1, xyPowsT1g );
@@ -1527,10 +1478,10 @@ async function setup(
   }
 
   let xyPowsT2g;
-  const vk1XyPowsT2g = Array.from(Array(n), () => new Array(sMax-1));
+  const vk1XyPowsT2g = Array.from(Array(2*n-1), () => new Array(sMax-1));
   const t2Y=Fr.sub(await Fr.exp(y, sMax), Fr.one);
   const t2YG=Fr.mul(t2Y, gammaAInv);
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < 2*n-1; i++) {
     for (let j=0; j<sMax-1; j++) {
       xyPowsT2g= await Fr.mul(xyPows[i][j], t2YG);
       EncTimeStart = start();
@@ -2112,7 +2063,7 @@ async function derive(
       `${dirPath}/circuitQAP.qap`,
       'qapp',
       1,
-      1+m,
+      4,
       1<<22,
       1<<24,
   );
@@ -2136,10 +2087,10 @@ async function derive(
     fYK[k] = await scalePoly(Fr, LagY, FrSMaxInv);
     PolTimeAccum += end(PolTimeStart);
   }
-
   if (logger) logger.debug(`  Deriving u_i(X,Y), v_i(X,Y), w_i(X,Y) for i upto ${m}...`);
-  for (let i=0; i<m; i++) {
-    await binFileUtils.startWriteSection(fdQAP, 2+i);
+  
+  await binFileUtils.startWriteSection(fdQAP, 2); // section2: u_i(X,Y)
+  for (let i=0; i<m; i++) {    
     let arrayIdx;
     let PreImgSet;
     if (IdSetV.set.indexOf(i) > -1) {
@@ -2151,8 +2102,6 @@ async function derive(
     }
     const PreImgSize = PreImgSet.length;
     let uXY = [[Fr.zero]];
-    let vXY = [[Fr.zero]];
-    let wXY = [[Fr.zero]];
     for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
       const kPrime = PreImgSet[PreImgIdx][0];
       const iPrime = PreImgSet[PreImgIdx][1];
@@ -2165,50 +2114,141 @@ async function derive(
           fYK[kPrime],
       );
       uXY = await addPoly(Fr, uXY, uTerm);
+      PolTimeAccum += end(PolTimeStart);      
+    }
+    
+    uXY = reduceDimPoly(Fr, uXY);
+    if ( (n != uXY.length && 1 != uXY.length) || (sMax != uXY[0].length && 1 != uXY[0].length) ) {
+      if (logger) logger.debug(`xlen = ${uXY.length}, ylen = ${uXY[0].length}`);
+      throw new Error(`uXY size and degree do not match`);
+    }
+    
+    QAPWriteTimeStart = start();
 
+    //const uXY_flat = uXY.flat();
+    //await fdQAP.write(uXY_flat);
+
+    if ( uXY.length == 1 && uXY[0].length == 1 ) {
+      await fdQAP.writeULE32(0);
+    } else {
+      await fdQAP.writeULE32(1);
+    }
+
+    for (let xi=0; xi<uXY.length; xi++) {
+      for (let yi=0; yi<uXY[0].length; yi++) {
+        await fdQAP.write(uXY[xi][yi]);
+      }
+    }
+
+    QAPWriteTimeAccum += end(QAPWriteTimeStart);
+  }
+  await binFileUtils.endWriteSection(fdQAP);
+
+  await binFileUtils.startWriteSection(fdQAP, 3); // section3: v_i(X,Y)
+  for (let i=0; i<m; i++) {    
+    let arrayIdx;
+    let PreImgSet;
+    if (IdSetV.set.indexOf(i) > -1) {
+      arrayIdx = IdSetV.set.indexOf(i);
+      PreImgSet = IdSetV.PreImgs[arrayIdx];
+    } else {
+      arrayIdx = IdSetP.set.indexOf(i);
+      PreImgSet = IdSetP.PreImgs[arrayIdx];
+    }
+    const PreImgSize = PreImgSet.length;
+    let vXY = [[Fr.zero]];
+    for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
+      const kPrime = PreImgSet[PreImgIdx][0];
+      const iPrime = PreImgSet[PreImgIdx][1];
+      const sKPrime = OpList[kPrime];
+
+      PolTimeStart = start();
       const vTerm = await tensorProduct(
           Fr,
           vXK[sKPrime][iPrime],
           fYK[kPrime],
       );
       vXY = await addPoly(Fr, vXY, vTerm);
+      PolTimeAccum += end(PolTimeStart);      
+    }
 
+    vXY = reduceDimPoly(Fr, vXY);
+    if ( (n != vXY.length && 1 != vXY.length) || (sMax != vXY[0].length && 1 != vXY[0].length) ) {
+      if (logger) logger.debug(`xlen = ${vXY.length}, ylen = ${vXY[0].length}`);
+      throw new Error(`vXY size and degree do not match`);
+    }
+    
+    QAPWriteTimeStart = start();
+
+    if ( 1 == vXY.length && 1 == vXY[0].length ) {
+      await fdQAP.writeULE32(0);
+    } else {
+      await fdQAP.writeULE32(1);
+    }
+
+    for (let xi=0; xi<vXY.length; xi++) {
+      for (let yi=0; yi<vXY[0].length; yi++) {
+        await fdQAP.write(vXY[xi][yi]);
+      }
+    }
+    QAPWriteTimeAccum += end(QAPWriteTimeStart);
+  }
+  await binFileUtils.endWriteSection(fdQAP);
+
+  await binFileUtils.startWriteSection(fdQAP, 4); // section4: w_i(X,Y)
+  for (let i=0; i<m; i++) {    
+    let arrayIdx;
+    let PreImgSet;
+    if (IdSetV.set.indexOf(i) > -1) {
+      arrayIdx = IdSetV.set.indexOf(i);
+      PreImgSet = IdSetV.PreImgs[arrayIdx];
+    } else {
+      arrayIdx = IdSetP.set.indexOf(i);
+      PreImgSet = IdSetP.PreImgs[arrayIdx];
+    }
+    const PreImgSize = PreImgSet.length;
+    let wXY = [[Fr.zero]];
+    for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
+      const kPrime = PreImgSet[PreImgIdx][0];
+      const iPrime = PreImgSet[PreImgIdx][1];
+      const sKPrime = OpList[kPrime];
+
+      PolTimeStart = start();
       const wTerm = await tensorProduct(
           Fr,
           wXK[sKPrime][iPrime],
           fYK[kPrime],
       );
       wXY = await addPoly(Fr, wXY, wTerm);
-      PolTimeAccum += end(PolTimeStart);
+      PolTimeAccum += end(PolTimeStart);      
     }
 
+    wXY = reduceDimPoly(Fr, wXY);
+    if ( (n != wXY.length && 1 != wXY.length) || (sMax != wXY[0].length && 1 != wXY[0].length) ) {
+      if (logger) logger.debug(`xlen = ${wXY.length}, ylen = ${wXY[0].length}`);
+      throw new Error(`wXY size and degree do not match`);
+    } 
+  
     QAPWriteTimeStart = start();
-    await fdQAP.writeULE32(uXY.length);
-    await fdQAP.writeULE32(uXY[0].length);
-    for (let xi=0; xi<uXY.length; xi++) {
-      for (let yi=0; yi<uXY[0].length; yi++) {
-        await fdQAP.write(uXY[xi][yi]);
-      }
+
+    if ( 1 == wXY.length && 1 == wXY[0].length ) {
+      await fdQAP.writeULE32(0);
+    } else {
+      await fdQAP.writeULE32(1);
     }
-    await fdQAP.writeULE32(vXY.length);
-    await fdQAP.writeULE32(vXY[0].length);
-    for (let xi=0; xi<vXY.length; xi++) {
-      for (let yi=0; yi<vXY[0].length; yi++) {
-        await fdQAP.write(vXY[xi][yi]);
-      }
-    }
-    await fdQAP.writeULE32(wXY.length);
-    await fdQAP.writeULE32(wXY[0].length);
+
     for (let xi=0; xi<wXY.length; xi++) {
       for (let yi=0; yi<wXY[0].length; yi++) {
         await fdQAP.write(wXY[xi][yi]);
       }
     }
     QAPWriteTimeAccum += end(QAPWriteTimeStart);
-    await binFileUtils.endWriteSection(fdQAP);
   }
+  await binFileUtils.endWriteSection(fdQAP);
+
   await fdQAP.close();
   qapTime = end(qapTime);
+
   if (logger) logger.debug('Deriving QAP...Done');
   if (logger) logger.debug('\n');
 
@@ -2264,14 +2304,26 @@ async function read(fileName) {
   const {n8, nWitness} = await readHeader(fd, sections);
 
   await binFileUtils__namespace.startReadUniqueSection(fd, sections, 2);
-  const res = [];
-  for (let i=0; i<nWitness; i++) {
-    const v = await binFileUtils__namespace.readBigInt(fd, n8);
+  //const res_buff = new BigBuffer(nWitness*n8);
+  //await fd.readToBuffer(res_buff,0,nWitness*n8);
+  
+  const res = new Array(nWitness);
+  for (let i=0; i<nWitness; i++) { 
+    const buff_temp = new Uint8Array(n8);
+    await fd.readToBuffer(buff_temp,0,n8);
+    res[i] = buff_temp;
+  }
+  
+  /*
+  let res=[];
+  for (let i=0; i<nWitness; i++) { 
+    const v = await binFileUtils.readBigInt(fd, n8);
     res.push(v);
   }
-  await binFileUtils__namespace.endReadSection(fd);
+  await binFileUtils.endReadSection(fd);
 
   await fd.close();
+  */
 
   return res;
 }
@@ -2291,31 +2343,50 @@ var witness_calculator = async function builder(code, options) {
 
     let wc;
 
+    let errStr = "";
+    let msgStr = "";
     
     const instance = await WebAssembly.instantiate(wasmModule, {
         runtime: {
             exceptionHandler : function(code) {
-                let errStr;
+		let err;
                 if (code == 1) {
-                    errStr= "Signal not found. ";
+                    err = "Signal not found.\n";
                 } else if (code == 2) {
-                    errStr= "Too many signals set. ";
+                    err = "Too many signals set.\n";
                 } else if (code == 3) {
-                    errStr= "Signal already set. ";
+                    err = "Signal already set.\n";
 		} else if (code == 4) {
-                    errStr= "Assert Failed. ";
+                    err = "Assert Failed.\n";
 		} else if (code == 5) {
-                    errStr= "Not enough memory. ";
+                    err = "Not enough memory.\n";
 		} else if (code == 6) {
-                    errStr= "Input signal array access exceeds the size";
+                    err = "Input signal array access exceeds the size.\n";
 		} else {
-		    errStr= "Unknown error\n";
+		    err = "Unknown error.\n";
                 }
-		// get error message from wasm
-		errStr += getMessage();
-                throw new Error(errStr);
+                throw new Error(err + errStr);
             },
-	    showSharedRWMemory: function() {
+	    printErrorMessage : function() {
+		errStr += getMessage() + "\n";
+                // console.error(getMessage());
+	    },
+	    writeBufferMessage : function() {
+			const msg = getMessage();
+			// Any calls to `log()` will always end with a `\n`, so that's when we print and reset
+			if (msg === "\n") {
+				console.log(msgStr);
+				msgStr = "";
+			} else {
+				// If we've buffered other content, put a space in between the items
+				if (msgStr !== "") {
+					msgStr += " ";
+				}
+				// Then append the message to the message we are creating
+				msgStr += msg;
+			}
+	    },
+	    showSharedRWMemory : function() {
 		printSharedRWMemory ();
             }
 
@@ -2353,8 +2424,14 @@ var witness_calculator = async function builder(code, options) {
 	for (let j=0; j<shared_rw_memory_size; j++) {
 	    arr[shared_rw_memory_size-1-j] = instance.exports.readSharedRWMemory(j);
 	}
-	console.log(fromArray32(arr));
-    }
+
+	// If we've buffered other content, put a space in between the items
+	if (msgStr !== "") {
+		msgStr += " ";
+	}
+	// Then append the value to the message we are creating
+	msgStr += (fromArray32(arr).toString());
+	}
 
 };
 
@@ -2366,7 +2443,7 @@ class WitnessCalculator {
         this.n32 = this.instance.exports.getFieldNumLen32();
 
         this.instance.exports.getRawPrime();
-        const arr = new Array(this.n32);
+        const arr = new Uint32Array(this.n32);
         for (let i=0; i<this.n32; i++) {
             arr[this.n32-1-i] = this.instance.exports.readSharedRWMemory(i);
         }
@@ -2402,8 +2479,8 @@ class WitnessCalculator {
 		throw new Error(`Too many values for input signal ${k}\n`);
 	    }
             for (let i=0; i<fArr.length; i++) {
-		const arrFr = toArray32(fArr[i],this.n32);
-		for (let j=0; j<this.n32; j++) {
+                const arrFr = toArray32(BigInt(fArr[i])%this.prime,this.n32);
+                for (let j=0; j<this.n32; j++) {
 		    this.instance.exports.writeSharedRWMemory(j,arrFr[this.n32-1-j]);
 		}
 		try {
@@ -2527,9 +2604,8 @@ class WitnessCalculator {
 }
 
 
-function toArray32(s,size) {
+function toArray32(rem,size) {
     const res = []; //new Uint32Array(size); //has no unshift
-    let rem = BigInt(s);
     const radix = BigInt(0x100000000);
     while (rem) {
         res.unshift( Number(rem % radix));
@@ -2605,18 +2681,15 @@ async function generateWitness(circuitDirectory, instanceId){
 }
 
 async function groth16Prove(
-    circuitReferenceString,
-    proofName,
-    circuitName,
-    instanceId,
-    logger
+  qapName,   
+  circuitReferenceString,
+  proofName,
+  circuitName,
+  instanceId,
+  logger
 ) {
-  const startTime = start();
-  let EncTimeStart;
-  let EncTimeAccum = 0;
-  let qapLoadTimeStart;
-  let qapLoadTimeAccum = 0;
-
+  let timers = {};
+  timers.total = start();
   const dirPath = circuitName;
   const TESTFLAG = process.env.TEST_MODE;
   const CRS = 1;
@@ -2697,14 +2770,15 @@ async function groth16Prove(
   const G2 = urs.param.curve.G2;
   const Fr = urs.param.curve.Fr;
   //   const n8 = curve.Fr.n8;
-  const buffG1 = curve.G1.oneAffine;
-  const buffG2 = curve.G2.oneAffine;
+  curve.G1.oneAffine;
+  curve.G2.oneAffine;
   const n = urs.param.n;
   const n8r = urs.param.n8r;
   const sMax = urs.param.sMax;
   const sD = urs.param.sD;
+  const sF = OpList.length;
   // const s_F = OpList.length;
-  const omegaX = await Fr.e(urs.param.omegaX);
+  await Fr.e(urs.param.omegaX);
   const omegaY = await Fr.e(urs.param.omegaY);
 
   const mPublic = crs.param.mPublic;
@@ -2726,7 +2800,7 @@ async function groth16Prove(
 
   // generate witness for each subcircuit
   if (logger) logger.debug(`Solving QAP...`);
-  let qapSolveTime = start();
+  timers.qapSolve = start();
   if (logger) logger.debug(`  Generating circuit witness...`);
   await generateWitness(circuitName, instanceId);
   const wtns = [];
@@ -2828,20 +2902,32 @@ async function groth16Prove(
   // / END of TEST CODE 2
 
   // / arrange circuit witness
-  const cWtns = new Array(WireList.length);
+  const cWtns_buff = new ffjavascript.BigBuffer(WireList.length * Fr.n8);
+  //const cWtns = new Array(WireList.length);
   for (let i=0; i<WireList.length; i++) {
     const kPrime = WireList[i][0];
     const idx = WireList[i][1];
-    cWtns[i] = Fr.e(wtns[kPrime][idx]);
-    if (cWtns[i] === undefined) {
+    //cWtns[i] = wtns[kPrime][idx]; // Uint8Array buffer
+    const cWtns_i = wtns[kPrime][idx]; // Uint8Array buffer
+    if (cWtns_i === undefined) {
       throw new Error(`Undefined cWtns value at i=${i}`);
     }
+    cWtns_buff.set(cWtns_i, Fr.n8*i);
+  }
+  const cWtns_private_buff = new ffjavascript.BigBuffer(mPrivate * Fr.n8);
+  for (let i=0; i<mPrivate; i++) {
+    const ii = IdSetP.set[i];
+    const kPrime = WireList[ii][0];
+    const idx = WireList[ii][1];
+    const cWtns_ii = wtns[kPrime][idx]; // Uint8Array buffer
+    cWtns_private_buff.set(cWtns_ii, Fr.n8*i);
   }
 
-  let tX = Array.from(Array(n+1), () => new Array(1));
-  let tY = Array.from(Array(1), () => new Array(sMax+1));
-  tX = await scalePoly(Fr, tX, Fr.zero);
-  tY = await scalePoly(Fr, tY, Fr.zero);
+  /*
+  const tX = Array.from(Array(n+1), () => new Array(1));
+  const tY = Array.from(Array(1), () => new Array(sMax+1));
+  tX = await polyUtils.scalePoly(Fr, tX, Fr.zero);
+  tY = await polyUtils.scalePoly(Fr, tY, Fr.zero);
   tX[0][0] = Fr.negone;
   tX[n][0] = Fr.one;
   tY[0][0] = Fr.negone;
@@ -2853,61 +2939,106 @@ async function groth16Prove(
   // <=> P(X,Y) has zeros at least the points omegaX^i and omegaY^j
   // <=> there exists h(X,Y) such that p(X,Y) = t(X,Y) * h(X,Y)
   // <=> finding h(X,Y) is the goal of Prove algorithm
+  */
 
   // / compute p(X,Y)
-  if (logger) logger.debug(`  Computing p(X,Y)...`);
-  const {
-    fd: fdQAP,
-    sections: sectionsQAP,
-  } = await binFileUtils__namespace.readBinFile(
-      `${circuitName}/circuitQAP.qap`,
-      'qapp',
-      1,
-      1<<22,
-      1<<24,
-  );
-  let pxyTime = start();
+  if (logger) logger.debug(`  Loading sub-QAPs...`);
+  timers.subQAPLoad = start();
+  const uXK = new Array(sD);
+  const vXK = new Array(sD);
+  const wXK = new Array(sD);
+  for (let i=0; i<sF; i++) {
+    const k = OpList[i];
+    if ( (uXK[k] === undefined) ) {
+      const mK = ParamR1cs[k].m;
+      const {
+        uX: _uX,
+        vX: _vX,
+        wX: _wX,
+      } = await readQAP(qapName, k, mK, n, n8r);
+      uXK[k] = _uX;
+      vXK[k] = _vX;
+      wXK[k] = _wX;
+    }
+  }
+  if (logger) logger.debug(`  Loading ${uXK.length} sub-QAPs...Done`);
+  timers.subQAPLoad= end(timers.subQAPLoad);
+  
+  if (logger) logger.debug(`  Preparing f_k(Y) of degree ${sMax-1} for k upto ${sF}...`);
+  timers.LagY = start();
+  const fYK = new Array(sF);
+  //const fY = Array.from(Array(1), () => new Array(sMax));
+  const FrSMaxInv = Fr.inv(Fr.e(sMax));
+  const FrOmegaInv = Fr.inv(omegaY);
+  for (let k=0; k<sF; k++) {
+    const invOmegaYK = new Array(sMax);
+    //invOmegaYK[0] = Fr.one;
+    invOmegaYK[0] = FrSMaxInv;
+    for (let i=1; i<sMax; i++) {
+      //invOmegaYK[i] = Fr.mul(invOmegaYK[i-1], await Fr.exp(Fr.inv(omegaY), k));
+      invOmegaYK[i] = Fr.mul(invOmegaYK[i-1], await Fr.exp(FrOmegaInv, k));
+    }
+    //const LagY = await polyUtils.filterPoly(Fr, fY, invOmegaYK, 1); //????????????
+    //fYK[k] = await polyUtils.scalePoly(Fr, LagY, FrSMaxInv);
+    fYK[k] = [invOmegaYK];
+  }
+  timers.LagY = end(timers.LagY);
+  
+  if (logger) logger.debug(`  Computing p(X,Y) for ${m} wires...`);
+  timers.polScalingAccum = 0;
+  timers.polTensorAccum = 0;
+  timers.polAddAccum = 0;
+  let timertemp;
   let p1XY = [[Fr.zero]];
   let p2XY = [[Fr.zero]];
   let p3XY = [[Fr.zero]];
-  for (let i=0; i<m; i++) {
-    qapLoadTimeStart = start();
-    const {
-      uXY,
-      vXY,
-      wXY,
-    } = await readCircuitQAP(
-        Fr,
-        fdQAP,
-        sectionsQAP,
-        i,
-        n,
-        sMax,
-        n8r,
-    );
-    qapLoadTimeAccum += end(qapLoadTimeStart);
-    const term1 = await scalePoly(Fr, uXY, cWtns[i]);
-    p1XY = await addPoly(Fr, p1XY, term1);
-    const term2 = await scalePoly(Fr, vXY, cWtns[i]);
-    p2XY = await addPoly(Fr, p2XY, term2);
-    const term3 = await scalePoly(Fr, wXY, cWtns[i]);
-    p3XY = await addPoly(Fr, p3XY, term3);
+  for (let i=0; i<m; i++) {    
+    const cWtns_i = Fr.fromRprLE(cWtns_buff.slice(i*Fr.n8, i*Fr.n8 + Fr.n8), 0, Fr.n8);
+    let arrayIdx;
+    let PreImgSet;
+    if (IdSetV.set.indexOf(i) > -1) {
+      arrayIdx = IdSetV.set.indexOf(i);
+      PreImgSet = IdSetV.PreImgs[arrayIdx];
+    } else {
+      arrayIdx = IdSetP.set.indexOf(i);
+      PreImgSet = IdSetP.PreImgs[arrayIdx];
+    }
+    const PreImgSize = PreImgSet.length;
+    for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
+      const kPrime = PreImgSet[PreImgIdx][0];
+      const iPrime = PreImgSet[PreImgIdx][1];
+      const sKPrime = OpList[kPrime];
+      timertemp = start();
+      const scaled_uXK = await scalePoly(Fr, uXK[sKPrime][iPrime], cWtns_i);
+      const scaled_vXK = await scalePoly(Fr, vXK[sKPrime][iPrime], cWtns_i);
+      const scaled_wXK = await scalePoly(Fr, wXK[sKPrime][iPrime], cWtns_i);
+      timers.polScalingAccum += end(timertemp);
+      timertemp = start();
+      const uTerm = await tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
+      const vTerm = await tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
+      const wTerm = await tensorProduct(Fr, scaled_wXK, fYK[kPrime]);
+      timers.polTensorAccum += end(timertemp);
+      timertemp = start();
+      p1XY = await addPoly(Fr, p1XY, uTerm);
+      p2XY = await addPoly(Fr, p2XY, vTerm);
+      p3XY = await addPoly(Fr, p3XY, wTerm);
+      timers.polAddAccum += end(timertemp);
+    }
   }
-  await fdQAP.close();
-
+  timers.polMul = start();
   const temp = await fftMulPoly(Fr, p1XY, p2XY);
+  timers.polMul = end(timers.polMul);
+  timertemp = start();
   const pXY = await subPoly(Fr, temp, p3XY);
-  pxyTime = end(pxyTime);
+  timers.polAddAccum += end(timertemp);
 
   // compute H
-  if (logger) logger.debug(`  Finding h1(X,Y)...`);
-  let PolDivTime = start();
-  const {res: h1XY, finalrem: rem1} = await divPolyByX(Fr, pXY, tX);
-  if (logger) logger.debug(`  Finding h2(X,Y)...`);
-
-  const {res: h2XY, finalrem: rem2} = await divPolyByY(Fr, rem1, tY);
-  PolDivTime = end(PolDivTime);
-  qapSolveTime = end(qapSolveTime);
+  if (logger) logger.debug(`  Finding h1(X,Y) and h2(X,Y)...`);
+  timers.polDiv = start();
+  // h1XY = HX(X,Y), h2XY = HY(X,Y)
+  const {HX_buff: h1XY, HY_buff: h2XY} = await QapDiv(Fr, pXY);
+  timers.polDiv = end(timers.polDiv);
+  timers.qapSolve = end(timers.qapSolve);
   if (logger) logger.debug(`Solving QAP...Done`);
 
   // console.log(`rem: ${rem2}`)
@@ -2930,40 +3061,6 @@ async function groth16Prove(
     if (logger) logger.debug(`n: ${n}, sMax: ${sMax}`);
   }
 
-  // / TEST CODE 3
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug('Running Test 3');
-    for (let i=0; i<n; i++) {
-      for (let j=0; j<sMax; j++) {
-        const evalPointX = await Fr.exp(omegaX, i);
-        const evalPointY = await Fr.exp(omegaY, j);
-        const flag = await evalPoly(
-            Fr,
-            pXY,
-            evalPointX,
-            evalPointY,
-        );
-        if ( !Fr.eq(flag, Fr.zero) ) {
-          throw new Error('Error in pXY');
-        }
-      }
-    }
-    let res = pXY;
-    const temp1 = await fftMulPoly(Fr, h1XY, tX);
-    const temp2 = await fftMulPoly(Fr, h2XY, tY);
-    res= await subPoly(Fr, res, temp1);
-    res= await subPoly(Fr, res, temp2);
-    if (!Fr.eq(
-        await evalPoly(Fr, res, Fr.one, Fr.one),
-        Fr.zero)
-    ) {
-      throw new Error('Error in pXY=h1t+h2t');
-    }
-
-    if (logger) logger.debug(`Test 3 finished`);
-  }
-  // / End of TEST CODE 3
-
   // Generate r and s
   const rawr = await getRandomRng(1);
   const raws = await getRandomRng(2);
@@ -2971,199 +3068,42 @@ async function groth16Prove(
   const s = Fr.fromRng(raws);
 
   if (logger) logger.debug(`Generating Proofs...`);
-  let provingTime = start();
+  timers.proving = start();
   if (logger) logger.debug(`  Generating Proof A...`);
   // Compute proof A
   const vk1AP1 = urs.sigmaG.vk1AlphaV;
-  const vk1AP3 = await mulFrInG1(urs.sigmaG.vk1GammaA, r);
-  let vk1AP2 = await mulFrInG1(buffG1, Fr.e(0));
-  for (let i=0; i<m; i++) {
-    const term = await mulFrInG1(crs.vk1Uxy1d[i], cWtns[i]);
-    vk1AP2 = await G1.add(vk1AP2, term);
-  }
+  const vk1AP3 = await G1.timesFr(urs.sigmaG.vk1GammaA, r);
+  const vk1AP2 = await G1.multiExpAffine(crs.vk1Uxy1d, cWtns_buff, false);
   const vk1A = await G1.add(await G1.add(vk1AP1, vk1AP2), vk1AP3);
 
   if (logger) logger.debug(`  Generating Proof B...`);
   // Compute proof B_H
   const vk2BP1 = urs.sigmaH.vk2AlphaU;
-  const vk2BP3 = await mulFrInG2(urs.sigmaH.vk2GammaA, s);
-  let vk2BP2 = await mulFrInG2(buffG2, Fr.e(0));
-  for (let i=0; i<m; i++) {
-    const term = await mulFrInG2(crs.vk2Vxy1d[i], cWtns[i]);
-    vk2BP2 = await G2.add(vk2BP2, term);
-  }
+  const vk2BP3 = await G2.timesFr(urs.sigmaH.vk2GammaA, s);
+  const vk2BP2 = await G2.multiExpAffine(crs.vk2Vxy1d, cWtns_buff, false);
   const vk2B = await G2.add(await G2.add(vk2BP1, vk2BP2), vk2BP3);
 
   if (logger) logger.debug(`  Generating Proof C...`);
   // Compute proof B_G
   const vk1BP1 = urs.sigmaG.vk1AlphaU;
-  const vk1BP3 = await mulFrInG1(urs.sigmaG.vk1GammaA, s);
-  let vk1BP2 = await mulFrInG1(buffG1, Fr.e(0));
-  for (let i=0; i<m; i++) {
-    const term = await mulFrInG1(crs.vk1Vxy1d[i], cWtns[i]);
-    vk1BP2 = await G1.add(vk1BP2, term);
-  }
+  const vk1BP3 = await G1.timesFr(urs.sigmaG.vk1GammaA, s);
+  const vk1BP2 = await G1.multiExpAffine(crs.vk1Vxy1d, cWtns_buff, false);
   const vk1B = await G1.add(await G1.add(vk1BP1, vk1BP2), vk1BP3);
 
   // Compute proof C_G
   const vk1CP = new Array(6);
-  vk1CP[0] = await mulFrInG1(buffG1, Fr.e(0));
-  for (let i=0; i<mPrivate; i++) {
-    const term = await mulFrInG1(
-        crs.vk1Axy1d[i],
-        cWtns[IdSetP.set[i]],
-    );
-    vk1CP[0] = await G1.add(vk1CP[0], term);
-  }
-  vk1CP[1] = await mulFrInG1(buffG1, Fr.e(0));
-  for (let i=0; i<n-1; i++) {
-    for (let j=0; j<2*sMax-1; j++) {
-      const term = await mulFrInG1(
-          urs.sigmaG.vk1XyPowsT1g[i][j],
-          h1XY[i][j],
-      );
-      vk1CP[1] = await G1.add(vk1CP[1], term);
-    }
-  }
-  vk1CP[2] = await mulFrInG1(buffG1, Fr.e(0));
-  for (let i=0; i<n; i++) {
-    for (let j=0; j<sMax-1; j++) {
-      const term = await mulFrInG1(
-          urs.sigmaG.vk1XyPowsT2g[i][j],
-          h2XY[i][j],
-      );
-      vk1CP[2] = await G1.add(vk1CP[2], term);
-    }
-  }
-  vk1CP[3] = await mulFrInG1(vk1A, s);
-  vk1CP[4] = await mulFrInG1(vk1B, r);
-  vk1CP[5] = await mulFrInG1(
-      urs.sigmaG.vk1GammaA,
-      Fr.neg(Fr.mul(r, s),
-      ));
+  vk1CP[0] = await G1.multiExpAffine(crs.vk1Axy1d, cWtns_private_buff, false);
+  vk1CP[1] = await G1.multiExpAffine(urs.sigmaG.vk1XyPowsT1g, h1XY, false);
+  vk1CP[2] = await G1.multiExpAffine(urs.sigmaG.vk1XyPowsT2g, h2XY, false);
+  vk1CP[3] = await G1.timesFr(vk1A, s);
+  vk1CP[4] = await G1.timesFr(vk1B, r);
+  vk1CP[5] = await G1.timesFr( urs.sigmaG.vk1GammaA, Fr.neg(Fr.mul(r, s)) );
   let vk1C = vk1CP[0];
   for (let i=1; i<6; i++) {
     vk1C = await G1.add(vk1C, vk1CP[i]);
   }
-  provingTime = end(provingTime);
+  timers.proving = end(timers.proving);
   if (logger) logger.debug(`Generating Proofs...Done`);
-
-  // / TEST CODE 4
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug('Running Test 4');
-    const x = Fr.e(13);
-    const y = Fr.e(23);
-    const res = [];
-
-    res.push(await curve.pairingEq(
-        urs.sigmaG.vk1XyPows[1][0],
-        urs.sigmaH.vk2XyPows[0][1],
-        await mulFrInG1(buffG1, Fr.mul(x, y)),
-        await G2.neg(buffG2),
-    ));
-
-    const p1xy = await evalPoly(Fr, p1XY, x, y);
-    const p2xy = await evalPoly(Fr, p2XY, x, y);
-    const p3xy = await evalPoly(Fr, p3XY, x, y);
-    const tempVk1U = await mulFrInG1(buffG1, p1xy);
-    // const test_vk1_V = await mulFrInG1(buffG1, p2xy);
-    const tempVk2U = await mulFrInG2(buffG2, p2xy);
-    const tempVk1W = await mulFrInG1(buffG1, p3xy);
-
-    res.push(await curve.pairingEq(
-        await G1.neg(tempVk1U),
-        tempVk2U,
-        vk1AP2,
-        vk2BP2,
-    ));
-
-    let vk1D;
-    vk1D = await mulFrInG1(buffG1, Fr.e(0));
-    for (let i=0; i<mPublic; i++) {
-      const term = await mulFrInG1(
-          crs.vk1Zxy1d[i],
-          cWtns[IdSetV.set[i]],
-      );
-      vk1D = await G1.add(vk1D, term);
-    }
-
-    res.push(await curve.pairingEq(
-        tempVk1U,
-        urs.sigmaH.vk2AlphaU,
-        urs.sigmaG.vk1AlphaV,
-        tempVk2U,
-        tempVk1W,
-        buffG2,
-        vk1CP[0],
-        await G2.neg(urs.sigmaH.vk2GammaA),
-        vk1D,
-        await G2.neg(urs.sigmaH.vk2GammaZ),
-    ));
-
-    const tx= await evalPoly(Fr, tX, x, Fr.one);
-    const ty= await evalPoly(Fr, tY, Fr.one, y);
-    const h1xy = await evalPoly(Fr, h1XY, x, y);
-    const h2xy = await evalPoly(Fr, h2XY, x, y);
-    const h1txh2ty = await Fr.add(Fr.mul(tx, h1xy), Fr.mul(ty, h2xy));
-    const tempVk1H1txh2ty = await mulFrInG1(buffG1, h1txh2ty);
-
-    res.push(await curve.pairingEq(
-        urs.sigmaG.vk1XyPowsT1g[1][1],
-        urs.sigmaH.vk2GammaA,
-        await mulFrInG1(buffG1, Fr.mul(x, y)),
-        await G2.neg(await mulFrInG2(buffG2, tx)),
-    ));
-
-    res.push(await curve.pairingEq(
-        vk1AP2,
-        vk2BP2,
-        await G1.neg(tempVk1W),
-        buffG2,
-        tempVk1H1txh2ty,
-        await G2.neg(buffG2),
-    ));
-
-    res.push(await curve.pairingEq(
-        vk1AP2,
-        vk2BP2,
-        await G1.neg(tempVk1W),
-        buffG2,
-        G1.add(vk1CP[1], vk1CP[2]),
-        await G2.neg(urs.sigmaH.vk2GammaA),
-    ));
-
-    for (let i=0; i<res.length; i++) {
-      if (!res[i]) {
-        throw new Error(`Error in TEST CODE 4 at i=${i}`);
-      }
-    }
-    if (logger) logger.debug(`Test 4 finished`);
-  }
-  // / End of TEST CODE 4
-
-  // / TEST CODE 5
-  if (TESTFLAG === 'true') {
-    if (logger) logger.debug('Running Test 5');
-    let vk1D;
-    vk1D = await mulFrInG1(buffG1, Fr.e(0));
-    for (let i=0; i<mPublic; i++) {
-      const term = await mulFrInG1(crs.vk1Zxy1d[i], cWtns[IdSetV.set[i]]);
-      vk1D = await G1.add(vk1D, term);
-    }
-
-    // / Verify
-    const res = await curve.pairingEq(
-        urs.sigmaG.vk1AlphaV,
-        urs.sigmaH.vk2AlphaU,
-        vk1D, urs.sigmaH.vk2GammaZ,
-        vk1C, urs.sigmaH.vk2GammaA,
-        await G1.neg(vk1A), vk2B);
-    if (!res) {
-      throw new Error(`Error in TEST CODE 5`);
-    }
-    if (logger) logger.debug(`Test 5 finished`);
-  }
-  // / END of TEST CODE 5
 
   // Write Header
   // /////////
@@ -3181,32 +3121,21 @@ async function groth16Prove(
 
   await fdPrf.close();
 
-  const totalTime = end(startTime);
+  timers.total = end(timers.total);
   if (logger) {
     logger.debug('  ');
     logger.debug('----- Prove Time Analyzer -----');
-    logger.debug(`### Total ellapsed time: ${totalTime} [ms]`);
-    logger.debug(` ## Time for solving QAP of degree (${n},${sMax}) with ${m} wires: ${qapSolveTime} [ms] (${(qapSolveTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Loading QAP time: ${qapLoadTimeAccum} [ms] (${(qapLoadTimeAccum/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Computing p(X,Y) time (including single multiplication): ${pxyTime-qapLoadTimeAccum} [ms] (${((pxyTime-qapLoadTimeAccum)/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Finding h1(X,Y) and h2(X,Y) time (two divisions): ${PolDivTime} [ms] (${(PolDivTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(` ## Time for generating proofs with m=${m}, n=${n}, sMax=${sMax}: ${provingTime} [ms] (${(provingTime/totalTime*100).toFixed(3)} %)`);
-    logger.debug(`  # Encryption time: ${EncTimeAccum} [ms] (${(EncTimeAccum/totalTime*100).toFixed(3)} %)`);
+    logger.debug(`### Total ellapsed time: ${(timers.total/1000).toFixed(3)} [sec]`);
+    logger.debug(` ## Time for solving QAP of degree (${n},${sMax}) with ${m} wires: ${(timers.qapSolve/1000).toFixed(3)} [sec] (${(timers.qapSolve/timers.total*100).toFixed(3)} %)`);
+    logger.debug(`  # Loading sub-QAP time: ${(timers.subQAPLoad/1000).toFixed(3)} [sec] (${(timers.subQAPLoad/timers.total*100).toFixed(3)} %)`);
+    logger.debug(`  # Univariate polynomial scaling time: ${(timers.polScalingAccum/1000).toFixed(3)} [sec] (${(timers.polScalingAccum/timers.total*100).toFixed(3)} %)`);
+    logger.debug(`  # Univariate polynomial tensor product time: ${(timers.polTensorAccum/1000).toFixed(3)} [sec] (${(timers.polTensorAccum/timers.total*100).toFixed(3)} %)`);
+    logger.debug(`  # Bivariate polynomial addition time: ${(timers.polAddAccum/1000).toFixed(3)} [sec] (${(timers.polAddAccum/timers.total*100).toFixed(3)} %)`);
+    logger.debug(`  # Bivariate polynomial multiplication time: ${(timers.polMul/1000).toFixed(3)} [sec] (${(timers.polMul/timers.total*100).toFixed(3)} %)`);
+    logger.debug(`  # Bivariate polynomial division time time: ${(timers.polDiv/1000).toFixed(3)} [sec] (${(timers.polDiv/timers.total*100).toFixed(3)} %)`);
+    logger.debug(` ## Time for group exponentiations with m=${m}, n=${n}, sMax=${sMax}: ${(timers.proving/1000).toFixed(3)} [sec] (${(timers.proving/timers.total*100).toFixed(3)} %)`);
   } 
   process.exit(0);
-
-  async function mulFrInG1(point, fieldval) {
-    EncTimeStart = start();
-    const out = await G1.timesFr(point, fieldval);
-    EncTimeAccum += end(EncTimeStart);
-    return out;
-  }
-  async function mulFrInG2(point, fieldval) {
-    EncTimeStart = start();
-    const out = await G2.timesFr(point, fieldval);
-    EncTimeAccum += end(EncTimeStart);
-    return out;
-  }
 }
 
 async function groth16Verify(
@@ -3292,7 +3221,7 @@ async function groth16Verify(
   const G1 = urs.param.curve.G1;
   const G2 = urs.param.curve.G2;
   const Fr = urs.param.curve.Fr;
-  const buffG1 = curve.G1.oneAffine;
+  curve.G1.oneAffine;
   const mPublic = crs.param.mPublic;
   const mPrivate = crs.param.mPrivate;
   const nConstWires = 1;
@@ -3363,7 +3292,8 @@ async function groth16Verify(
 
   // arrange circuit instance accroding to Set_I_V.bin (= IdSetV),
   // which ideally consists of only subcircuit outputs
-  const cInstance = new Array(IdSetV.set.length);
+  const cInstance = new ffjavascript.BigBuffer(IdSetV.set.length * Fr.n8);
+  const buff_temp = new Uint8Array(Fr.n8);
   for (let i=0; i<IdSetV.set.length; i++) {
     const kPrime = WireList[IdSetV.set[i]][0];
     const iPrime = WireList[IdSetV.set[i]][1];
@@ -3375,9 +3305,12 @@ async function groth16Verify(
           'Error in arranging circuit instance: containing a private wire.',
       );
     }
-    cInstance[i] = subInstance[kPrime][iPrime];
+    const value = Fr.e(subInstance[kPrime][iPrime]);
+    await Fr.toRprLE(buff_temp, 0, value, Fr.n8);
+    cInstance.set(buff_temp, Fr.n8 * i);  
   }
-  if (cInstance.length != mPublic) {
+
+  if (cInstance.byteLength != mPublic * Fr.n8) {
     throw new Error(
         'Error in arranging circuit instance: wrong instance size.',
     );
@@ -3395,11 +3328,7 @@ async function groth16Verify(
   // / Compute term D
   let EncTime = start();
   let vk1D;
-  vk1D = await G1.timesFr(buffG1, Fr.e(0));
-  for (let i=0; i<mPublic; i++) {
-    const term = await G1.timesFr(crs.vk1Zxy1d[i], Fr.e(cInstance[i]));
-    vk1D = await G1.add(vk1D, term);
-  }
+  vk1D = await G1.multiExpAffine(crs.vk1Zxy1d, cInstance, false);
   EncTime = end(EncTime);
 
   // / Verify
@@ -3866,7 +3795,199 @@ async function buildSingleQAP(paramName, id, logger) {
   await fdQAP.close();
 }
 
-// export {default as decode} from './decode.js'
+async function tests(logger) {
+  const circuitReferenceString = `resource/circuits/test_transfer/test_transfer.crs`;
+  const circuitName = `resource/circuits/test_transfer`;
+  const instanceId = 1;
+
+  const dirPath = circuitName;
+  const TESTFLAG = process.env.TEST_MODE;
+  const CRS = 1;
+
+  if (logger) logger.debug(`TESTMODE = ${TESTFLAG}`);
+
+  const {
+    fd: fdRS,
+    sections: sectionsRS,
+  } = await binFileUtils__namespace.readBinFile(
+      circuitReferenceString,
+      'zkey',
+      2,
+      1<<25,
+      1<<23,
+  );
+  const fdIdV = await fastFile__namespace.readExisting(
+      `${dirPath}/Set_I_V.bin`,
+      1<<25,
+      1<<23,
+  );
+  const fdIdP = await fastFile__namespace.readExisting(
+      `${dirPath}/Set_I_P.bin`,
+      1<<25,
+      1<<23,
+  );
+  const fdOpL = await fastFile__namespace.readExisting(
+      `${dirPath}/OpList.bin`,
+      1<<25,
+      1<<23,
+  );
+  const fdWrL = await fastFile__namespace.readExisting(
+      `${dirPath}/WireList.bin`,
+      1<<25,
+      1<<23,
+  );
+
+  const urs = {};
+  const crs = {};
+  urs.param = await readRSParams(fdRS, sectionsRS);
+  const rs = await readRS(
+      fdRS,
+      sectionsRS,
+      urs.param,
+      CRS,
+  );
+  await readIndSet(fdIdV);
+  await readIndSet(fdIdP);
+  const OpList = await readOpList(fdOpL);
+  const WireList = await readWireList(fdWrL);
+  await fdRS.close();
+  await fdIdV.close();
+  await fdIdP.close();
+  await fdOpL.close();
+  await fdWrL.close();
+
+  urs.sigmaG = rs.sigmaG;
+  urs.sigmaH = rs.sigmaH;
+  crs.param = rs.crs.param;
+  crs.vk1Uxy1d = rs.crs.vk1Uxy1d;
+  crs.vk1Vxy1d = rs.crs.vk1Vxy1d;
+  crs.vk1Zxy1d = rs.crs.vk1Zxy1d;
+  crs.vk1Axy1d = rs.crs.vk1Axy1d;
+  crs.vk2Vxy1d = rs.crs.vk2Vxy1d;
+
+  const ParamR1cs = urs.param.r1cs;
+  const curve = urs.param.curve;
+  const G1 = urs.param.curve.G1;
+  const G2 = urs.param.curve.G2;
+  const Fr = urs.param.curve.Fr;
+  //   const n8 = curve.Fr.n8;
+  const buffG1 = curve.G1.oneAffine;
+  const buffG2 = curve.G2.oneAffine;
+  const n = urs.param.n;
+  urs.param.n8r;
+  const sMax = urs.param.sMax;
+  urs.param.sD;
+  // const s_F = OpList.length;
+  await Fr.e(urs.param.omegaX);
+  await Fr.e(urs.param.omegaY);
+
+  const mPublic = crs.param.mPublic;
+  const mPrivate = crs.param.mPrivate;
+  const m0 = (mPublic + mPrivate);
+  const repeat = 7;
+  const m = m0 * repeat;
+
+  const orig1 = crs.vk1Uxy1d;
+  const orig2 = crs.vk2Vxy1d;
+  for (let i=1; i < repeat; i++){
+    crs.vk1Uxy1d.push(... orig1);
+    crs.vk2Vxy1d.push(... orig2);
+  }
+  
+
+  // generate witness for each subcircuit
+  await generateWitness(circuitName, instanceId);
+  const wtns = [];
+  for (let k=0; k<OpList.length; k++ ) {
+    const wtnsK = await read(
+        `${dirPath}/witness${instanceId}/witness${k}.wtns`,
+    );
+    const kPrime = OpList[k];
+    const mK = ParamR1cs[kPrime].m;
+    if (wtnsK.length != mK) {
+      throw new Error(`Invalid witness length. 
+                            Circuit: ${mK}, 
+                            witness: ${wtns.length}`,
+      );
+    }
+    wtns.push(wtnsK);
+  }
+
+  // / arrange circuit witness
+  const cWtns = new Array(m);
+  const cWtns_buff = new ffjavascript.BigBuffer(32*m);
+  const buff = new Uint8Array(32);
+  for (let i=0; i<m; i++) {
+    const kPrime = WireList[i % m0][0];
+    const idx = WireList[i % m0][1];
+    cWtns[i] = Fr.e(wtns[kPrime][idx]);
+    await Fr.toRprLE(buff, 0, cWtns[i]);
+    cWtns_buff.set(buff, 32*i);
+    if (cWtns[i] === undefined) {
+      throw new Error(`Undefined cWtns value at i=${i}`);
+    }
+  }
+      
+  const vk1keys_buff = new ffjavascript.BigBuffer(G1.F.n8*2*m);
+  const vk2keys_buff = new ffjavascript.BigBuffer(G2.F.n8*2*m);
+
+  const buff1 = new Uint8Array(G1.F.n8*2);
+  const buff2 = new Uint8Array(G2.F.n8*2);
+  for (let i=0; i<m; i++) {    
+    await G1.toRprLEM(buff1, 0, crs.vk1Uxy1d[i]);
+    await G2.toRprLEM(buff2, 0, crs.vk2Vxy1d[i]);
+    vk1keys_buff.set(buff1, G1.F.n8*2*i);
+    vk2keys_buff.set(buff2, G2.F.n8*2*i);
+  }
+
+  //const nPoints = Math.floor(vk1keys_buff.byteLength / sGIn);
+
+
+  let provingTime1 = start();
+  // Compute proof A
+  let vk1AP2 = await mulFrInG1(buffG1, Fr.e(0));
+  for (let i=0; i<m; i++) {
+    const term = await mulFrInG1(crs.vk1Uxy1d[i], cWtns[i]);
+    vk1AP2 = await G1.add(vk1AP2, term);
+  }
+  // Compute proof B_H
+  let vk2BP2 = await mulFrInG2(buffG2, Fr.e(0));
+  for (let i=0; i<m; i++) {
+    const term = await mulFrInG2(crs.vk2Vxy1d[i], cWtns[i]);
+    vk2BP2 = await G2.add(vk2BP2, term);
+  }
+  provingTime1 = end(provingTime1);
+
+  let provingTime2 = start();
+  const vk1AP2_buffed = await curve.G1.multiExpAffine(vk1keys_buff, cWtns_buff, false);
+  const vk2BP2_buffed = await curve.G2.multiExpAffine(vk2keys_buff, cWtns_buff, false);
+  provingTime2 = end(provingTime2);
+
+  const comp = await curve.pairingEq(
+      vk1AP2,
+      vk2BP2,
+      await G1.neg(vk1AP2_buffed),
+      vk2BP2_buffed
+  );
+
+  if (logger) {
+    logger.debug('  ');
+    logger.debug(`comp = ${comp}`);
+    logger.debug(` ## Time for generating proofs with m=${m}, n=${n}, sMax=${sMax}: ${provingTime1} [ms]`);
+    logger.debug(` ## Time for generating proofs with m=${m}, n=${n}, sMax=${sMax}: ${provingTime2} [ms]`);
+  } 
+  
+  process.exit(0);
+
+  async function mulFrInG1(point, fieldval) {
+    const out = await G1.timesFr(point, fieldval);
+    return out;
+  }
+  async function mulFrInG2(point, fieldval) {
+    const out = await G2.timesFr(point, fieldval);
+    return out;
+  }
+}
 
 var zkey = /*#__PURE__*/Object.freeze({
   __proto__: null,
@@ -3875,7 +3996,8 @@ var zkey = /*#__PURE__*/Object.freeze({
   groth16Prove: groth16Prove,
   groth16Verify: groth16Verify,
   buildQAP: buildQAP,
-  buildSingleQAP: buildSingleQAP
+  buildSingleQAP: buildSingleQAP,
+  tests: tests
 });
 
 exports.zKey = zkey;

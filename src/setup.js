@@ -127,12 +127,12 @@ export default async function setup(
       () => new Array(sMax),
   );
   const xyPows = Array.from(
-      Array(n),
-      () => new Array(2*sMax-1),
+      Array(2*n-1),
+      () => new Array(sMax),
   ); // n by sMax 2d array
 
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < 2*sMax-1; j++) {
+  for (let i = 0; i < 2*n-1; i++) {
+    for (let j = 0; j < sMax; j++) {
       xyPows[i][j] = await Fr.mul(await Fr.exp(x, i), await Fr.exp(y, j));
     }
   }
@@ -149,11 +149,11 @@ export default async function setup(
 
   const gammaAInv=Fr.inv(tau.gamma_a);
   let xyPowsT1g;
-  const vk1XyPowsT1g = Array.from(Array(n-1), () => new Array(2*sMax-1));
+  const vk1XyPowsT1g = Array.from(Array(n-1), () => new Array(sMax));
   const t1X=Fr.sub(await Fr.exp(x, n), Fr.one);
   const t1XG=Fr.mul(t1X, gammaAInv);
   for (let i = 0; i < n-1; i++) {
-    for (let j=0; j<2*sMax-1; j++) {
+    for (let j=0; j<sMax; j++) {
       xyPowsT1g= await Fr.mul(xyPows[i][j], t1XG);
       EncTimeStart = timer.start();
       vk1XyPowsT1g[i][j]= await G1.timesFr( buffG1, xyPowsT1g );
@@ -165,10 +165,10 @@ export default async function setup(
   }
 
   let xyPowsT2g;
-  const vk1XyPowsT2g = Array.from(Array(n), () => new Array(sMax-1));
+  const vk1XyPowsT2g = Array.from(Array(2*n-1), () => new Array(sMax-1));
   const t2Y=Fr.sub(await Fr.exp(y, sMax), Fr.one);
   const t2YG=Fr.mul(t2Y, gammaAInv);
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < 2*n-1; i++) {
     for (let j=0; j<sMax-1; j++) {
       xyPowsT2g= await Fr.mul(xyPows[i][j], t2YG);
       EncTimeStart = timer.start();

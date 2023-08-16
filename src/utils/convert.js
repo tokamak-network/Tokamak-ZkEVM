@@ -244,8 +244,9 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
         outputs_hex[i] = '0x0'
       }
     }
-
+    // console.log(outputs)
     if (k === 0) {
+      console.log(inputs.length)
       for (let i = 0; i < inputs.length; i++) {
         let output = oplist[k].pt_outputs[i][1]
         let next = oplist[k].pt_outputs[i][2]
@@ -256,7 +257,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
           slice = slice + decimalToHex(sourcevalue[i]).toString(16)
         }
         sourcevalue = '0x' + slice.toString().padStart(64, '0');
-
+        // console.log(i, sourcevalue, outputs_hex[i])
         if (sourcevalue !== outputs_hex[i]) throw new Error('source value mismatch');
       }
     }
