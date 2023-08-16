@@ -92,7 +92,7 @@ async function setup(params, options) {
 
   return zkey.setup(paramName, RSName, QAPName, logger);
 }
-async function decode() {
+async function decode(params, options) {
   const circuitName = params[0]
   const instanceid = params[1]
 
