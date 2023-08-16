@@ -4,6 +4,7 @@ import clProcessor from './src/clprocessor.js';
 import * as zkey from './src/zkey.js';
 import { Decoder } from './src/decode.js';
 import Logger from 'logplease';
+import os from 'os';
 const logger = Logger.create('UniGro16js', {showTimestamp: false});
 Logger.setLogLevel('INFO');
 
