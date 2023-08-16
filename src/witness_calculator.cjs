@@ -33,10 +33,10 @@ module.exports = async function builder(code, options) {
 		} else if (code == 6) {
                     err = "Input signal array access exceeds the size.\n";
 		} else {
-		    err = "Unknown error.\n";
-                }
-                throw new Error(err + errStr);
-            },
+            err = "Unknown error.\n";
+        }
+            throw new Error(err + errStr);
+        },
 	    printErrorMessage : function() {
 		errStr += getMessage() + "\n";
                 // console.error(getMessage());

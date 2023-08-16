@@ -2367,23 +2367,23 @@ var witness_calculator = async function builder(code, options) {
         runtime: {
             exceptionHandler : function(code) {
 		let err;
-                if (code == 1) {
-                    err = "Signal not found.\n";
-                } else if (code == 2) {
-                    err = "Too many signals set.\n";
-                } else if (code == 3) {
-                    err = "Signal already set.\n";
-		} else if (code == 4) {
-                    err = "Assert Failed.\n";
-		} else if (code == 5) {
-                    err = "Not enough memory.\n";
+        if (code == 1) {
+            err = "Signal not found.\n";
+        } else if (code == 2) {
+            err = "Too many signals set.\n";
+        } else if (code == 3) {
+            err = "Signal already set.\n";
+        } else if (code == 4) {
+            err = "Assert Failed.\n";
+        } else if (code == 5) {
+            err = "Not enough memory.\n";
 		} else if (code == 6) {
                     err = "Input signal array access exceeds the size.\n";
 		} else {
-		    err = "Unknown error.\n";
-                }
-                throw new Error(err + errStr);
-            },
+            err = "Unknown error.\n";
+        }
+            throw new Error(err + errStr);
+        },
 	    printErrorMessage : function() {
 		errStr += getMessage() + "\n";
                 // console.error(getMessage());
@@ -5483,11 +5483,14 @@ function prove() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = fromDir(path__default["default"].join('resource','circuits','**'), '*.crs');
+  const circuitSpecificReferenceStringList = (answers) => {
+    return fromDir2(answers, '*.crs');
+  };
   function searchCircuitSpecificReferenceString(answers, input = '') {
+    const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName);
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve(fuzzy__default["default"].filter(input, circuitSpecificReferenceStringList).map((el) => el.original));
+        resolve(fuzzy__default["default"].filter(input, referenceStringList).map((el) => el.original));
       }, Math.random() * 470 + 30);
     });
   }
@@ -5508,12 +5511,12 @@ function prove() {
       },
       {
         type: 'autocomplete',
-        name: 'circuitSpecificReferenceString',
+        name: 'circuitName',
         suggestOnly: true,
-        message: 'Which circuit-specific reference string will you use?',
+        message: 'Which circuit will you use?',
         searchText: 'Searching...',
         emptyText: 'Nothing found!',
-        source: searchCircuitSpecificReferenceString,
+        source: searchCircuitName,
         pageSize: 4,
         validate: val => {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
@@ -5521,12 +5524,12 @@ function prove() {
       },
       {
         type: 'autocomplete',
-        name: 'circuitName',
+        name: 'circuitSpecificReferenceString',
         suggestOnly: true,
-        message: 'Which circuit will you use?',
+        message: 'Which circuit-specific reference string will you use?',
         searchText: 'Searching...',
         emptyText: 'Nothing found!',
-        source: searchCircuitName,
+        source: searchCircuitSpecificReferenceString,
         pageSize: 4,
         validate: val => {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
@@ -5572,37 +5575,30 @@ function verify() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = fromDir(path__default["default"].join('resource','circuits','**'), '*.crs');
+  const circuitSpecificReferenceStringList = (answers) => {
+    return fromDir2(answers, '*.crs');
+  };
   function searchCircuitSpecificReferenceString(answers, input = '') {
+    const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName);
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve(fuzzy__default["default"].filter(input, circuitSpecificReferenceStringList).map((el) => el.original));
+        resolve(fuzzy__default["default"].filter(input, referenceStringList).map((el) => el.original));
       }, Math.random() * 470 + 30);
     });
   }
-  const proofFileList = fromDir(path__default["default"].join('resource','circuits','**'), '*.proof');
+  const proofFileList = (answers) => {
+    return fromDir2(answers, '*.proof');
+  }; 
   function searchProofFile(answers, input = '') {
+    const proofList = proofFileList(answers.circuitName);
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve(fuzzy__default["default"].filter(input, proofFileList).map((el) => el.original));
+        resolve(fuzzy__default["default"].filter(input, proofList).map((el) => el.original));
       }, Math.random() * 470 + 30);
     });
   }
   inquirer__default["default"]
     .prompt([
-      {
-        type: 'autocomplete',
-        name: 'circuitSpecificReferenceString',
-        suggestOnly: true,
-        message: 'Which circuit-specific reference string will you use?',
-        searchText: 'Searching...',
-        emptyText: 'Nothing found!',
-        source: searchCircuitSpecificReferenceString,
-        pageSize: 4,
-        validate: val => {
-          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
-        },
-      },
       {
         type: 'autocomplete',
         name: 'circuitName',
@@ -5611,6 +5607,19 @@ function verify() {
         searchText: 'Searching...',
         emptyText: 'Nothing found!',
         source: searchCircuitName,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+      {
+        type: 'autocomplete',
+        name: 'circuitSpecificReferenceString',
+        suggestOnly: true,
+        message: 'Which circuit-specific reference string will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchCircuitSpecificReferenceString,
         pageSize: 4,
         validate: val => {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
@@ -5672,6 +5681,12 @@ function tests() {
 function fromDir (directory = '', filter = '/*') {
   const __dirname = path__default["default"].resolve();
   const __searchkey = path__default["default"].join(__dirname, directory, filter);
+  const res = glob__default["default"].sync(__searchkey.replace(/\\/g, '/'));
+  return res;
+}
+
+function fromDir2 (directory = '', filter = '/*') {
+  const __searchkey = path__default["default"].join(directory, filter);
   const res = glob__default["default"].sync(__searchkey.replace(/\\/g, '/'));
   return res;
 }

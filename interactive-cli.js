@@ -187,6 +187,7 @@ function derive() {
   }
   const referenceStringList = fromDir(path.join('resource','universal_rs'), '*.urs');
   function searchReferenceString(answers, input = '') {
+    referenceStringList
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve(fuzzy.filter(input, referenceStringList).map((el) => el.original));
@@ -322,11 +323,14 @@ function prove() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = fromDir(path.join('resource','circuits','**'), '*.crs');
+  const circuitSpecificReferenceStringList = (answers) => {
+    return fromDir2(answers, '*.crs');
+  }
   function searchCircuitSpecificReferenceString(answers, input = '') {
+    const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName)
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve(fuzzy.filter(input, circuitSpecificReferenceStringList).map((el) => el.original));
+        resolve(fuzzy.filter(input, referenceStringList).map((el) => el.original));
       }, Math.random() * 470 + 30);
     });
   }
@@ -347,12 +351,12 @@ function prove() {
       },
       {
         type: 'autocomplete',
-        name: 'circuitSpecificReferenceString',
+        name: 'circuitName',
         suggestOnly: true,
-        message: 'Which circuit-specific reference string will you use?',
+        message: 'Which circuit will you use?',
         searchText: 'Searching...',
         emptyText: 'Nothing found!',
-        source: searchCircuitSpecificReferenceString,
+        source: searchCircuitName,
         pageSize: 4,
         validate: val => {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
@@ -360,12 +364,12 @@ function prove() {
       },
       {
         type: 'autocomplete',
-        name: 'circuitName',
+        name: 'circuitSpecificReferenceString',
         suggestOnly: true,
-        message: 'Which circuit will you use?',
+        message: 'Which circuit-specific reference string will you use?',
         searchText: 'Searching...',
         emptyText: 'Nothing found!',
-        source: searchCircuitName,
+        source: searchCircuitSpecificReferenceString,
         pageSize: 4,
         validate: val => {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
@@ -411,37 +415,30 @@ function verify() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = fromDir(path.join('resource','circuits','**'), '*.crs');
+  const circuitSpecificReferenceStringList = (answers) => {
+    return fromDir2(answers, '*.crs');
+  }
   function searchCircuitSpecificReferenceString(answers, input = '') {
+    const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName)
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve(fuzzy.filter(input, circuitSpecificReferenceStringList).map((el) => el.original));
+        resolve(fuzzy.filter(input, referenceStringList).map((el) => el.original));
       }, Math.random() * 470 + 30);
     });
   }
-  const proofFileList = fromDir(path.join('resource','circuits','**'), '*.proof');
+  const proofFileList = (answers) => {
+    return fromDir2(answers, '*.proof');
+  } 
   function searchProofFile(answers, input = '') {
+    const proofList = proofFileList(answers.circuitName)
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve(fuzzy.filter(input, proofFileList).map((el) => el.original));
+        resolve(fuzzy.filter(input, proofList).map((el) => el.original));
       }, Math.random() * 470 + 30);
     });
   }
   inquirer
     .prompt([
-      {
-        type: 'autocomplete',
-        name: 'circuitSpecificReferenceString',
-        suggestOnly: true,
-        message: 'Which circuit-specific reference string will you use?',
-        searchText: 'Searching...',
-        emptyText: 'Nothing found!',
-        source: searchCircuitSpecificReferenceString,
-        pageSize: 4,
-        validate: val => {
-          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
-        },
-      },
       {
         type: 'autocomplete',
         name: 'circuitName',
@@ -450,6 +447,19 @@ function verify() {
         searchText: 'Searching...',
         emptyText: 'Nothing found!',
         source: searchCircuitName,
+        pageSize: 4,
+        validate: val => {
+          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+        },
+      },
+      {
+        type: 'autocomplete',
+        name: 'circuitSpecificReferenceString',
+        suggestOnly: true,
+        message: 'Which circuit-specific reference string will you use?',
+        searchText: 'Searching...',
+        emptyText: 'Nothing found!',
+        source: searchCircuitSpecificReferenceString,
         pageSize: 4,
         validate: val => {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
@@ -511,6 +521,12 @@ function tests() {
 function fromDir (directory = '', filter = '/*') {
   const __dirname = path.resolve();
   const __searchkey = path.join(__dirname, directory, filter)
+  const res = glob.sync(__searchkey.replace(/\\/g, '/'));
+  return res;
+}
+
+function fromDir2 (directory = '', filter = '/*') {
+  const __searchkey = path.join(directory, filter)
   const res = glob.sync(__searchkey.replace(/\\/g, '/'));
   return res;
 }
