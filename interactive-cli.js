@@ -292,16 +292,28 @@ function decode() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
+      {
+        type: 'input',
+        name: 'istanceId',
+        message: 'What is the index of the instance of the circuit?',
+        default: '',
+        validate: value => {
+          return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
+        }
+      },
     ])
     .then(answers => {
-      const json = fs.readFileSync(`${answers.circuitName}/config.json`, 'utf8')
+      const system = os.platform()
+      const slash = system === 'darwin' ? '/' : '\\'
+      const json = fs.readFileSync(`${answers.circuitName}${slash}config.json`, 'utf8')
       const jsonData = JSON.parse(json);
       const { config, code } = jsonData
       const decode = new Decoder()
       return decode.runCode(
         Buffer.from(code.join(''), 'hex'),
         config,
-        answers.circuitName
+        answers.circuitName,
+        answers.istanceId
       )
     })
 }

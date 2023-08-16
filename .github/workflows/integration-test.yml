@@ -41,6 +41,10 @@ jobs:
             node cli.js derive resource/universal_rs/rs_18.urs crsSchnorr_prove resource/circuits/schnorr_prove resource/subcircuits/QAP_12_18 -v 
             node cli.js derive resource/universal_rs/rs_18.urs crsSchnorr_verify resource/circuits/schnorr_verify resource/subcircuits/QAP_12_18 -v
     
+    - name: decode
+      run : |
+            node cli.js decode 
+    
     - name: prove
       run : |
             node cli.js prove resource/subcircuits/QAP_12_18 resource/circuits/schnorr_prove/crsSchnorr_prove.crs proof1 resource/circuits/schnorr_prove 1 -v

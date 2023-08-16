@@ -4053,11 +4053,10 @@ function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) {
 
 }
 
-function makeJsonFile (dir, oplist, NINPUT, codewdata) {
+function makeJsonFile (dir, oplist, NINPUT, codewdata, instanceId) {
   const InstanceFormatIn = [];
   const InstanceFormatOut = [];
-  const system = os__default["default"].platform();
-  const slash = system === 'darwin' ? '/' : '\\';
+  os__default["default"].platform();
 
   for (let k = 0; k < oplist.length; k++) {
     const outputs = oplist[k].outputs;
@@ -4096,7 +4095,7 @@ function makeJsonFile (dir, oplist, NINPUT, codewdata) {
     }
     // console.log(outputs)
     if (k === 0) {
-      console.log(inputs.length);
+      // console.log(inputs.length)
       for (let i = 0; i < inputs.length; i++) {
         let output = oplist[k].pt_outputs[i][1];
         let next = oplist[k].pt_outputs[i][2];
@@ -4114,9 +4113,10 @@ function makeJsonFile (dir, oplist, NINPUT, codewdata) {
 
     InstanceFormatIn.push({ in: inputs_hex });
     InstanceFormatOut.push({ out: outputs_hex });
-    !fs__default["default"].existsSync(`${dir}${slash}instance`) && fs__default["default"].mkdirSync(`${dir}${slash}instance`);
-    const fdInput = fs__default["default"].openSync(`${dir}${slash}instance${slash}Input_opcode${k}.json`, 'w');
-    const fdOutput = fs__default["default"].openSync(`${dir}${slash}instance${slash}Output_opcode${k}.json`, 'w');
+    !fs__default["default"].existsSync(path__default["default"].join(dir, `instance${instanceId}`)) && fs__default["default"].mkdirSync(path__default["default"].join(dir, `instance${instanceId}`));
+    const fdInput = fs__default["default"].openSync(path__default["default"].join(dir, `instance${instanceId}`, `Input_opcode${k}.json`), 'w');
+    path__default["default"].join(dir, `instance${instanceId}`, `Input_opcode${k}.json`);
+    const fdOutput = fs__default["default"].openSync(path__default["default"].join(dir, `instance${instanceId}`, `Output_opcode${k}.json`), 'w');
 
     fs__default["default"].writeSync(fdInput, JSON.stringify(InstanceFormatIn[k]));
     fs__default["default"].writeSync(fdOutput, JSON.stringify(InstanceFormatOut[k]));
@@ -4441,7 +4441,7 @@ class Decoder {
     return { environ_pts, callcode_suffix }
   }
 
-  runCode (code, config, dirname) {
+  runCode (code, config, dirname, instanceId) {
     this.config = config;
     this.getEnv(code, this.config);
     let outputs_pt = this.decode(code);
@@ -4461,23 +4461,19 @@ class Decoder {
         k_inputs.push(result);
       }
       let k_pt_outputs = this.oplist[i].pt_outputs;
-      // console.log('k_pt_outputs', k_pt_outputs)
       const opcode = this.oplist[i].opcode;
 
       k_pt_outputs = opcode === 'fff' ? k_pt_outputs : [k_pt_outputs];
       let k_outputs = [];
       for (let j = 0; j < k_pt_outputs.length ; j ++) {
         let k_output = this.evalEVM(k_pt_outputs[j]);
-        // console.log(opcode, k_pt_outputs[j], k_output)
         k_output = k_output === undefined ? 0 : k_output;
         k_outputs.push(k_output);
       }
-      // console.log(this.oplist[i].opcode, k_outputs)
       
       this.oplist[i].inputs=k_inputs;
       this.oplist[i].outputs=k_outputs;
     }
-    // console.log(this.oplist)
     console.log('oplist length', this.oplist.length);
     
     const listLength = this.oplist.length;
@@ -4496,7 +4492,7 @@ class Decoder {
     const dir = dirname;
     
     makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, WireListm);
-    makeJsonFile (dir, oplist, NINPUT, this.codewdata);
+    makeJsonFile (dir, oplist, NINPUT, this.codewdata, instanceId);
   }
 
   decode (code) {
@@ -5452,6 +5448,15 @@ function decode() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
+      {
+        type: 'input',
+        name: 'istanceId',
+        message: 'What is the index of the instance of the circuit?',
+        default: '',
+        validate: value => {
+          return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
+        }
+      },
     ])
     .then(answers => {
       const json = fs__default["default"].readFileSync(`${answers.circuitName}/config.json`, 'utf8');
@@ -5461,7 +5466,8 @@ function decode() {
       return decode.runCode(
         Buffer.from(code.join(''), 'hex'),
         config,
-        answers.circuitName
+        answers.circuitName,
+        answers.istanceId
       )
     });
 }

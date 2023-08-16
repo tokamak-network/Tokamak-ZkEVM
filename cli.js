@@ -2,6 +2,7 @@
 
 import clProcessor from './src/clprocessor.js';
 import * as zkey from './src/zkey.js';
+import { Decoder } from './src/decode.js';
 import Logger from 'logplease';
 const logger = Logger.create('UniGro16js', {showTimestamp: false});
 Logger.setLogLevel('INFO');
@@ -13,6 +14,13 @@ const commands = [
     alias: ['st'],
     options: "-verbose|v",
     action: setup,
+  },
+  {
+    cmd: 'decode [circuitName] [instanceId]',
+    description: 'decode phase',
+    alias: ['st'],
+    options: "-verbose|v",
+    action: decode,
   },
   {
     cmd: 'derive [RSName] [cRSName] [circuitName] [QAPName]',
@@ -85,6 +93,25 @@ async function setup(params, options) {
   return zkey.setup(paramName, RSName, QAPName, logger);
 }
 async function decode() {
+  const circuitName = params[0]
+  const instanceid = params[1]
+
+  const system = os.platform()
+  const slash = system === 'darwin' ? '/' : '\\'
+  const json = fs.readFileSync(`${circuitName}${slash}config.json`, 'utf8')
+  const jsonData = JSON.parse(json);
+
+  const { config, code } = jsonData
+  const decode = new Decoder()
+
+  if (options.verbose) Logger.setLogLevel("DEBUG");
+
+  return decode.runCode(
+    Buffer.from(code.join(''), 'hex'),
+    config,
+    circuitName,
+    instanceid
+  )
 
 }
 async function derive(params, options) {
