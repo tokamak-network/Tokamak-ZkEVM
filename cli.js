@@ -22,7 +22,7 @@ const commands = [
     action: derive,
   },
   {
-    cmd: 'prove [cRSName] [proofName] [circuitName] [instanceId]',
+    cmd: 'prove [qapName] [cRSName] [proofName] [circuitName] [instanceId]',
     description: 'prove phase',
     alias: ['pr'],
     options: "-verbose|v",
