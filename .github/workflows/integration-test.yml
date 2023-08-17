@@ -9,7 +9,7 @@ jobs:
     name: Check the Schnorr prove, verify algorithm circuit
     runs-on: ubuntu-latest
     env: 
-      TEST_MODE: true
+      TEST_MODE: false
     steps:
     - name: checkout
       uses: actions/checkout@v3
