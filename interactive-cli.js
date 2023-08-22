@@ -430,6 +430,8 @@ function prove() {
       },
     ])
     .then(answers => {
+      const circuitSpecificReferenceString = circuitSpecificReferenceStringList(answers)
+      console.log(circuitSpecificReferenceString)
       return zkey.groth16Prove(
         answers.qapDirectory,
         answers.circuitSpecificReferenceString, 
