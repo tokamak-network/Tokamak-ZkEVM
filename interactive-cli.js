@@ -186,6 +186,20 @@ function derive() {
       }, Math.random() * 470 + 30);
     });
   }
+  const circuitSpecificReferenceStringList = (answers) => {
+    // console.log(answers)
+    const a = fromDir2(answers, '*.crs');
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(fuzzy.filter(answers, a).map((el) => el.original));
+      }, Math.random() * 470 + 30);
+    });
+  }
+  async function checkDuplicateCRS (val) {
+    const referenceStringList = await circuitSpecificReferenceStringList(val)
+    return referenceStringList.length > 0 ? true : false
+    
+  }
   const referenceStringList = fromDir(path.join('resource','universal_rs'), '*.urs');
   function searchReferenceString(answers, input = '') {
     referenceStringList
@@ -215,7 +229,11 @@ function derive() {
         source: searchCircuitName,
         pageSize: 4,
         validate: val => {
-          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+          return checkDuplicateCRS(val) ?
+            'CRS file already exist!' :
+            val ? 
+            true : 'Use arrow keys or type to search, tab to autocomplete';
+          // return !val ? 'Use arrow keys or type to search, tab to autocomplete' : checkDuplicateCRS(val) ? true : true
         },
       },
       {
