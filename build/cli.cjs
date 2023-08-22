@@ -5395,7 +5395,6 @@ function derive() {
             'CRS file already exist!' :
             val ? 
             true : 'Use arrow keys or type to search, tab to autocomplete';
-          // return !val ? 'Use arrow keys or type to search, tab to autocomplete' : checkDuplicateCRS(val) ? true : true
         },
       },
       {
@@ -5484,11 +5483,7 @@ function decode() {
       },
     ])
     .then(answers => {
-      os__default["default"].platform();
-      // const json = fs.readFileSync(`${answers.circuitName}${slash}config.json`, 'utf8')
       const dir = fromDir2(answers.circuitName, 'config.json');
-      console.log(dir[0]);
-      // console.log(`${answers.circuitName}${slash}config.json`)
       const json = fs__default["default"].readFileSync(dir[0], 'utf8');
       const jsonData = JSON.parse(json);
       const { config, code } = jsonData;
@@ -5522,14 +5517,6 @@ function prove() {
   const circuitSpecificReferenceStringList = (answers) => {
     return fromDir2(answers, '*.crs');
   };
-  function searchCircuitSpecificReferenceString(answers, input = '') {
-    const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(fuzzy__default["default"].filter(input, referenceStringList).map((el) => el.original));
-      }, Math.random() * 470 + 30);
-    });
-  }
   inquirer__default["default"]
     .prompt([
       {
@@ -5558,19 +5545,7 @@ function prove() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
-      {
-        type: 'autocomplete',
-        name: 'circuitSpecificReferenceString',
-        suggestOnly: true,
-        message: 'Which circuit-specific reference string will you use?',
-        searchText: 'Searching...',
-        emptyText: 'Nothing found!',
-        source: searchCircuitSpecificReferenceString,
-        pageSize: 4,
-        validate: val => {
-          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
-        },
-      },
+     
       {
         type: 'input',
         name: 'istanceId',
@@ -5591,9 +5566,11 @@ function prove() {
       },
     ])
     .then(answers => {
+      const circuitSpecificReferenceString = circuitSpecificReferenceStringList(answers.circuitName);
+      console.log(circuitSpecificReferenceString);
       return groth16Prove(
         answers.qapDirectory,
-        answers.circuitSpecificReferenceString, 
+        circuitSpecificReferenceString[0], 
         answers.proofName, 
         answers.circuitName, 
         answers.istanceId, 
