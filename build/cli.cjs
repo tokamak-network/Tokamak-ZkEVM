@@ -5349,20 +5349,14 @@ function derive() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = (answers) => {
-    // console.log(answers)
-    const a = fromDir2(answers, '*.crs');
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(fuzzy__default["default"].filter(answers, a).map((el) => el.original));
-      }, Math.random() * 470 + 30);
-    });
-  };
-  async function checkDuplicateCRS (val) {
-    const referenceStringList = await circuitSpecificReferenceStringList(val);
-    return referenceStringList.length > 0 ? true : false
-    
-  }
+  // const circuitSpecificReferenceStringList = (answers) => {
+  //   const a = fromDir2(answers, '*.crs');
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       resolve(fuzzy.filter(answers, a).map((el) => el.original));
+  //     }, Math.random() * 470 + 30);
+  //   });
+  // }
   const referenceStringList = fromDir(path__default["default"].join('resource','universal_rs'), '*.urs');
   function searchReferenceString(answers, input = '') {
     return new Promise((resolve) => {
@@ -5391,10 +5385,8 @@ function derive() {
         source: searchCircuitName,
         pageSize: 4,
         validate: val => {
-          return checkDuplicateCRS(val) ?
-            'CRS file already exist!' :
-            val ? 
-            true : 'Use arrow keys or type to search, tab to autocomplete';
+          return val ? 
+          true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
       {
@@ -5423,20 +5415,12 @@ function derive() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
-      {
-        type: 'input',
-        name: 'circuitSpecificReferenceString',
-        message: 'What is the name of the circuit-specific reference string file?',
-        default: 'circuit',
-        validate: value => {
-          return isValidFilename__default["default"](value) ? true : 'Please enter a valid file name';
-        }
-      }
     ])
     .then(answers => {
+      const crsName = path__default["default"].parse(answers.circuitName);
       return derive$1(
         answers.referenceStringFile, 
-        answers.circuitSpecificReferenceString, 
+        crsName.name, 
         answers.circuitName,
         answers.qapDirectory, 
         logger
@@ -5517,6 +5501,14 @@ function prove() {
   const circuitSpecificReferenceStringList = (answers) => {
     return fromDir2(answers, '*.crs');
   };
+  // function searchCircuitSpecificReferenceString(answers, input = '') {
+  //   const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName)
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       resolve(fuzzy.filter(input, referenceStringList).map((el) => el.original));
+  //     }, Math.random() * 470 + 30);
+  //   });
+  // }
   inquirer__default["default"]
     .prompt([
       {
@@ -5545,7 +5537,6 @@ function prove() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
-     
       {
         type: 'input',
         name: 'istanceId',
@@ -5567,7 +5558,7 @@ function prove() {
     ])
     .then(answers => {
       const circuitSpecificReferenceString = circuitSpecificReferenceStringList(answers.circuitName);
-      console.log(circuitSpecificReferenceString);
+
       return groth16Prove(
         answers.qapDirectory,
         circuitSpecificReferenceString[0], 
@@ -5591,14 +5582,14 @@ function verify() {
   const circuitSpecificReferenceStringList = (answers) => {
     return fromDir2(answers, '*.crs');
   };
-  function searchCircuitSpecificReferenceString(answers, input = '') {
-    const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(fuzzy__default["default"].filter(input, referenceStringList).map((el) => el.original));
-      }, Math.random() * 470 + 30);
-    });
-  }
+  // function searchCircuitSpecificReferenceString(answers, input = '') {
+  //   const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName)
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       resolve(fuzzy.filter(input, referenceStringList).map((el) => el.original));
+  //     }, Math.random() * 470 + 30);
+  //   });
+  // }
   const proofFileList = (answers) => {
     return fromDir2(answers, '*.proof');
   }; 
@@ -5625,19 +5616,19 @@ function verify() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
-      {
-        type: 'autocomplete',
-        name: 'circuitSpecificReferenceString',
-        suggestOnly: true,
-        message: 'Which circuit-specific reference string will you use?',
-        searchText: 'Searching...',
-        emptyText: 'Nothing found!',
-        source: searchCircuitSpecificReferenceString,
-        pageSize: 4,
-        validate: val => {
-          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
-        },
-      },
+      // {
+      //   type: 'autocomplete',
+      //   name: 'circuitSpecificReferenceString',
+      //   suggestOnly: true,
+      //   message: 'Which circuit-specific reference string will you use?',
+      //   searchText: 'Searching...',
+      //   emptyText: 'Nothing found!',
+      //   source: searchCircuitSpecificReferenceString,
+      //   pageSize: 4,
+      //   validate: val => {
+      //     return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+      //   },
+      // },
       {
         type: 'input',
         name: 'istanceId',
@@ -5663,9 +5654,10 @@ function verify() {
 
     ])
     .then(answers => {
+      const circuitSpecificReferenceString = circuitSpecificReferenceStringList(answers.circuitName);
       return groth16Verify(
         answers.proofFile,
-        answers.circuitSpecificReferenceString,
+        circuitSpecificReferenceString[0],
         answers.circuitName,
         answers.istanceId,
         logger

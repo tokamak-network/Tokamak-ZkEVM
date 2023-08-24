@@ -186,20 +186,14 @@ function derive() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = (answers) => {
-    // console.log(answers)
-    const a = fromDir2(answers, '*.crs');
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(fuzzy.filter(answers, a).map((el) => el.original));
-      }, Math.random() * 470 + 30);
-    });
-  }
-  async function checkDuplicateCRS (val) {
-    const referenceStringList = await circuitSpecificReferenceStringList(val)
-    return referenceStringList.length > 0 ? true : false
-    
-  }
+  // const circuitSpecificReferenceStringList = (answers) => {
+  //   const a = fromDir2(answers, '*.crs');
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       resolve(fuzzy.filter(answers, a).map((el) => el.original));
+  //     }, Math.random() * 470 + 30);
+  //   });
+  // }
   const referenceStringList = fromDir(path.join('resource','universal_rs'), '*.urs');
   function searchReferenceString(answers, input = '') {
     referenceStringList
@@ -229,10 +223,8 @@ function derive() {
         source: searchCircuitName,
         pageSize: 4,
         validate: val => {
-          return checkDuplicateCRS(val) ?
-            'CRS file already exist!' :
-            val ? 
-            true : 'Use arrow keys or type to search, tab to autocomplete';
+          return val ? 
+          true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
       {
@@ -261,20 +253,12 @@ function derive() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
-      {
-        type: 'input',
-        name: 'circuitSpecificReferenceString',
-        message: 'What is the name of the circuit-specific reference string file?',
-        default: 'circuit',
-        validate: value => {
-          return isValidFilename(value) ? true : 'Please enter a valid file name';
-        }
-      }
     ])
     .then(answers => {
+      const crsName = path.parse(answers.circuitName)
       return zkey.derive(
         answers.referenceStringFile, 
-        answers.circuitSpecificReferenceString, 
+        crsName.name, 
         answers.circuitName,
         answers.qapDirectory, 
         logger
