@@ -3,6 +3,7 @@
 *.urs
 *.crs
 *.proof
+*.wtns
 
 vk_proof.json
 vk_verifier.json

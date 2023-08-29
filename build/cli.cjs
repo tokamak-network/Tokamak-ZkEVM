@@ -2367,23 +2367,23 @@ var witness_calculator = async function builder(code, options) {
         runtime: {
             exceptionHandler : function(code) {
 		let err;
-                if (code == 1) {
-                    err = "Signal not found.\n";
-                } else if (code == 2) {
-                    err = "Too many signals set.\n";
-                } else if (code == 3) {
-                    err = "Signal already set.\n";
-		} else if (code == 4) {
-                    err = "Assert Failed.\n";
-		} else if (code == 5) {
-                    err = "Not enough memory.\n";
+        if (code == 1) {
+            err = "Signal not found.\n";
+        } else if (code == 2) {
+            err = "Too many signals set.\n";
+        } else if (code == 3) {
+            err = "Signal already set.\n";
+        } else if (code == 4) {
+            err = "Assert Failed.\n";
+        } else if (code == 5) {
+            err = "Not enough memory.\n";
 		} else if (code == 6) {
                     err = "Input signal array access exceeds the size.\n";
 		} else {
-		    err = "Unknown error.\n";
-                }
-                throw new Error(err + errStr);
-            },
+            err = "Unknown error.\n";
+        }
+            throw new Error(err + errStr);
+        },
 	    printErrorMessage : function() {
 		errStr += getMessage() + "\n";
                 // console.error(getMessage());
@@ -3872,8 +3872,8 @@ function pop_stack (stack_pt, d) {
 }
 
 function getSubcircuit () {
-  // const fileUrl = new URL("../../resource/subcircuits/subcircuit_info.json", import.meta.url)
-  const fileUrl = new URL("../resource/subcircuits/subcircuit_info.json", (typeof document === 'undefined' ? new (require('u' + 'rl').URL)('file:' + __filename).href : (document.currentScript && document.currentScript.src || new URL('cli.cjs', document.baseURI).href)));
+  const dir = fromDir$1(path__default["default"].join('resource', 'subcircuits'), 'subcircuit_info.json');
+  const fileUrl = new URL(dir[0], (typeof document === 'undefined' ? new (require('u' + 'rl').URL)('file:' + __filename).href : (document.currentScript && document.currentScript.src || new URL('cli.cjs', document.baseURI).href)));
   const subcircuit = JSON.parse(fs.readFileSync(fileUrl));
   return subcircuit['wire-list']
 }
@@ -4053,11 +4053,10 @@ function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) {
 
 }
 
-function makeJsonFile (dir, oplist, NINPUT, codewdata) {
+function makeJsonFile (dir, oplist, NINPUT, codewdata, instanceId) {
   const InstanceFormatIn = [];
   const InstanceFormatOut = [];
-  const system = os__default["default"].platform();
-  const slash = system === 'darwin' ? '/' : '\\';
+  os__default["default"].platform();
 
   for (let k = 0; k < oplist.length; k++) {
     const outputs = oplist[k].outputs;
@@ -4096,7 +4095,7 @@ function makeJsonFile (dir, oplist, NINPUT, codewdata) {
     }
     // console.log(outputs)
     if (k === 0) {
-      console.log(inputs.length);
+      // console.log(inputs.length)
       for (let i = 0; i < inputs.length; i++) {
         let output = oplist[k].pt_outputs[i][1];
         let next = oplist[k].pt_outputs[i][2];
@@ -4114,9 +4113,9 @@ function makeJsonFile (dir, oplist, NINPUT, codewdata) {
 
     InstanceFormatIn.push({ in: inputs_hex });
     InstanceFormatOut.push({ out: outputs_hex });
-    !fs__default["default"].existsSync(`${dir}${slash}instance`) && fs__default["default"].mkdirSync(`${dir}${slash}instance`);
-    const fdInput = fs__default["default"].openSync(`${dir}${slash}instance${slash}Input_opcode${k}.json`, 'w');
-    const fdOutput = fs__default["default"].openSync(`${dir}${slash}instance${slash}Output_opcode${k}.json`, 'w');
+    !fs__default["default"].existsSync(path__default["default"].join(dir, `instance${instanceId}`)) && fs__default["default"].mkdirSync(path__default["default"].join(dir, `instance${instanceId}`));
+    const fdInput = fs__default["default"].openSync(path__default["default"].join(dir, `instance${instanceId}`, `Input_opcode${k}.json`), 'w');
+    const fdOutput = fs__default["default"].openSync(path__default["default"].join(dir, `instance${instanceId}`, `Output_opcode${k}.json`), 'w');
 
     fs__default["default"].writeSync(fdInput, JSON.stringify(InstanceFormatIn[k]));
     fs__default["default"].writeSync(fdOutput, JSON.stringify(InstanceFormatOut[k]));
@@ -4205,6 +4204,13 @@ function hexToString(hex) {
     bytes.push(code);
   }
   return bytes;
+}
+
+function fromDir$1 (directory = '', filter = '/*') {
+  const __dirname = path__default["default"].resolve();
+  const __searchkey = path__default["default"].join(__dirname, directory, filter);
+  const res = glob__default["default"].sync(__searchkey.replace(/\\/g, '/'));
+  return res;
 }
 
 function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {
@@ -4390,7 +4396,7 @@ class Decoder {
       storage_pt[storage_keys[i]] = [0, storage_pts[i], storage_lens[i]];
     }
 
-    const data = pcdata 
+    let data = pcdata 
                 + Ivdata 
                 + Iddata 
                 + Id_lendata 
@@ -4400,11 +4406,13 @@ class Decoder {
                 + sddata 
                 + calldepthdata 
                 + balancedata 
-                + zerodata
-                + storagedata[0]
-                + storagedata[1]
-                + storagedata[2]
-                + storagedata[3];
+                + zerodata;
+                // + storagedata[0]
+                // + storagedata[1]
+                // + storagedata[2]
+                // + storagedata[3]
+    
+    for (let i = 0; i < storagedata.length; i ++) data = data + storagedata[i];
     
     const environData = Buffer.from(data, 'hex');
     let call_pt = [];
@@ -4441,7 +4449,7 @@ class Decoder {
     return { environ_pts, callcode_suffix }
   }
 
-  runCode (code, config, dirname) {
+  runCode (code, config, dirname, instanceId) {
     this.config = config;
     this.getEnv(code, this.config);
     let outputs_pt = this.decode(code);
@@ -4461,23 +4469,19 @@ class Decoder {
         k_inputs.push(result);
       }
       let k_pt_outputs = this.oplist[i].pt_outputs;
-      // console.log('k_pt_outputs', k_pt_outputs)
       const opcode = this.oplist[i].opcode;
 
       k_pt_outputs = opcode === 'fff' ? k_pt_outputs : [k_pt_outputs];
       let k_outputs = [];
       for (let j = 0; j < k_pt_outputs.length ; j ++) {
         let k_output = this.evalEVM(k_pt_outputs[j]);
-        // console.log(opcode, k_pt_outputs[j], k_output)
         k_output = k_output === undefined ? 0 : k_output;
         k_outputs.push(k_output);
       }
-      // console.log(this.oplist[i].opcode, k_outputs)
       
       this.oplist[i].inputs=k_inputs;
       this.oplist[i].outputs=k_outputs;
     }
-    // console.log(this.oplist)
     console.log('oplist length', this.oplist.length);
     
     const listLength = this.oplist.length;
@@ -4496,7 +4500,7 @@ class Decoder {
     const dir = dirname;
     
     makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, WireListm);
-    makeJsonFile (dir, oplist, NINPUT, this.codewdata);
+    makeJsonFile (dir, oplist, NINPUT, this.codewdata, instanceId);
   }
 
   decode (code) {
@@ -4963,7 +4967,6 @@ class Decoder {
         let inputs = [];
         let outputs;
         let pt_inputs = t_oplist.pt_inputs[0][0][0] ? t_oplist.pt_inputs[0] : t_oplist.pt_inputs;
-
         for (let i=0; i < inputlen; i ++) {
           inputs.push(this.evalEVM(pt_inputs[i]));
         }
@@ -5346,6 +5349,14 @@ function derive() {
       }, Math.random() * 470 + 30);
     });
   }
+  // const circuitSpecificReferenceStringList = (answers) => {
+  //   const a = fromDir2(answers, '*.crs');
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       resolve(fuzzy.filter(answers, a).map((el) => el.original));
+  //     }, Math.random() * 470 + 30);
+  //   });
+  // }
   const referenceStringList = fromDir(path__default["default"].join('resource','universal_rs'), '*.urs');
   function searchReferenceString(answers, input = '') {
     return new Promise((resolve) => {
@@ -5374,7 +5385,8 @@ function derive() {
         source: searchCircuitName,
         pageSize: 4,
         validate: val => {
-          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+          return val ? 
+          true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
       {
@@ -5403,20 +5415,12 @@ function derive() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
-      {
-        type: 'input',
-        name: 'circuitSpecificReferenceString',
-        message: 'What is the name of the circuit-specific reference string file?',
-        default: 'circuit',
-        validate: value => {
-          return isValidFilename__default["default"](value) ? true : 'Please enter a valid file name';
-        }
-      }
     ])
     .then(answers => {
+      const crsName = path__default["default"].parse(answers.circuitName);
       return derive$1(
         answers.referenceStringFile, 
-        answers.circuitSpecificReferenceString, 
+        crsName.name, 
         answers.circuitName,
         answers.qapDirectory, 
         logger
@@ -5425,7 +5429,7 @@ function derive() {
 }
 
 function decode() {
-  const circuitNameList = fromDir('/resource/circuits/', '*');
+  const circuitNameList = fromDir(path__default["default"].join('resource','circuits'), '*');
   function searchCircuitName(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -5452,16 +5456,27 @@ function decode() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
+      {
+        type: 'input',
+        name: 'istanceId',
+        message: 'What is the index of the instance of the circuit?',
+        default: '',
+        validate: value => {
+          return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
+        }
+      },
     ])
     .then(answers => {
-      const json = fs__default["default"].readFileSync(`${answers.circuitName}/config.json`, 'utf8');
+      const dir = fromDir2(answers.circuitName, 'config.json');
+      const json = fs__default["default"].readFileSync(dir[0], 'utf8');
       const jsonData = JSON.parse(json);
       const { config, code } = jsonData;
       const decode = new Decoder();
       return decode.runCode(
         Buffer.from(code.join(''), 'hex'),
         config,
-        answers.circuitName
+        answers.circuitName,
+        answers.istanceId
       )
     });
 }
@@ -5483,14 +5498,17 @@ function prove() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = fromDir(path__default["default"].join('resource','circuits','**'), '*.crs');
-  function searchCircuitSpecificReferenceString(answers, input = '') {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(fuzzy__default["default"].filter(input, circuitSpecificReferenceStringList).map((el) => el.original));
-      }, Math.random() * 470 + 30);
-    });
-  }
+  const circuitSpecificReferenceStringList = (answers) => {
+    return fromDir2(answers, '*.crs');
+  };
+  // function searchCircuitSpecificReferenceString(answers, input = '') {
+  //   const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName)
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       resolve(fuzzy.filter(input, referenceStringList).map((el) => el.original));
+  //     }, Math.random() * 470 + 30);
+  //   });
+  // }
   inquirer__default["default"]
     .prompt([
       {
@@ -5501,19 +5519,6 @@ function prove() {
         searchText: 'Searching...',
         emptyText: 'Nothing found!',
         source: searchQapDirectory,
-        pageSize: 4,
-        validate: val => {
-          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
-        },
-      },
-      {
-        type: 'autocomplete',
-        name: 'circuitSpecificReferenceString',
-        suggestOnly: true,
-        message: 'Which circuit-specific reference string will you use?',
-        searchText: 'Searching...',
-        emptyText: 'Nothing found!',
-        source: searchCircuitSpecificReferenceString,
         pageSize: 4,
         validate: val => {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
@@ -5552,9 +5557,11 @@ function prove() {
       },
     ])
     .then(answers => {
+      const circuitSpecificReferenceString = circuitSpecificReferenceStringList(answers.circuitName);
+
       return groth16Prove(
         answers.qapDirectory,
-        answers.circuitSpecificReferenceString, 
+        circuitSpecificReferenceString[0], 
         answers.proofName, 
         answers.circuitName, 
         answers.istanceId, 
@@ -5572,37 +5579,30 @@ function verify() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = fromDir(path__default["default"].join('resource','circuits','**'), '*.crs');
-  function searchCircuitSpecificReferenceString(answers, input = '') {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(fuzzy__default["default"].filter(input, circuitSpecificReferenceStringList).map((el) => el.original));
-      }, Math.random() * 470 + 30);
-    });
-  }
-  const proofFileList = fromDir(path__default["default"].join('resource','circuits','**'), '*.proof');
+  const circuitSpecificReferenceStringList = (answers) => {
+    return fromDir2(answers, '*.crs');
+  };
+  // function searchCircuitSpecificReferenceString(answers, input = '') {
+  //   const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName)
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       resolve(fuzzy.filter(input, referenceStringList).map((el) => el.original));
+  //     }, Math.random() * 470 + 30);
+  //   });
+  // }
+  const proofFileList = (answers) => {
+    return fromDir2(answers, '*.proof');
+  }; 
   function searchProofFile(answers, input = '') {
+    const proofList = proofFileList(answers.circuitName);
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve(fuzzy__default["default"].filter(input, proofFileList).map((el) => el.original));
+        resolve(fuzzy__default["default"].filter(input, proofList).map((el) => el.original));
       }, Math.random() * 470 + 30);
     });
   }
   inquirer__default["default"]
     .prompt([
-      {
-        type: 'autocomplete',
-        name: 'circuitSpecificReferenceString',
-        suggestOnly: true,
-        message: 'Which circuit-specific reference string will you use?',
-        searchText: 'Searching...',
-        emptyText: 'Nothing found!',
-        source: searchCircuitSpecificReferenceString,
-        pageSize: 4,
-        validate: val => {
-          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
-        },
-      },
       {
         type: 'autocomplete',
         name: 'circuitName',
@@ -5616,6 +5616,19 @@ function verify() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
+      // {
+      //   type: 'autocomplete',
+      //   name: 'circuitSpecificReferenceString',
+      //   suggestOnly: true,
+      //   message: 'Which circuit-specific reference string will you use?',
+      //   searchText: 'Searching...',
+      //   emptyText: 'Nothing found!',
+      //   source: searchCircuitSpecificReferenceString,
+      //   pageSize: 4,
+      //   validate: val => {
+      //     return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+      //   },
+      // },
       {
         type: 'input',
         name: 'istanceId',
@@ -5641,9 +5654,10 @@ function verify() {
 
     ])
     .then(answers => {
+      const circuitSpecificReferenceString = circuitSpecificReferenceStringList(answers.circuitName);
       return groth16Verify(
         answers.proofFile,
-        answers.circuitSpecificReferenceString,
+        circuitSpecificReferenceString[0],
         answers.circuitName,
         answers.istanceId,
         logger
@@ -5672,6 +5686,12 @@ function tests() {
 function fromDir (directory = '', filter = '/*') {
   const __dirname = path__default["default"].resolve();
   const __searchkey = path__default["default"].join(__dirname, directory, filter);
+  const res = glob__default["default"].sync(__searchkey.replace(/\\/g, '/'));
+  return res;
+}
+
+function fromDir2 (directory = '', filter = '/*') {
+  const __searchkey = path__default["default"].join(directory, filter);
   const res = glob__default["default"].sync(__searchkey.replace(/\\/g, '/'));
   return res;
 }

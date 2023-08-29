@@ -1,6 +1,8 @@
+import path from 'path';
 import fs from 'fs'
 import { readFileSync } from "fs";
 import os from 'os';
+import glob from 'glob';
 
 
 export function hexToInteger(hex) {
@@ -21,8 +23,8 @@ export function pop_stack (stack_pt, d) {
 }
 
 export function getSubcircuit () {
-  // const fileUrl = new URL("../../resource/subcircuits/subcircuit_info.json", import.meta.url)
-  const fileUrl = new URL("../resource/subcircuits/subcircuit_info.json", import.meta.url)
+  const dir = fromDir(path.join('resource', 'subcircuits'), 'subcircuit_info.json')
+  const fileUrl = new URL(dir[0], import.meta.url)
   const subcircuit = JSON.parse(readFileSync(fileUrl))
   return subcircuit['wire-list']
 }
@@ -203,11 +205,10 @@ export function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) 
 
 }
 
-export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
+export function makeJsonFile (dir, oplist, NINPUT, codewdata, instanceId) {
   const InstanceFormatIn = [];
   const InstanceFormatOut = [];
   const system = os.platform()
-  const slash = system === 'darwin' ? '/' : '\\'
 
   for (let k = 0; k < oplist.length; k++) {
     const outputs = oplist[k].outputs;
@@ -246,7 +247,7 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
     }
     // console.log(outputs)
     if (k === 0) {
-      console.log(inputs.length)
+      // console.log(inputs.length)
       for (let i = 0; i < inputs.length; i++) {
         let output = oplist[k].pt_outputs[i][1]
         let next = oplist[k].pt_outputs[i][2]
@@ -264,9 +265,9 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata) {
 
     InstanceFormatIn.push({ in: inputs_hex });
     InstanceFormatOut.push({ out: outputs_hex });
-    !fs.existsSync(`${dir}${slash}instance`) && fs.mkdirSync(`${dir}${slash}instance`)
-    const fdInput = fs.openSync(`${dir}${slash}instance${slash}Input_opcode${k}.json`, 'w');
-    const fdOutput = fs.openSync(`${dir}${slash}instance${slash}Output_opcode${k}.json`, 'w');
+    !fs.existsSync(path.join(dir, `instance${instanceId}`)) && fs.mkdirSync(path.join(dir, `instance${instanceId}`))
+    const fdInput = fs.openSync(path.join(dir, `instance${instanceId}`, `Input_opcode${k}.json`), 'w');
+    const fdOutput = fs.openSync(path.join(dir, `instance${instanceId}`, `Output_opcode${k}.json`), 'w');
 
     fs.writeSync(fdInput, JSON.stringify(InstanceFormatIn[k]));
     fs.writeSync(fdOutput, JSON.stringify(InstanceFormatOut[k]));
@@ -396,4 +397,11 @@ export function hexToString(hex) {
     bytes.push(code);
   }
   return bytes;
+}
+
+function fromDir (directory = '', filter = '/*') {
+  const __dirname = path.resolve();
+  const __searchkey = path.join(__dirname, directory, filter)
+  const res = glob.sync(__searchkey.replace(/\\/g, '/'));
+  return res;
 }

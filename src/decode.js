@@ -123,7 +123,7 @@ export class Decoder {
       storage_pt[storage_keys[i]] = [0, storage_pts[i], storage_lens[i]]
     }
 
-    const data = pcdata 
+    let data = pcdata 
                 + Ivdata 
                 + Iddata 
                 + Id_lendata 
@@ -134,10 +134,12 @@ export class Decoder {
                 + calldepthdata 
                 + balancedata 
                 + zerodata
-                + storagedata[0]
-                + storagedata[1]
-                + storagedata[2]
-                + storagedata[3]
+                // + storagedata[0]
+                // + storagedata[1]
+                // + storagedata[2]
+                // + storagedata[3]
+    
+    for (let i = 0; i < storagedata.length; i ++) data = data + storagedata[i]
     
     const environData = Buffer.from(data, 'hex')
     let call_pt = []
@@ -174,7 +176,7 @@ export class Decoder {
     return { environ_pts, callcode_suffix }
   }
 
-  runCode (code, config, dirname) {
+  runCode (code, config, dirname, instanceId) {
     this.config = config
     this.getEnv(code, this.config)
     let outputs_pt = this.decode(code)
@@ -194,23 +196,19 @@ export class Decoder {
         k_inputs.push(result)
       }
       let k_pt_outputs = this.oplist[i].pt_outputs;
-      // console.log('k_pt_outputs', k_pt_outputs)
       const opcode = this.oplist[i].opcode
 
       k_pt_outputs = opcode === 'fff' ? k_pt_outputs : [k_pt_outputs]
       let k_outputs = []
       for (let j = 0; j < k_pt_outputs.length ; j ++) {
         let k_output = this.evalEVM(k_pt_outputs[j])
-        // console.log(opcode, k_pt_outputs[j], k_output)
         k_output = k_output === undefined ? 0 : k_output
         k_outputs.push(k_output)
       }
-      // console.log(this.oplist[i].opcode, k_outputs)
       
       this.oplist[i].inputs=k_inputs
       this.oplist[i].outputs=k_outputs
     }
-    // console.log(this.oplist)
     console.log('oplist length', this.oplist.length)
     
     const listLength = this.oplist.length
@@ -229,7 +227,7 @@ export class Decoder {
     const dir = dirname
     
     makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, WireListm)
-    makeJsonFile (dir, oplist, NINPUT, this.codewdata)
+    makeJsonFile (dir, oplist, NINPUT, this.codewdata, instanceId)
   }
 
   decode (code) {
@@ -703,7 +701,6 @@ export class Decoder {
         let inputs = []
         let outputs
         let pt_inputs = t_oplist.pt_inputs[0][0][0] ? t_oplist.pt_inputs[0] : t_oplist.pt_inputs
-
         for (let i=0; i < inputlen; i ++) {
           inputs.push(this.evalEVM(pt_inputs[i]))
         }

@@ -12,6 +12,7 @@ const logger = Logger.create('UniGro16js', {showTimestamp: false});
 import { exec } from 'child_process';
 import { Decoder } from './src/decode.js';
 import fs from 'fs'
+import os from 'os';
 
 Logger.setLogLevel('INFO');
 
@@ -185,8 +186,17 @@ function derive() {
       }, Math.random() * 470 + 30);
     });
   }
+  // const circuitSpecificReferenceStringList = (answers) => {
+  //   const a = fromDir2(answers, '*.crs');
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       resolve(fuzzy.filter(answers, a).map((el) => el.original));
+  //     }, Math.random() * 470 + 30);
+  //   });
+  // }
   const referenceStringList = fromDir(path.join('resource','universal_rs'), '*.urs');
   function searchReferenceString(answers, input = '') {
+    referenceStringList
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve(fuzzy.filter(input, referenceStringList).map((el) => el.original));
@@ -213,7 +223,8 @@ function derive() {
         source: searchCircuitName,
         pageSize: 4,
         validate: val => {
-          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+          return val ? 
+          true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
       {
@@ -242,20 +253,12 @@ function derive() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
-      {
-        type: 'input',
-        name: 'circuitSpecificReferenceString',
-        message: 'What is the name of the circuit-specific reference string file?',
-        default: 'circuit',
-        validate: value => {
-          return isValidFilename(value) ? true : 'Please enter a valid file name';
-        }
-      }
     ])
     .then(answers => {
+      const crsName = path.parse(answers.circuitName)
       return zkey.derive(
         answers.referenceStringFile, 
-        answers.circuitSpecificReferenceString, 
+        crsName.name, 
         answers.circuitName,
         answers.qapDirectory, 
         logger
@@ -264,7 +267,7 @@ function derive() {
 }
 
 function decode() {
-  const circuitNameList = fromDir('/resource/circuits/', '*');
+  const circuitNameList = fromDir(path.join('resource','circuits'), '*');
   function searchCircuitName(answers, input = '') {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -291,16 +294,27 @@ function decode() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
+      {
+        type: 'input',
+        name: 'istanceId',
+        message: 'What is the index of the instance of the circuit?',
+        default: '',
+        validate: value => {
+          return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
+        }
+      },
     ])
     .then(answers => {
-      const json = fs.readFileSync(`${answers.circuitName}/config.json`, 'utf8')
+      const dir = fromDir2(answers.circuitName, 'config.json')
+      const json = fs.readFileSync(dir[0], 'utf8')
       const jsonData = JSON.parse(json);
       const { config, code } = jsonData
       const decode = new Decoder()
       return decode.runCode(
         Buffer.from(code.join(''), 'hex'),
         config,
-        answers.circuitName
+        answers.circuitName,
+        answers.istanceId
       )
     })
 }
@@ -322,14 +336,17 @@ function prove() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = fromDir(path.join('resource','circuits','**'), '*.crs');
-  function searchCircuitSpecificReferenceString(answers, input = '') {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(fuzzy.filter(input, circuitSpecificReferenceStringList).map((el) => el.original));
-      }, Math.random() * 470 + 30);
-    });
+  const circuitSpecificReferenceStringList = (answers) => {
+    return fromDir2(answers, '*.crs');
   }
+  // function searchCircuitSpecificReferenceString(answers, input = '') {
+  //   const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName)
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       resolve(fuzzy.filter(input, referenceStringList).map((el) => el.original));
+  //     }, Math.random() * 470 + 30);
+  //   });
+  // }
   inquirer
     .prompt([
       {
@@ -340,19 +357,6 @@ function prove() {
         searchText: 'Searching...',
         emptyText: 'Nothing found!',
         source: searchQapDirectory,
-        pageSize: 4,
-        validate: val => {
-          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
-        },
-      },
-      {
-        type: 'autocomplete',
-        name: 'circuitSpecificReferenceString',
-        suggestOnly: true,
-        message: 'Which circuit-specific reference string will you use?',
-        searchText: 'Searching...',
-        emptyText: 'Nothing found!',
-        source: searchCircuitSpecificReferenceString,
         pageSize: 4,
         validate: val => {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
@@ -391,9 +395,11 @@ function prove() {
       },
     ])
     .then(answers => {
+      const circuitSpecificReferenceString = circuitSpecificReferenceStringList(answers.circuitName)
+
       return zkey.groth16Prove(
         answers.qapDirectory,
-        answers.circuitSpecificReferenceString, 
+        circuitSpecificReferenceString[0], 
         answers.proofName, 
         answers.circuitName, 
         answers.istanceId, 
@@ -411,37 +417,30 @@ function verify() {
       }, Math.random() * 470 + 30);
     });
   }
-  const circuitSpecificReferenceStringList = fromDir(path.join('resource','circuits','**'), '*.crs');
-  function searchCircuitSpecificReferenceString(answers, input = '') {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(fuzzy.filter(input, circuitSpecificReferenceStringList).map((el) => el.original));
-      }, Math.random() * 470 + 30);
-    });
+  const circuitSpecificReferenceStringList = (answers) => {
+    return fromDir2(answers, '*.crs');
   }
-  const proofFileList = fromDir(path.join('resource','circuits','**'), '*.proof');
+  // function searchCircuitSpecificReferenceString(answers, input = '') {
+  //   const referenceStringList = circuitSpecificReferenceStringList(answers.circuitName)
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       resolve(fuzzy.filter(input, referenceStringList).map((el) => el.original));
+  //     }, Math.random() * 470 + 30);
+  //   });
+  // }
+  const proofFileList = (answers) => {
+    return fromDir2(answers, '*.proof');
+  } 
   function searchProofFile(answers, input = '') {
+    const proofList = proofFileList(answers.circuitName)
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve(fuzzy.filter(input, proofFileList).map((el) => el.original));
+        resolve(fuzzy.filter(input, proofList).map((el) => el.original));
       }, Math.random() * 470 + 30);
     });
   }
   inquirer
     .prompt([
-      {
-        type: 'autocomplete',
-        name: 'circuitSpecificReferenceString',
-        suggestOnly: true,
-        message: 'Which circuit-specific reference string will you use?',
-        searchText: 'Searching...',
-        emptyText: 'Nothing found!',
-        source: searchCircuitSpecificReferenceString,
-        pageSize: 4,
-        validate: val => {
-          return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
-        },
-      },
       {
         type: 'autocomplete',
         name: 'circuitName',
@@ -455,6 +454,19 @@ function verify() {
           return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
         },
       },
+      // {
+      //   type: 'autocomplete',
+      //   name: 'circuitSpecificReferenceString',
+      //   suggestOnly: true,
+      //   message: 'Which circuit-specific reference string will you use?',
+      //   searchText: 'Searching...',
+      //   emptyText: 'Nothing found!',
+      //   source: searchCircuitSpecificReferenceString,
+      //   pageSize: 4,
+      //   validate: val => {
+      //     return val ? true : 'Use arrow keys or type to search, tab to autocomplete';
+      //   },
+      // },
       {
         type: 'input',
         name: 'istanceId',
@@ -480,9 +492,10 @@ function verify() {
 
     ])
     .then(answers => {
+      const circuitSpecificReferenceString = circuitSpecificReferenceStringList(answers.circuitName)
       return zkey.groth16Verify(
         answers.proofFile,
-        answers.circuitSpecificReferenceString,
+        circuitSpecificReferenceString[0],
         answers.circuitName,
         answers.istanceId,
         logger
@@ -511,6 +524,12 @@ function tests() {
 function fromDir (directory = '', filter = '/*') {
   const __dirname = path.resolve();
   const __searchkey = path.join(__dirname, directory, filter)
+  const res = glob.sync(__searchkey.replace(/\\/g, '/'));
+  return res;
+}
+
+function fromDir2 (directory = '', filter = '/*') {
+  const __searchkey = path.join(directory, filter)
   const res = glob.sync(__searchkey.replace(/\\/g, '/'));
   return res;
 }
