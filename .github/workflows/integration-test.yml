@@ -9,7 +9,7 @@ jobs:
     name: Check the Schnorr prove, verify algorithm circuit
     runs-on: ubuntu-latest
     env: 
-      TEST_MODE: true
+      TEST_MODE: false
     steps:
     - name: checkout
       uses: actions/checkout@v3
@@ -20,7 +20,7 @@ jobs:
     - name: install circom
       uses: addnab/docker-run-action@v3
       with:
-        image: pleiadex/amd64-circom:2.0.5
+        image: onthertech/amd64-circom:2.0.5
         shell: bash
         options: -v ${{ github.workspace }}:/var/workspace
         run: |
@@ -41,11 +41,17 @@ jobs:
             node cli.js derive resource/universal_rs/rs_18.urs crsSchnorr_prove resource/circuits/schnorr_prove resource/subcircuits/QAP_12_18 -v 
             node cli.js derive resource/universal_rs/rs_18.urs crsSchnorr_verify resource/circuits/schnorr_verify resource/subcircuits/QAP_12_18 -v
     
+    - name: decode
+      run : |
+            node cli.js decode resource/circuits/schnorr_prove 1 -v
+            node cli.js decode resource/circuits/schnorr_prove 2 -v
+            node cli.js decode resource/circuits/schnorr_verify 1 -v
+    
     - name: prove
       run : |
-            node cli.js prove resource/circuits/schnorr_prove/crsSchnorr_prove.crs proof1 resource/circuits/schnorr_prove 1 -v
-            node cli.js prove resource/circuits/schnorr_prove/crsSchnorr_prove.crs proof2 resource/circuits/schnorr_prove 2 -v
-            node cli.js prove resource/circuits/schnorr_verify/crsSchnorr_verify.crs proof resource/circuits/schnorr_verify 1 -v
+            node cli.js prove resource/subcircuits/QAP_12_18 resource/circuits/schnorr_prove/crsSchnorr_prove.crs proof1 resource/circuits/schnorr_prove 1 -v
+            node cli.js prove resource/subcircuits/QAP_12_18 resource/circuits/schnorr_prove/crsSchnorr_prove.crs proof2 resource/circuits/schnorr_prove 2 -v
+            node cli.js prove resource/subcircuits/QAP_12_18 resource/circuits/schnorr_verify/crsSchnorr_verify.crs proof resource/circuits/schnorr_verify 1 -v
       
     - name: verify
       run : |
