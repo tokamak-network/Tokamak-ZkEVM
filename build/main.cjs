@@ -1052,9 +1052,13 @@ async function tensorProduct(Fr, _array1, _array2) {
     }
   } 
   const product = Array.from(Array(_array1.length), () => new Array(_array2.length));
+  
   for (let i = 0; i < _array1.length; i++) {
     for (let j = 0; j<_array2[0].length; j++) {
+      // console.log(product[i][j], _array2[0][j], _array1[i][0])
       product[i][j] = Fr.mul(_array2[0][j], _array1[i][0]);
+      // console.log(product[i][j], _array2[0][j], _array1[i][0])
+      // console.log('')
     }
   }
   return product;
@@ -3014,6 +3018,7 @@ async function groth16Prove(
       const scaled_wXK = await scalePoly(Fr, wXK[sKPrime][iPrime], cWtns_i);
       timers.polScalingAccum += end(timertemp);
       timertemp = start();
+      
       const uTerm = await tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
       const vTerm = await tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
       const wTerm = await tensorProduct(Fr, scaled_wXK, fYK[kPrime]);

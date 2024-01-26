@@ -2,6 +2,7 @@ import {processConstraints} from './zkey_utils.js';
 import * as binFileUtils from '@iden3/binfileutils';
 import {Scalar, BigBuffer} from 'ffjavascript';
 import * as timer from './timer.js';
+import { BigNumber } from 'ethers'
 
 /**
  *
@@ -822,11 +823,26 @@ export async function tensorProduct(Fr, _array1, _array2) {
     }
   } 
   const product = Array.from(Array(_array1.length), () => new Array(_array2.length));
+
+  // console.log(_array1.length, _array1[0].length, _array2.length, _array2[0].length,)
   for (let i = 0; i < _array1.length; i++) {
     for (let j = 0; j<_array2[0].length; j++) {
+      // console.log(product[i][j], _array2[0][j], _array1[i][0])
       product[i][j] = Fr.mul(_array2[0][j], _array1[i][0]);
+      const a = BigNumber.from([1,1,1,1])
+      const b = BigNumber.from([2,2,2,2])
+      const testProduct = Fr.mul(a, b)
+      // console.log('bignumber: ',a.mul(b), a.mul(b).toString())
+      // console.log('testProduct:', a, b, BigNumber.from(testProduct).toString())
+      // console.log('bool:',BigNumber.from(product[i][j]).eq(a.mul(b)))
+      // console.log(product[i][j], _array2[0][j], _array1[i][0])
+      // console.log(BigNumber.from(product[i][j]).toString(), BigNumber.from(_array2[0][j]).toString(), BigNumber.from(_array1[i][0]).toString())
+      // console.log('')
     }
   }
+  
+
+  // console.log(product)
   return product;
 }
 

@@ -15,6 +15,7 @@ var crypto = require('crypto');
 var binFileUtils = require('@iden3/binfileutils');
 var chai = require('chai');
 var fs = require('fs');
+var ethers = require('ethers');
 var fastFile = require('fastfile');
 var appRootPath = require('app-root-path');
 var hash = require('js-sha3');
@@ -22,7 +23,6 @@ var r1csfile = require('r1csfile');
 var Logger = require('logplease');
 var child_process = require('child_process');
 var os = require('os');
-var ethers = require('ethers');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -1069,11 +1069,26 @@ async function tensorProduct(Fr, _array1, _array2) {
     }
   } 
   const product = Array.from(Array(_array1.length), () => new Array(_array2.length));
+
+  // console.log(_array1.length, _array1[0].length, _array2.length, _array2[0].length,)
   for (let i = 0; i < _array1.length; i++) {
     for (let j = 0; j<_array2[0].length; j++) {
+      // console.log(product[i][j], _array2[0][j], _array1[i][0])
       product[i][j] = Fr.mul(_array2[0][j], _array1[i][0]);
+      const a = ethers.BigNumber.from([1,1,1,1]);
+      const b = ethers.BigNumber.from([2,2,2,2]);
+      Fr.mul(a, b);
+      // console.log('bignumber: ',a.mul(b), a.mul(b).toString())
+      // console.log('testProduct:', a, b, BigNumber.from(testProduct).toString())
+      // console.log('bool:',BigNumber.from(product[i][j]).eq(a.mul(b)))
+      // console.log(product[i][j], _array2[0][j], _array1[i][0])
+      // console.log(BigNumber.from(product[i][j]).toString(), BigNumber.from(_array2[0][j]).toString(), BigNumber.from(_array1[i][0]).toString())
+      // console.log('')
     }
   }
+  
+
+  // console.log(product)
   return product;
 }
 
