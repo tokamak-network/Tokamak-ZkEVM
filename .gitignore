@@ -4,6 +4,7 @@
 *.crs
 *.proof
 *.wtns
+*.zkey
 
 vk_proof.json
 vk_verifier.json

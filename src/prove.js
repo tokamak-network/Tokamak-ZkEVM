@@ -251,24 +251,6 @@ export default async function groth16Prove(
     cWtns_private_buff.set(cWtns_ii, Fr.n8*i);
   }
 
-  /*
-  const tX = Array.from(Array(n+1), () => new Array(1));
-  const tY = Array.from(Array(1), () => new Array(sMax+1));
-  tX = await polyUtils.scalePoly(Fr, tX, Fr.zero);
-  tY = await polyUtils.scalePoly(Fr, tY, Fr.zero);
-  tX[0][0] = Fr.negone;
-  tX[n][0] = Fr.one;
-  tY[0][0] = Fr.negone;
-  tY[0][sMax] = Fr.one;
-  // t(X,Y) = (X^n-1) * (X^sMax-1) = PI(X-omegaX^i)
-  // for i=0,...,n * PI(Y-omegaY^j) for j =0,...,sMax
-  // P(X,Y) = (SUM c_i*u_i(X,Y))*(SUM c_i*v_i(X,Y))-(SUM c_i*w_i(X,Y))=0
-  // at X=omegaX^i, Y=omegaY^j
-  // <=> P(X,Y) has zeros at least the points omegaX^i and omegaY^j
-  // <=> there exists h(X,Y) such that p(X,Y) = t(X,Y) * h(X,Y)
-  // <=> finding h(X,Y) is the goal of Prove algorithm
-  */
-
   // / compute p(X,Y)
   if (logger) logger.debug(`  Loading sub-QAPs...`);
   timers.subQAPLoad = timer.start();
@@ -295,19 +277,14 @@ export default async function groth16Prove(
   if (logger) logger.debug(`  Preparing f_k(Y) of degree ${sMax-1} for k upto ${sF}...`);
   timers.LagY = timer.start();
   const fYK = new Array(sF);
-  //const fY = Array.from(Array(1), () => new Array(sMax));
   const FrSMaxInv = Fr.inv(Fr.e(sMax));
   const FrOmegaInv = Fr.inv(omegaY);
   for (let k=0; k<sF; k++) {
     const invOmegaYK = new Array(sMax);
-    //invOmegaYK[0] = Fr.one;
     invOmegaYK[0] = FrSMaxInv;
     for (let i=1; i<sMax; i++) {
-      //invOmegaYK[i] = Fr.mul(invOmegaYK[i-1], await Fr.exp(Fr.inv(omegaY), k));
       invOmegaYK[i] = Fr.mul(invOmegaYK[i-1], await Fr.exp(FrOmegaInv, k));
     }
-    //const LagY = await polyUtils.filterPoly(Fr, fY, invOmegaYK, 1); //????????????
-    //fYK[k] = await polyUtils.scalePoly(Fr, LagY, FrSMaxInv);
     fYK[k] = [invOmegaYK];
   }
   timers.LagY = timer.end(timers.LagY);
@@ -368,26 +345,6 @@ export default async function groth16Prove(
   timers.polDiv = timer.end(timers.polDiv);
   timers.qapSolve = timer.end(timers.qapSolve);
   if (logger) logger.debug(`Solving QAP...Done`);
-
-  // console.log(`rem: ${rem2}`)
-  // if (TESTFLAG === 'true') {
-    // if (logger) logger.debug(`rem: ${rem2}`);
-  // }
-
-  if (TESTFLAG === 'true') {
-    // if (logger) logger.debug(`rem2: ${polyUtils._transToObject(Fr, rem2)}`)
-    const {
-      xOrder: h1XOrder,
-      yOrder: h1YOrder,
-    } = polyUtils._orderPoly(Fr, h1XY);
-    const {
-      xOrder: h2XOrder,
-      yOrder: h2YOrder,
-    } = polyUtils._orderPoly(Fr, h2XY);
-    if (logger) logger.debug(`h1_x_order: ${h1XOrder}, h1_y_order: ${h1YOrder}`);
-    if (logger) logger.debug(`h2_x_order: ${h2XOrder}, h2_y_order: ${h2YOrder}`);
-    if (logger) logger.debug(`n: ${n}, sMax: ${sMax}`);
-  }
 
   // Generate r and s
   const rawr = await misc.getRandomRng(1);

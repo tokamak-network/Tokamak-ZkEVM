@@ -216,6 +216,7 @@ export default async function groth16Prove(
   console.log('m:', m)
   for (let i=0; i<m; i++) {    
     const cWtns_i = Fr.fromRprLE(cWtns_buff.slice(i*Fr.n8, i*Fr.n8 + Fr.n8), 0, Fr.n8);
+
     let arrayIdx;
     let PreImgSet;
     if (IdSetV.set.indexOf(i) > -1) {
@@ -232,15 +233,51 @@ export default async function groth16Prove(
       const iPrime = PreImgSet[PreImgIdx][1];
       const sKPrime = OpList[kPrime];
 
+      
+
       timertemp = timer.start();
       const scaled_uXK = await polyUtils.scalePoly(Fr, uXK[sKPrime][iPrime], cWtns_i);
       const scaled_vXK = await polyUtils.scalePoly(Fr, vXK[sKPrime][iPrime], cWtns_i);
       const scaled_wXK = await polyUtils.scalePoly(Fr, wXK[sKPrime][iPrime], cWtns_i);
       timers.polScalingAccum += timer.end(timertemp);
 
+      const a = await binFileUtils.createBinFile(
+        `${dirPath}/parallel/test_${i}_${PreImgIdx}.zkey`,
+        'zkey',
+        1,
+        2,
+        1<<22,
+        1<<24
+      )
+      await binFileUtils.startWriteSection(a, 1);
+      await a.writeULE32(1)
+      await binFileUtils.endWriteSection(a);
+      await binFileUtils.startWriteSection(a, 2);
+      await a.writeULE32(scaled_vXK)
+      await binFileUtils.endWriteSection(a);
+      await a.close();
+
+      const b = await binFileUtils.createBinFile(
+        `${dirPath}/parallel/test_wtns_${i}.zkey`,
+        'zkey',
+        1,
+        2,
+        1<<22,
+        1<<24
+      )
+      await binFileUtils.startWriteSection(b, 1);
+      await b.writeULE32(1)
+      await binFileUtils.endWriteSection(b);
+
+      await binFileUtils.startWriteSection(b, 2);
+      await b.writeULE32(fYK[kPrime])
+      await binFileUtils.endWriteSection(b);
+      await b.close();
+
       timertemp = timer.start();
+      sh(`../rapidsnark/build/tensorProduct test_${i}_${PreImgIdx}.zkey test_wtns_${i}.zkey`)
       // const uTerm = await polyUtils.tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
-      const vTerm = await polyUtils.tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
+      // const vTerm = await polyUtils.tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
       // const wTerm = await polyUtils.tensorProduct(Fr, scaled_wXK, fYK[kPrime]);
       timers.polTensorAccum += timer.end(timertemp);
 
