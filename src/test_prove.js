@@ -9,6 +9,7 @@ import * as timer from './utils/timer.js';
 import {Scalar, BigBuffer} from 'ffjavascript';
 import { BigNumber } from 'ethers'
 import Logger from 'logplease';
+import { exec } from 'child_process';
 
 const logger = Logger.create('UniGro16js', {showTimestamp: false});
 
@@ -252,6 +253,7 @@ export default async function groth16Prove(
       await binFileUtils.startWriteSection(a, 1);
       await a.writeULE32(1)
       await binFileUtils.endWriteSection(a);
+
       await binFileUtils.startWriteSection(a, 2);
       await a.writeULE32(scaled_vXK)
       await binFileUtils.endWriteSection(a);
@@ -265,6 +267,7 @@ export default async function groth16Prove(
         1<<22,
         1<<24
       )
+      
       await binFileUtils.startWriteSection(b, 1);
       await b.writeULE32(1)
       await binFileUtils.endWriteSection(b);
@@ -275,7 +278,16 @@ export default async function groth16Prove(
       await b.close();
 
       timertemp = timer.start();
-      sh(`../rapidsnark/build/tensorProduct test_${i}_${PreImgIdx}.zkey test_wtns_${i}.zkey`)
+      exec(`../rapidsnark/build/tensorProduct ./resource/circuits/test_transfer/parallel/test_${i}_${PreImgIdx}.zkey ./resource/circuits/test_transfer/parallel/test_wtns_${i}.zkey`,
+      (error, stdout, stderr) => {
+        const verbose = true
+        if (verbose) console.log(stdout);
+          console.log(stderr);
+          if (error !== null) {
+              console.log(`exec error: ${error}`);
+          }
+      })
+      //../rapidsnark/build/tensorProduct test_0_0.zkey test_wtns_0.zkey
       // const uTerm = await polyUtils.tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
       // const vTerm = await polyUtils.tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
       // const wTerm = await polyUtils.tensorProduct(Fr, scaled_wXK, fYK[kPrime]);
