@@ -2,7 +2,9 @@ import {processConstraints} from './zkey_utils.js';
 import * as binFileUtils from '@iden3/binfileutils';
 import {Scalar, BigBuffer} from 'ffjavascript';
 import * as timer from './timer.js';
-import { BigNumber } from 'ethers'
+import Logger from 'logplease';
+
+const logger = Logger.create('UniGro16js', {showTimestamp: false});
 
 /**
  *
@@ -812,6 +814,8 @@ export async function LoadAndComputeQAP(
  * @returns
  */
 export async function tensorProduct(Fr, _array1, _array2) {
+  let polTensorAccum = 0;
+  let timertemp = timer.start();
   if (_array1.length == 1 && _array1[0].length == 1){
     if (Fr.eq(_array1[0][0], Fr.zero)){
       return [[Fr.zero]];
@@ -823,15 +827,17 @@ export async function tensorProduct(Fr, _array1, _array2) {
     }
   } 
   const product = Array.from(Array(_array1.length), () => new Array(_array2.length));
+  
   for (let i = 0; i < _array1.length; i++) {
     for (let j = 0; j<_array2[0].length; j++) {
       product[i][j] = Fr.mul(_array2[0][j], _array1[i][0]);
     }
   }
-  
+  polTensorAccum += timer.end(timertemp);
+  const convert = (polTensorAccum/1000)
 
-  // console.log(product)
-  return product;
+  logger.debug(`  # polynomial scaling time: ${convert} [sec] `);
+  return { product, convert };
 }
 
 /**

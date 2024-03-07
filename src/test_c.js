@@ -9,16 +9,19 @@ import * as timer from './utils/timer.js';
 import {Scalar, BigBuffer} from 'ffjavascript';
 import { BigNumber } from 'ethers'
 import Logger from 'logplease';
-import { exec } from 'child_process';
+import { exec, execSync } from 'child_process';
+import util from 'util'
 
 const logger = Logger.create('UniGro16js', {showTimestamp: false});
 
 export default async function groth16Prove(
 ) {
-  const qapName = '/home/ubuntu/UniGro16js/resource/subcircuits/QAP_26_21'
-  const circuitReferenceString = '/home/ubuntu/UniGro16js/resource/circuits/test_transfer/test_transfer.crs'
+  const path = '/home/ubuntu/UniGro16js'
+  // const path = '/Users/hwangjaeseung/workspace/zkp/UniGro16js'
+  const qapName = `${path}/resource/subcircuits/QAP_26_21`
+  const circuitReferenceString = `${path}/resource/circuits/test_transfer/test_transfer.crs`
   const proofName = 'proof'
-  const circuitName = '/home/ubuntu/UniGro16js/resource/circuits/test_transfer'
+  const circuitName = `${path}/resource/circuits/test_transfer`
   const instanceId = ''
   // console.log(qapName, circuitReferenceString, proofName, circuitNam)
   let timers = {};
@@ -122,10 +125,10 @@ export default async function groth16Prove(
     !((mPublic == IdSetV.set.length) &&
         (mPrivate == IdSetP.set.length))
   ) {
-    throw new Error(`Error in crs file: invalid crs parameters. 
-                        mPublic: ${mPublic}, 
-                        IdSetV: ${IdSetV.set.length}, 
-                        mPrivate: ${mPrivate}, 
+    throw new Error(`Error in crs file: invalid crs parameters.
+                        mPublic: ${mPublic},
+                        IdSetV: ${IdSetV.set.length},
+                        mPrivate: ${mPrivate},
                         IdSetP: ${IdSetP.set.length},`,
     );
   }
@@ -144,14 +147,14 @@ export default async function groth16Prove(
     const kPrime = OpList[k];
     const mK = ParamR1cs[kPrime].m;
     if (wtnsK.length != mK) {
-      throw new Error(`Invalid witness length. 
-                            Circuit: ${mK}, 
+      throw new Error(`Invalid witness length.
+                            Circuit: ${mK},
                             witness: ${wtns.length}`,
       );
     }
     wtns.push(wtnsK);
   }
-  
+
 
   // arrange circuit witness
   const cWtns_buff = new BigBuffer(WireList.length * Fr.n8);
@@ -166,7 +169,7 @@ export default async function groth16Prove(
     }
     cWtns_buff.set(cWtns_i, Fr.n8*i);
   }
-  
+
   if (logger) logger.debug(`  Loading sub-QAPs...`);
   timers.subQAPLoad = timer.start();
   const uXK = new Array(sD);
@@ -188,7 +191,7 @@ export default async function groth16Prove(
   }
   if (logger) logger.debug(`  Loading ${uXK.length} sub-QAPs...Done`);
   timers.subQAPLoad= timer.end(timers.subQAPLoad);
-  
+
   if (logger) logger.debug(`  Preparing f_k(Y) of degree ${sMax-1} for k upto ${sF}...`);
   timers.LagY = timer.start();
   const fYK = new Array(sF);
@@ -204,23 +207,24 @@ export default async function groth16Prove(
     fYK[k] = [invOmegaYK]; // 사용
   }
   timers.LagY = timer.end(timers.LagY);
-  
+
   if (logger) logger.debug(`  Computing p(X,Y) for ${m} wires...`);
   timers.polScalingAccum = 0;
   timers.polTensorAccum = 0;
   timers.polAddAccum = 0;
-  
+
   let timertemp;
   let p1XY = [[Fr.zero]];
   let p2XY = [[Fr.zero]];
   let p3XY = [[Fr.zero]];
+
+  let proveTime = 0
+  let count = 0
   console.log('m:', m)
-  const promises = []
-  const mS = []
+  const execs = util.promisify(exec)
   for (let i=0; i<m; i++) {
-    mS.push(i)
-  }
-  Promise.all(mS.map(function (i) {
+    const cWtns_i = Fr.fromRprLE(cWtns_buff.slice(i*Fr.n8, i*Fr.n8 + Fr.n8), 0, Fr.n8);
+
     let arrayIdx;
     let PreImgSet;
     if (IdSetV.set.indexOf(i) > -1) {
@@ -231,16 +235,13 @@ export default async function groth16Prove(
       PreImgSet = IdSetP.PreImgs[arrayIdx];
     }
     const PreImgSize = PreImgSet.length;
-    const PreImages = []
+    // console.log(PreImgSize)
     for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
-      PreImages.push(PreImgIdx)
-    }
-    PreImages.map(async function (PreImgIdx) {
       const kPrime = PreImgSet[PreImgIdx][0];
       const iPrime = PreImgSet[PreImgIdx][1];
       const sKPrime = OpList[kPrime];
 
-      
+
 
       timertemp = timer.start();
       const scaled_uXK = await polyUtils.scalePoly(Fr, uXK[sKPrime][iPrime], cWtns_i);
@@ -258,144 +259,68 @@ export default async function groth16Prove(
       // )
       // await binFileUtils.startWriteSection(a, 1);
       // await a.writeULE32(1)
-      // await binFileUtils.endWriteSection(a);
-
+      // await binFileUtils.endWriteSection(a)
       // await binFileUtils.startWriteSection(a, 2);
-      // await a.writeULE32(scaled_vXK)
+      // await a.writeULE32(scaled_uXK)
       // await binFileUtils.endWriteSection(a);
       // await a.close();
-
+      
       // const b = await binFileUtils.createBinFile(
-      //   `${dirPath}/parallel/test_wtns_${i}.zkey`,
-      //   'zkey',
-      //   1,
-      //   2,
       //   1<<22,
       //   1<<24
       // )
-
       // await binFileUtils.startWriteSection(b, 1);
       // await b.writeULE32(1)
       // await binFileUtils.endWriteSection(b);
-
       // await binFileUtils.startWriteSection(b, 2);
       // await b.writeULE32(fYK[kPrime])
       // await binFileUtils.endWriteSection(b);
       // await b.close();
 
       timertemp = timer.start();
-      const file1 = `/home/ubuntu/UniGro16js/resource/circuits/test_transfer/parallel/test_${i}_${PreImgIdx}.zkey`
-      const file2 = `/home/ubuntu/UniGro16js/resource/circuits/test_transfer/parallel/test_wtns_${i}.zkey`
-      const {stdout, stderr} = await exec(`/home/ubuntu/rapidsnark/build/tensorProduct ${file1} ${file2}`,
-      (error, stdout, stderr) => {
-        console.log('aa')
-        const verbose = true
-        if (verbose) console.log(stdout);
-          console.log(stderr);
-          if (error !== null) {
-              console.log(`exec error: ${error}`);
-          }
-      })
-      promises.push(promise)
-      //../rapidsnark/build/tensorProduct test_0_0.zkey test_wtns_0.zkey
-      // const uTerm = await polyUtils.tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
-      // const vTerm = await polyUtils.tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
-      // const wTerm = await polyUtils.tensorProduct(Fr, scaled_wXK, fYK[kPrime]);
+
+      // if (scaled_uXK.length == 1 && scaled_uXK[0].length == 1) {
+
+      // } else if (fYK[kPrime].length == 1 && fYK[kPrime][0].length == 1) {
+
+      // } else {
+      //   const file1 = `/home/ubuntu/UniGro16js/resource/circuits/test_transfer/parallel/test_${i}_${PreImgIdx}.zkey`
+      //   const file2 = `/home/ubuntu/UniGro16js/resource/circuits/test_transfer/parallel/test_wtns_${i}.zkey`
+      //   try {
+      //     const {stdout, stderr} = await execs(`/home/ubuntu/rapidsnark/build/tensorProduct ${file1} ${file2}`)
+      //     if (stdout) {
+      //       const colon = stdout.indexOf(':')
+      //       proveTime += Number(stdout.slice(colon+2))
+      //       count += 1
+      //       console.log('stdout',stdout)
+      //     }
+      //     if (stderr) console.log('stderr', stderr)
+      //   } catch (e) {
+      //     console.log(e)
+      //   }
+      // }
+
+
+     const { uTerm, convert } = await polyUtils.tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
+     // const vTerm = await polyUtils.tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
+     // const wTerm = await polyUtils.tensorProduct(Fr, scaled_wXK, fYK[kPrime]);
+     
+     if (convert) {
+      count += 1
+      proveTime += convert
+    }
       timers.polTensorAccum += timer.end(timertemp);
 
-    })
-  }))
-  // for (let i=0; i<m; i++) {    
-  //   const cWtns_i = Fr.fromRprLE(cWtns_buff.slice(i*Fr.n8, i*Fr.n8 + Fr.n8), 0, Fr.n8);
 
-  //   let arrayIdx;
-  //   let PreImgSet;
-  //   if (IdSetV.set.indexOf(i) > -1) {
-  //     arrayIdx = IdSetV.set.indexOf(i);
-  //     PreImgSet = IdSetV.PreImgs[arrayIdx];
-  //   } else {
-  //     arrayIdx = IdSetP.set.indexOf(i);
-  //     PreImgSet = IdSetP.PreImgs[arrayIdx];
-  //   }
-  //   const PreImgSize = PreImgSet.length;
-  //   // console.log(PreImgSize)
-  //   for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
-  //     const kPrime = PreImgSet[PreImgIdx][0];
-  //     const iPrime = PreImgSet[PreImgIdx][1];
-  //     const sKPrime = OpList[kPrime];
+      // timertemp = timer.start();
+      // p1XY = await polyUtils.addPoly(Fr, p1XY, uTerm);
+      // p2XY = await polyUtils.addPoly(Fr, p2XY, vTerm);
+      // p3XY = await polyUtils.addPoly(Fr, p3XY, wTerm);
+      // timers.polAddAccum += timer.end(timertemp);
+    }
+  }
+  console.log('proveTime: ',proveTime, count)
 
-      
-
-  //     timertemp = timer.start();
-  //     const scaled_uXK = await polyUtils.scalePoly(Fr, uXK[sKPrime][iPrime], cWtns_i);
-  //     const scaled_vXK = await polyUtils.scalePoly(Fr, vXK[sKPrime][iPrime], cWtns_i);
-  //     const scaled_wXK = await polyUtils.scalePoly(Fr, wXK[sKPrime][iPrime], cWtns_i);
-  //     timers.polScalingAccum += timer.end(timertemp);
-
-  //     // const a = await binFileUtils.createBinFile(
-  //     //   `${dirPath}/parallel/test_${i}_${PreImgIdx}.zkey`,
-  //     //   'zkey',
-  //     //   1,
-  //     //   2,
-  //     //   1<<22,
-  //     //   1<<24
-  //     // )
-  //     // await binFileUtils.startWriteSection(a, 1);
-  //     // await a.writeULE32(1)
-  //     // await binFileUtils.endWriteSection(a);
-
-  //     // await binFileUtils.startWriteSection(a, 2);
-  //     // await a.writeULE32(scaled_vXK)
-  //     // await binFileUtils.endWriteSection(a);
-  //     // await a.close();
-
-  //     // const b = await binFileUtils.createBinFile(
-  //     //   `${dirPath}/parallel/test_wtns_${i}.zkey`,
-  //     //   'zkey',
-  //     //   1,
-  //     //   2,
-  //     //   1<<22,
-  //     //   1<<24
-  //     // )
-
-  //     // await binFileUtils.startWriteSection(b, 1);
-  //     // await b.writeULE32(1)
-  //     // await binFileUtils.endWriteSection(b);
-
-  //     // await binFileUtils.startWriteSection(b, 2);
-  //     // await b.writeULE32(fYK[kPrime])
-  //     // await binFileUtils.endWriteSection(b);
-  //     // await b.close();
-
-  //     timertemp = timer.start();
-  //     const file1 = `/home/ubuntu/UniGro16js/resource/circuits/test_transfer/parallel/test_${i}_${PreImgIdx}.zkey`
-  //     const file2 = `/home/ubuntu/UniGro16js/resource/circuits/test_transfer/parallel/test_wtns_${i}.zkey`
-  //     const promise = exec(`/home/ubuntu/rapidsnark/build/tensorProduct ${file1} ${file2}`,
-  //     (error, stdout, stderr) => {
-  //       console.log('aa')
-  //       const verbose = true
-  //       if (verbose) console.log(stdout);
-  //         console.log(stderr);
-  //         if (error !== null) {
-  //             console.log(`exec error: ${error}`);
-  //         }
-  //     })
-  //     promises.push(promise)
-  //     //../rapidsnark/build/tensorProduct test_0_0.zkey test_wtns_0.zkey
-  //     // const uTerm = await polyUtils.tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
-  //     // const vTerm = await polyUtils.tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
-  //     // const wTerm = await polyUtils.tensorProduct(Fr, scaled_wXK, fYK[kPrime]);
-  //     timers.polTensorAccum += timer.end(timertemp);
-
-
-  //     // timertemp = timer.start();
-  //     // p1XY = await polyUtils.addPoly(Fr, p1XY, uTerm);
-  //     // p2XY = await polyUtils.addPoly(Fr, p2XY, vTerm);
-  //     // p3XY = await polyUtils.addPoly(Fr, p3XY, wTerm);
-  //     // timers.polAddAccum += timer.end(timertemp);
-  //   }
-  // }
- 
   if (logger) {
     logger.debug('  ');
     logger.debug('----- Prove Time Analyzer -----');
@@ -404,11 +329,9 @@ export default async function groth16Prove(
     logger.debug(`  # Loading sub-QAP time: ${(timers.subQAPLoad/1000).toFixed(3)} [sec] (${(timers.subQAPLoad/timers.total*100).toFixed(3)} %)`);
     logger.debug(`  # Univariate polynomial scaling time: ${(timers.polScalingAccum/1000).toFixed(3)} [sec] (${(timers.polScalingAccum/timers.total*100).toFixed(3)} %)`);
     logger.debug(`  # Univariate polynomial tensor product time: ${(timers.polTensorAccum/1000).toFixed(3)} [sec] (${(timers.polTensorAccum/timers.total*100).toFixed(3)} %)`);
-    
-  } 
+
+  }
   process.exit(0);
 }
 
 groth16Prove();
-
-//exec(`/home/ubuntu/rapidsnark/build/tensorProduct /home/ubuntu/UniGro16js/resource/circuits/test_transfer/parallel/test_${i}_${PreImgIdx}.zkey /home/ubuntu/UniGro16js/resource/circuits/test_transfer/parallel/test_wtns_${i}.zkey`,
