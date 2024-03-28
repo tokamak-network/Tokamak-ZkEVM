@@ -814,8 +814,6 @@ export async function LoadAndComputeQAP(
  * @returns
  */
 export async function tensorProduct(Fr, _array1, _array2) {
-  let polTensorAccum = 0;
-  let timertemp = timer.start();
   if (_array1.length == 1 && _array1[0].length == 1){
     if (Fr.eq(_array1[0][0], Fr.zero)){
       return [[Fr.zero]];
@@ -831,13 +829,11 @@ export async function tensorProduct(Fr, _array1, _array2) {
   for (let i = 0; i < _array1.length; i++) {
     for (let j = 0; j<_array2[0].length; j++) {
       product[i][j] = Fr.mul(_array2[0][j], _array1[i][0]);
+      // if (i === 0 && j === 0) console.log(_array2[0][j].length)
     }
   }
-  polTensorAccum += timer.end(timertemp);
-  const convert = (polTensorAccum/1000)
 
-  logger.debug(`  # polynomial scaling time: ${convert} [sec] `);
-  return { product, convert };
+  return product;
 }
 
 /**

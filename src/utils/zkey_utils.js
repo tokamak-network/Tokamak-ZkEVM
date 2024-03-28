@@ -224,6 +224,7 @@ export async function readRSParams(fd, sections) {
   // Group parameters
   const n8q = await fd.readULE32();
   rs.n8q = n8q;
+  console.log(n8q)
   rs.q = await binFileUtils.readBigInt(fd, n8q);
 
   const n8r = await fd.readULE32();
@@ -305,12 +306,14 @@ export async function readRS(fd, sections, rsParam, rsType, toObject) {
   // End of reading sigmaG
 
   // Read sigmaH section
-  await binFileUtils.startReadUniqueSection(fd, sections, 4);
+  console.log(toObject)
+  const a = await binFileUtils.startReadUniqueSection(fd, sections, 4);
+  console.log(fd)
   rsContent.sigmaH = {};
   rsContent.sigmaH.vk2AlphaU = await readG2(fd, curve, toObject);
   rsContent.sigmaH.vk2GammaZ = await readG2(fd, curve, toObject);
   rsContent.sigmaH.vk2GammaA = await readG2(fd, curve, toObject);
-
+  console.log(curve.G2.F.n8*2)
   const vk2XyPows = Array.from(Array(n), () => new Array(sMax));
   for (let i = 0; i < n; i++) {
     for (let j=0; j<sMax; j++) {
