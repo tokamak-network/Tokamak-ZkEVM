@@ -4,14 +4,13 @@ import * as zkeyUtils from './utils/zkey_utils.js';
 import * as wtnsUtils from './utils/wtns_utils.js';
 import generateWitness from './generate_witness.js';
 import * as fastFile from 'fastfile';
-import * as misc from './misc.js';
 import * as timer from './utils/timer.js';
 import {Scalar, BigBuffer} from 'ffjavascript';
 import { BigNumber } from 'ethers'
 import Logger from 'logplease';
 import { exec, execSync } from 'child_process';
 import util from 'util'
-import { hex2ByteArray } from './misc.js';
+import fs from 'fs'
 
 const logger = Logger.create('UniGro16js', {showTimestamp: false});
 
@@ -256,64 +255,21 @@ export default async function groth16Prove(
       const scaled_wXK = await polyUtils.scalePoly(Fr, wXK[sKPrime][iPrime], cWtns_i);
 
       timers.polScalingAccum += timer.end(timertemp);
-
-      // await fileCreator(
-      //   `${dirPath}/parallel/scaled_${i}_${PreImgIdx}.zkey`,
-      //   scaled_uXK,
-      //   scaled_uXK.length,
-      //   'scaled'
-      // )
-      // await fileCreator(
-      //   `${dirPath}/parallel/fYK_${i}_${PreImgIdx}.zkey`,
-      //   fYK[kPrime],
-      //   fYK[kPrime][0].length,
-      //   'fYK'
-      // )
-
-      // const a = await binFileUtils.createBinFile(
-      //   `${dirPath}/parallel/scaled_${i}_${PreImgIdx}.zkey`,
-      //   'zkey',
-      //   1,
-      //   2,
-      //   1<<22,
-      //   1<<24
-      // )
-      // await binFileUtils.startWriteSection(a, 1);
-      // await a.writeULE32(1)
-      // await binFileUtils.endWriteSection(a)
-
-      // await binFileUtils.startWriteSection(a, 2);
-      // for (let i = 0; i < scaled_uXK.length; i++) {
-      //   await a.write(scaled_uXK[i][0])
-        
-      // }
-      // await binFileUtils.endWriteSection(a);
-      // await a.close();
       
-      // if (i === 1 && PreImgIdx === 2) console.log('exmp',scaled_uXK[0][0], Buffer.from(scaled_uXK[0][0]).toString('hex'))
-      // const b = await binFileUtils.createBinFile(
-      //   `${dirPath}/parallel/fYK_${i}_${PreImgIdx}.zkey`,
-      //   'zkey',
-      //   1,
-      //   2,
-      //   1<<22,
-      //   1<<24
-      // )
-      // await binFileUtils.startWriteSection(b, 1);
-      // await b.writeULE32(1)
-      // await binFileUtils.endWriteSection(b);
-
-      // await binFileUtils.startWriteSection(b, 2);
-      // for (let j = 0; j<fYK[kPrime][0].length; j++) await b.write(fYK[kPrime][0][j])
-      // await binFileUtils.endWriteSection(b);
-
-      // await b.close();
+      await fileCreator(
+        `${dirPath}/parallel/scaled_${i}_${PreImgIdx}.zkey`,
+        scaled_uXK,
+        scaled_uXK.length,
+        'scaled'
+      )
+      await fileCreator(
+        `${dirPath}/parallel/fYK_${i}_${PreImgIdx}.zkey`,
+        fYK[kPrime],
+        fYK[kPrime][0].length,
+        'fYK'
+      )
 
       timertemp = timer.start();
-      
-      // 24 C2 8C 18 6B 6A 67 CA CF 3E E1 0E E4 EF BF 1F F4 3D CE 71 3B A2 86 3D 28 DF 91 6B 17 67 3C 78
-      // 2E E1 2B FF 4A 28 13 28 6A 8D C3 88 CD 75 4D 9A 3E F2 49 06 35 EB A5 0C B9 C2 E5 E7 50 80 00 01
-      //  D 3F 27 FD 7B A7 BB 48 C4 8E 08 76 17 87 D4 10 49 AE E8 85 A8 4B 70 56 3A 3F 79 F0 54 BB 39 E4
 
       // if (scaled_uXK.length == 1 && scaled_uXK[0].length == 1) {
 
@@ -336,26 +292,44 @@ export default async function groth16Prove(
       //   }
       // }
       // console.log(m, PreImgIdx)
-      if (i === 1 && PreImgIdx === 2) {
-        const fdA = await binFileUtils.readBinFile(
-          `${dirPath}/parallel/scaled_${i}_${PreImgIdx}.zkey`,
-          // '/Users/hwangjaeseung/workspace/zkp/UniGro16js/groupsig.zkey',
-          'zkey',
-          2,
-          1<<25,
-          1<<23,
-        )
-        const params = await binFileUtils.readSection(fdA.fd, fdA.sections, 2)
-        // console.log(fdA.sections)
-        const nCoefs = params.byteLength
-        const sCoefs = 4*3 + n8r
-        console.log('params',params, nCoefs, nCoefs / n8r)
-        console.log(Fr.n8, n8, n8r)
-      }
+      
 
      const uTerm = await polyUtils.tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
      const vTerm = await polyUtils.tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
      const wTerm = await polyUtils.tensorProduct(Fr, scaled_wXK, fYK[kPrime]);
+
+     if (i === 1 && PreImgIdx === 2) {
+      const scaled = await binFileUtils.readBinFile(
+        `${dirPath}/parallel/scaled_1_2.zkey`,
+        'zkey',
+        2,
+        1<<25,
+        1<<23,
+      )
+      const fYK = await binFileUtils.readBinFile(
+        `${dirPath}/parallel/fYK_1_2.zkey`,
+        'zkey',
+        2,
+        1<<25,
+        1<<23,
+      )
+      const scaledParams = await binFileUtils.readSection(scaled.fd, scaled.sections, 2)
+      const fYKParams = await binFileUtils.readSection(fYK.fd, fYK.sections, 2)
+      
+      const sliceScaled = scaledParams.slice(4, 36)
+      const slicefYK = fYKParams.slice(4,36)
+      // console.log(slicefYK)
+      // console.log(sliceScaled)
+      const testResult = Fr.mul(slicefYK, sliceScaled)
+
+      const data = JSON.parse(fs.readFileSync(`${dirPath}/parallel/products.json`));
+
+      const uint8Array = bigIntToUint8Array(data[0][31], 32);
+      console.log(uint8Array)
+      console.log(testResult)
+      console.log(uTerm[0][0])
+      
+    }
      
       timers.polTensorAccum += timer.end(timertemp);
       // 904628794370751388047685085029190332997037083022625010474081444194637076266
@@ -398,11 +372,27 @@ async function fileCreator(filePath, data, dataLength, type) {
   await binFileUtils.endWriteSection(input)
 
   await binFileUtils.startWriteSection(input, 2);
+  await input.write(new Uint8Array(4))
   for (let i = 0; i < dataLength; i++) {
     await input.write(type === 'scaled' ? data[i][0] : data[0][i] )
   }
   await binFileUtils.endWriteSection(input);
   await input.close();
 }
+
+function bigIntToUint8Array(bigIntValue, bufferSize) {
+  const buffer = new ArrayBuffer(bufferSize);
+  const view = new DataView(buffer);
+  let remainder = BigInt(bigIntValue);
+
+  for (let i = bufferSize - 1; i >= 0; i--) {
+      const byte = remainder & BigInt(0xff);
+      view.setUint8(i, Number(byte)); 
+      remainder = remainder >> BigInt(8);
+  }
+
+  return new Uint8Array(buffer);
+}
+
 
 groth16Prove();
