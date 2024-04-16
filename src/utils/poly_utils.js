@@ -839,7 +839,7 @@ export async function tensorProduct(Fr, _array1, _array2) {
 /**
  *
  * @param {number} x  value
- * @return {number}  the smallest power of 2 that is greater than x
+ * @return {number}  the smallest power of 2 that is greater than xk
  */
 function minPowerOfTwo(x) {
   return Math.pow(2, Math.ceil(Math.log(x)/Math.log(2)));

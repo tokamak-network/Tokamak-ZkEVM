@@ -2,15 +2,14 @@ import * as binFileUtils from '@iden3/binfileutils';
 import * as polyUtils from './utils/poly_utils.js';
 import * as zkeyUtils from './utils/zkey_utils.js';
 import * as wtnsUtils from './utils/wtns_utils.js';
+import * as tensorUtils from './utils/tensor_utils.js';
 import generateWitness from './generate_witness.js';
 import * as fastFile from 'fastfile';
+import * as misc from './misc.js';
 import * as timer from './utils/timer.js';
-import {Scalar, BigBuffer} from 'ffjavascript';
-import { BigNumber } from 'ethers'
+import {Scalar, BigBuffer, utils} from 'ffjavascript';
 import Logger from 'logplease';
-import { exec, execSync } from 'child_process';
-import util from 'util'
-import fs from 'fs'
+
 
 const logger = Logger.create('UniGro16js', {showTimestamp: false});
 
@@ -170,6 +169,15 @@ export default async function groth16Prove(
     }
     cWtns_buff.set(cWtns_i, Fr.n8*i);
   }
+  const cWtns_private_buff = new BigBuffer(mPrivate * Fr.n8);
+  for (let i=0; i<mPrivate; i++) {
+    const ii = IdSetP.set[i];
+    const kPrime = WireList[ii][0];
+    const idx = WireList[ii][1];
+    const cWtns_ii = wtns[kPrime][idx]; // Uint8Array buffer
+    cWtns_private_buff.set(cWtns_ii, Fr.n8*i);
+  }
+
 
   if (logger) logger.debug(`  Loading sub-QAPs...`);
   timers.subQAPLoad = timer.start();
@@ -221,14 +229,6 @@ export default async function groth16Prove(
 
   let proveTime = 0
   let count = 0
-  // console.log('m:', m)
-  // const hexA = hex2ByteArray('0x24C28C186B6A67CACF3EE10EE4EFBF1FF43DCE713BA2863D28DF916B17673C78')
-  // const hexB = hex2ByteArray('0x2EE12BFF4A2813286A8DC388CD754D9A3EF2490635EBA50CB9C2E5E750800001')
-  // const result = hex2ByteArray('0x0D3F27FD7BA7BB48C48E08761787D41049AEE885A84B70563A3F79F054BB39E4')
-  // const answer = Fr.mul(hexA, hexB)
-  // console.log(result, answer)
-  // console.log(hexB)
-  const execs = util.promisify(exec)
   for (let i=0; i<m; i++) {
     const cWtns_i = Fr.fromRprLE(cWtns_buff.slice(i*Fr.n8, i*Fr.n8 + Fr.n8), 0, Fr.n8);
 
@@ -242,7 +242,6 @@ export default async function groth16Prove(
       PreImgSet = IdSetP.PreImgs[arrayIdx];
     }
     const PreImgSize = PreImgSet.length;
-    // console.log(PreImgSize)
     
     for (let PreImgIdx=0; PreImgIdx<PreImgSize; PreImgIdx++) {
       const kPrime = PreImgSet[PreImgIdx][0];
@@ -253,98 +252,148 @@ export default async function groth16Prove(
       const scaled_uXK = await polyUtils.scalePoly(Fr, uXK[sKPrime][iPrime], cWtns_i);
       const scaled_vXK = await polyUtils.scalePoly(Fr, vXK[sKPrime][iPrime], cWtns_i);
       const scaled_wXK = await polyUtils.scalePoly(Fr, wXK[sKPrime][iPrime], cWtns_i);
-
       timers.polScalingAccum += timer.end(timertemp);
       
-      await fileCreator(
-        `${dirPath}/parallel/scaled_${i}_${PreImgIdx}.zkey`,
-        scaled_uXK,
-        scaled_uXK.length,
-        'scaled'
-      )
-      await fileCreator(
-        `${dirPath}/parallel/fYK_${i}_${PreImgIdx}.zkey`,
-        fYK[kPrime],
-        fYK[kPrime][0].length,
-        'fYK'
-      )
+    //   await tensorUtils.fileCreator(
+    //     `${dirPath}/parallel/scaledUXK_${i}_${PreImgIdx}.zkey`,
+    //     scaled_uXK,
+    //     scaled_uXK.length,
+    //     'scaled'
+    //   )
+    //   await tensorUtils.fileCreator(
+    //     `${dirPath}/parallel/scaledVXK_${i}_${PreImgIdx}.zkey`,
+    //     scaled_vXK,
+    //     scaled_vXK.length,
+    //     'scaled'
+    //   )
+    //   await tensorUtils.fileCreator(
+    //     `${dirPath}/parallel/scaledWXK_${i}_${PreImgIdx}.zkey`,
+    //     scaled_wXK,
+    //     scaled_wXK.length,
+    //     'scaled'
+    //   )
+    //   await tensorUtils.fileCreator(
+    //     `${dirPath}/parallel/fYK_${i}_${PreImgIdx}.zkey`,
+    //     fYK[kPrime],
+    //     fYK[kPrime][0].length,
+    //     'fYK'
+    //   )
 
       timertemp = timer.start();
+    
+    // await tensorUtils.runTensorProduct(scaled_uXK, fYK[kPrime], 'scaledUXK', path, i, PreImgIdx)
+    // await tensorUtils.runTensorProduct(scaled_vXK, fYK[kPrime], 'scaledVXK', path, i, PreImgIdx)
+    // await tensorUtils.runTensorProduct(scaled_wXK, fYK[kPrime], 'scaledWXK', path, i, PreImgIdx)
+    
+    const uTerm = await tensorUtils.getJsonOutput(Fr, scaled_uXK, fYK[kPrime], path, 'scaledUXK', i, PreImgIdx)
+    const vTerm = await tensorUtils.getJsonOutput(Fr, scaled_vXK, fYK[kPrime], path, 'scaledVXK', i, PreImgIdx)
+    const wTerm = await tensorUtils.getJsonOutput(Fr, scaled_wXK, fYK[kPrime], path, 'scaledWXK', i, PreImgIdx)
 
-      // if (scaled_uXK.length == 1 && scaled_uXK[0].length == 1) {
+    // const uTerm = await polyUtils.tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
+    // const vTerm = await polyUtils.tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
+    // const wTerm = await polyUtils.tensorProduct(Fr, scaled_wXK, fYK[kPrime]);
 
-      // } else if (fYK[kPrime].length == 1 && fYK[kPrime][0].length == 1) {
-
-      // } else {
-      //   const file1 = `${path}/resource/circuits/test_transfer/parallel/scaled_${i}_${PreImgIdx}.zkey`
-      //   const file2 = `${path}/resource/circuits/test_transfer/parallel/fYK_${i}_${PreImgIdx}.zkey`
-      //   try {
-      //     const {stdout, stderr} = await execs(`/home/ubuntu/rapidsnark/build/tensorProduct ${file1} ${file2}`)
-      //     if (stdout) {
-      //       const colon = stdout.indexOf(':')
-      //       proveTime += Number(stdout.slice(colon+2))
-      //       count += 1
-      //       console.log('stdout',stdout)
-      //     }
-      //     if (stderr) console.log('stderr', stderr)
-      //   } catch (e) {
-      //     console.log(e)
+    //  if (i === 1 && PreImgIdx === 2) {
+    //    console.log(uTerm[0][0])
+    //    console.log(uTerms[0][0])
+    //    console.log(uTerm[0][0] === uTerms[0][0])
+      // const data = JSON.parse(fs.readFileSync(`${dirPath}/parallel/products.json`));
+      // for(let i = 0; i< 1024; i ++) {
+      //   for (let j = 0; j < 32; j ++) {
+      //     if (data[i][j] !== stringifyBigInts(uTerm[i][j]).toString()) console.log(`error at  ${i} ${j}`)
       //   }
       // }
-      // console.log(m, PreImgIdx)
-      
-
-     const uTerm = await polyUtils.tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
-     const vTerm = await polyUtils.tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
-     const wTerm = await polyUtils.tensorProduct(Fr, scaled_wXK, fYK[kPrime]);
-
-     if (i === 1 && PreImgIdx === 2) {
-      const scaled = await binFileUtils.readBinFile(
-        `${dirPath}/parallel/scaled_1_2.zkey`,
-        'zkey',
-        2,
-        1<<25,
-        1<<23,
-      )
-      const fYK = await binFileUtils.readBinFile(
-        `${dirPath}/parallel/fYK_1_2.zkey`,
-        'zkey',
-        2,
-        1<<25,
-        1<<23,
-      )
-      const scaledParams = await binFileUtils.readSection(scaled.fd, scaled.sections, 2)
-      const fYKParams = await binFileUtils.readSection(fYK.fd, fYK.sections, 2)
-      
-      const sliceScaled = scaledParams.slice(4, 36)
-      const slicefYK = fYKParams.slice(4,36)
-      // console.log(slicefYK)
-      // console.log(sliceScaled)
-      const testResult = Fr.mul(slicefYK, sliceScaled)
-
-      const data = JSON.parse(fs.readFileSync(`${dirPath}/parallel/products.json`));
-
-      const uint8Array = bigIntToUint8Array(data[0][31], 32);
-      console.log(uint8Array)
-      console.log(testResult)
-      console.log(uTerm[0][0])
-      
-    }
+    // }
      
       timers.polTensorAccum += timer.end(timertemp);
-      // 904628794370751388047685085029190332997037083022625010474081444194637076266
-      // 453311793908878410482619391514302482865348991705822240971082452065388572718
-      // 21888242871839275222246405745257275088548364400416034343698204186575808495617
 
-      // timertemp = timer.start();
-      // p1XY = await polyUtils.addPoly(Fr, p1XY, uTerm);
-      // p2XY = await polyUtils.addPoly(Fr, p2XY, vTerm);
-      // p3XY = await polyUtils.addPoly(Fr, p3XY, wTerm);
-      // timers.polAddAccum += timer.end(timertemp);
+      timertemp = timer.start();
+      p1XY = await polyUtils.addPoly(Fr, p1XY, uTerm);
+      p2XY = await polyUtils.addPoly(Fr, p2XY, vTerm);
+      p3XY = await polyUtils.addPoly(Fr, p3XY, wTerm);
+      timers.polAddAccum += timer.end(timertemp);
     }
   }
-  console.log('proveTime: ',proveTime, count)
+  timers.polMul = timer.start();
+  const temp = await polyUtils.fftMulPoly(Fr, p1XY, p2XY);
+  timers.polMul = timer.end(timers.polMul);
+  timertemp = timer.start();
+  const pXY = await polyUtils.subPoly(Fr, temp, p3XY);
+  timers.polAddAccum += timer.end(timertemp);
 
+  // compute H
+  if (logger) logger.debug(`  Finding h1(X,Y) and h2(X,Y)...`);
+  timers.polDiv = timer.start();
+  // h1XY = HX(X,Y), h2XY = HY(X,Y)
+  const {HX_buff: h1XY, HY_buff: h2XY} = await polyUtils.QapDiv(Fr, pXY);
+  timers.polDiv = timer.end(timers.polDiv);
+  timers.qapSolve = timer.end(timers.qapSolve);
+  if (logger) logger.debug(`Solving QAP...Done`);
+
+  // Generate r and s
+  const rawr = await misc.getRandomRng(1);
+  const raws = await misc.getRandomRng(2);
+  const r = Fr.fromRng(rawr);
+  const s = Fr.fromRng(raws);
+
+  if (logger) logger.debug(`Generating Proofs...`);
+  timers.proving = timer.start();
+  if (logger) logger.debug(`  Generating Proof A...`);
+  // Compute proof A
+  const vk1AP1 = urs.sigmaG.vk1AlphaV;
+  const vk1AP3 = await G1.timesFr(urs.sigmaG.vk1GammaA, r);
+  const vk1AP2 = await G1.multiExpAffine(crs.vk1Uxy1d, cWtns_buff, false);
+  const vk1A = await G1.add(await G1.add(vk1AP1, vk1AP2), vk1AP3);
+
+  if (logger) logger.debug(`  Generating Proof B...`);
+  // Compute proof B_H
+  const vk2BP1 = urs.sigmaH.vk2AlphaU;
+  const vk2BP3 = await G2.timesFr(urs.sigmaH.vk2GammaA, s);
+  const vk2BP2 = await G2.multiExpAffine(crs.vk2Vxy1d, cWtns_buff, false);
+  const vk2B = await G2.add(await G2.add(vk2BP1, vk2BP2), vk2BP3);
+
+  if (logger) logger.debug(`  Generating Proof C...`);
+  // Compute proof B_G
+  const vk1BP1 = urs.sigmaG.vk1AlphaU;
+  const vk1BP3 = await G1.timesFr(urs.sigmaG.vk1GammaA, s);
+  const vk1BP2 = await G1.multiExpAffine(crs.vk1Vxy1d, cWtns_buff, false);
+  const vk1B = await G1.add(await G1.add(vk1BP1, vk1BP2), vk1BP3);
+
+  // Compute proof C_G
+  const vk1CP = new Array(6);
+  vk1CP[0] = await G1.multiExpAffine(crs.vk1Axy1d, cWtns_private_buff, false);
+  vk1CP[1] = await G1.multiExpAffine(urs.sigmaG.vk1XyPowsT1g, h1XY, false);
+  vk1CP[2] = await G1.multiExpAffine(urs.sigmaG.vk1XyPowsT2g, h2XY, false)
+  vk1CP[3] = await G1.timesFr(vk1A, s);
+  vk1CP[4] = await G1.timesFr(vk1B, r);
+  vk1CP[5] = await G1.timesFr( urs.sigmaG.vk1GammaA, Fr.neg(Fr.mul(r, s)) );
+  let vk1C = vk1CP[0];
+  for (let i=1; i<6; i++) {
+    vk1C = await G1.add(vk1C, vk1CP[i]);
+  }
+  timers.proving = timer.end(timers.proving);
+  if (logger) logger.debug(`Generating Proofs...Done`);
+
+  // Write Header
+  // /////////
+  await binFileUtils.startWriteSection(fdPrf, 1);
+  await fdPrf.writeULE32(1); // Groth
+  await binFileUtils.endWriteSection(fdPrf);
+  // End of the Header
+
+  await binFileUtils.startWriteSection(fdPrf, 2);
+  console.log(vk1A)
+  console.log(vk2B)
+  console.log(vk1C)
+  await zkeyUtils.writeG1(fdPrf, curve, vk1A);
+  await zkeyUtils.writeG2(fdPrf, curve, vk2B);
+  await zkeyUtils.writeG1(fdPrf, curve, vk1C);
+
+  await binFileUtils.endWriteSection(fdPrf);
+
+  await fdPrf.close();
+
+  timers.total = timer.end(timers.total);
   if (logger) {
     logger.debug('  ');
     logger.debug('----- Prove Time Analyzer -----');
@@ -353,45 +402,12 @@ export default async function groth16Prove(
     logger.debug(`  # Loading sub-QAP time: ${(timers.subQAPLoad/1000).toFixed(3)} [sec] (${(timers.subQAPLoad/timers.total*100).toFixed(3)} %)`);
     logger.debug(`  # Univariate polynomial scaling time: ${(timers.polScalingAccum/1000).toFixed(3)} [sec] (${(timers.polScalingAccum/timers.total*100).toFixed(3)} %)`);
     logger.debug(`  # Univariate polynomial tensor product time: ${(timers.polTensorAccum/1000).toFixed(3)} [sec] (${(timers.polTensorAccum/timers.total*100).toFixed(3)} %)`);
-
-  }
+    logger.debug(`  # Bivariate polynomial addition time: ${(timers.polAddAccum/1000).toFixed(3)} [sec] (${(timers.polAddAccum/timers.total*100).toFixed(3)} %)`);
+    logger.debug(`  # Bivariate polynomial multiplication time: ${(timers.polMul/1000).toFixed(3)} [sec] (${(timers.polMul/timers.total*100).toFixed(3)} %)`);
+    logger.debug(`  # Bivariate polynomial division time time: ${(timers.polDiv/1000).toFixed(3)} [sec] (${(timers.polDiv/timers.total*100).toFixed(3)} %)`);
+    logger.debug(` ## Time for group exponentiations with m=${m}, n=${n}, sMax=${sMax}: ${(timers.proving/1000).toFixed(3)} [sec] (${(timers.proving/timers.total*100).toFixed(3)} %)`);
+  } 
   process.exit(0);
-}
-
-async function fileCreator(filePath, data, dataLength, type) {
-  const input = await binFileUtils.createBinFile(
-    filePath,
-    'zkey',
-    1,
-    2,
-    1<<22,
-    1<<24
-  )
-  await binFileUtils.startWriteSection(input, 1);
-  await input.writeULE32(1)
-  await binFileUtils.endWriteSection(input)
-
-  await binFileUtils.startWriteSection(input, 2);
-  await input.write(new Uint8Array(4))
-  for (let i = 0; i < dataLength; i++) {
-    await input.write(type === 'scaled' ? data[i][0] : data[0][i] )
-  }
-  await binFileUtils.endWriteSection(input);
-  await input.close();
-}
-
-function bigIntToUint8Array(bigIntValue, bufferSize) {
-  const buffer = new ArrayBuffer(bufferSize);
-  const view = new DataView(buffer);
-  let remainder = BigInt(bigIntValue);
-
-  for (let i = bufferSize - 1; i >= 0; i--) {
-      const byte = remainder & BigInt(0xff);
-      view.setUint8(i, Number(byte)); 
-      remainder = remainder >> BigInt(8);
-  }
-
-  return new Uint8Array(buffer);
 }
 
 

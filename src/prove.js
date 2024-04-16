@@ -398,7 +398,6 @@ export default async function groth16Prove(
   // End of the Header
 
   await binFileUtils.startWriteSection(fdPrf, 2);
-  console.log(vk1A)
   await zkeyUtils.writeG1(fdPrf, curve, vk1A);
   await zkeyUtils.writeG2(fdPrf, curve, vk2B);
   await zkeyUtils.writeG1(fdPrf, curve, vk1C);

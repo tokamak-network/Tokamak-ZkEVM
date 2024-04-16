@@ -5,6 +5,9 @@
 *.proof
 *.wtns
 *.zkey
+*_output.json
+
+resource/circuits/test_transfer/parallel/*
 
 vk_proof.json
 vk_verifier.json
