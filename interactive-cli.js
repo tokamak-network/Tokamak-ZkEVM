@@ -102,7 +102,7 @@ function buildQAP() {
         type: 'input',
         name: 'sMax',
         message: 'The maximum number of arithmetic instructions in the EVM application?',
-        default: '18',
+        default: '18', //최대 opcode 호출량?
         validate: value => {
           return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
         }

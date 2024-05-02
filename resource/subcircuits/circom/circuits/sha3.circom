@@ -1,12 +1,10 @@
-pragma circom 2.0.5;
+pragma circom 2.1.6;
 
-// Dummy circuit
+// Dummy circuit: rather verify sha3 outside of circuits since proving sha3 overhead is humongous.
 template SHA3 () {
-    signal input in[2];
+    signal input in;
     signal output out;
 
     out <-- 1;
-    for (var i=0; i<2; i++){
-        out * (in[i] - in[i]) === 0;
-    }
+    out * (in - in) === 0;
 }

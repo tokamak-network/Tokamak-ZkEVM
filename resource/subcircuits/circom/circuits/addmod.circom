@@ -1,22 +1,11 @@
-pragma circom 2.0.5;
+pragma circom 2.1.6;
+include "add.circom";
 include "div.circom";
 include "mod.circom";
 
+//intermediate operation is not subject to 2^256 modulo
 template AddMod () {
-  signal input in[3];
-  signal sum;
-  signal output out;
-
-  sum <== in[0] + in[1];
-
-  component div = Div();
-
-  div.in[0] <== sum;
-  div.in[1] <== in[2];
-
-  component mod = Mod();
-  mod.in[0] <== sum;
-  mod.in[1] <== in[2];
-  
-  out <== mod.out;
+  signal input in1[2], in2[2], in3[2];
+  signal sum[2] <== BigAdd()(in1, in2);
+  signal output out[2] <== CarryMod()(sum, in3);
 }

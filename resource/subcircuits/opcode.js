@@ -24,8 +24,6 @@ export const opcodeDictionary = {
   'BYTE': '1a',
   'SHL': '1b',
   'SHR': '1c',
-  'SHR-L': '1c1',
-  'SHR-H': '1c2',
   'SAR': '1d',
   'SHA3': '20'
 }
