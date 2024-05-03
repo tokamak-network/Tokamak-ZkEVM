@@ -93,7 +93,7 @@ function buildQAP() {
         type: 'input',
         name: 'sD',
         message: 'How many instructions are defined in the EVM?',
-        default: '12',
+        default: '12', //Number of subcircuits in subcircuit library
         validate: value => {
           return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
         }
@@ -102,7 +102,7 @@ function buildQAP() {
         type: 'input',
         name: 'sMax',
         message: 'The maximum number of arithmetic instructions in the EVM application?',
-        default: '18', //최대 opcode 호출량?
+        default: '18',
         validate: value => {
           return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
         }
