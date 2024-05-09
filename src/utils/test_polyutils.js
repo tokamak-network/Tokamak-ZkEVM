@@ -2,7 +2,7 @@ import * as polyUtils from './poly_utils.js';
 import * as binFileUtils from '@iden3/binfileutils';
 import * as zkeyUtils from './zkey_utils.js';
 import * as wtnsUtils from './wtns_utils.js';
-import {Scalar, BigBuffer, utils} from 'ffjavascript';
+import { utils } from 'ffjavascript';
 const {stringifyBigInts} = utils;
 
 async function testTensorProduct (Fr) {
@@ -16,19 +16,16 @@ async function testTensorProduct (Fr) {
   const sample2_3 = bigIntToUint8Array('9163953212624378696742080269971059027061360176019470242548968584908855004282', 32)
   const sample2_4 = bigIntToUint8Array('20922060990592511838374895951081914567856345629513259026540392951012456141360', 32)
 
-  // let array1 = []
-  // let array2 = []
-  // console.log(sample2_2)
-  const test = Fr.mul(sample2_1, sample1_1)
-  console.log(stringifyBigInts(test))
+  // const test = Fr.mul(sample2_1, sample1_1)
+  
   let array2 =[ [ sample2_1, sample2_2, sample2_3, sample2_4 ] ]
   let array1 = [ [ sample1_1 ], [ sample1_2 ], [ sample1_3 ], [ sample1_4 ] ]
 
   const result = await polyUtils.tensorProduct(Fr, array1, array2)
-  // console.log(result)
+
   for (let i = 0; i < 4; i ++) {
     for (let j = 0; j < 4; j ++) {
-      // console.log(i,j, stringifyBigInts(result[i][j]))
+      console.log(i,j, stringifyBigInts(result[i][j]))
     }
   }
 }
