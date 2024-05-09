@@ -227,11 +227,11 @@ export default async function groth16Prove(
   let p2XY = [[Fr.zero]];
   let p3XY = [[Fr.zero]];
 
-  let proveTime = 0
-  let count = 0
   for (let i=0; i<m; i++) {
     const cWtns_i = Fr.fromRprLE(cWtns_buff.slice(i*Fr.n8, i*Fr.n8 + Fr.n8), 0, Fr.n8);
-
+    if (m===1) console.log(cWtns_buff.slice(i*Fr.n8, i*Fr.n8 + Fr.n8), 0, Fr.n8)
+    if (m===1) console.log(cWtns_i)
+    
     let arrayIdx;
     let PreImgSet;
     if (IdSetV.set.indexOf(i) > -1) {
@@ -253,69 +253,63 @@ export default async function groth16Prove(
       const scaled_vXK = await polyUtils.scalePoly(Fr, vXK[sKPrime][iPrime], cWtns_i);
       const scaled_wXK = await polyUtils.scalePoly(Fr, wXK[sKPrime][iPrime], cWtns_i);
       timers.polScalingAccum += timer.end(timertemp);
+
+      if (PreImgIdx === 1 && i === 4) console.log(vXK[sKPrime][iPrime])
+      if (PreImgIdx === 1 && i === 4) console.log(cWtns_i)
+      if (PreImgIdx === 1 && i === 4) console.log(scaled_vXK)
       
-    //   await tensorUtils.fileCreator(
-    //     `${dirPath}/parallel/scaledUXK_${i}_${PreImgIdx}.zkey`,
-    //     scaled_uXK,
-    //     scaled_uXK.length,
-    //     'scaled'
-    //   )
-    //   await tensorUtils.fileCreator(
-    //     `${dirPath}/parallel/scaledVXK_${i}_${PreImgIdx}.zkey`,
-    //     scaled_vXK,
-    //     scaled_vXK.length,
-    //     'scaled'
-    //   )
-    //   await tensorUtils.fileCreator(
-    //     `${dirPath}/parallel/scaledWXK_${i}_${PreImgIdx}.zkey`,
-    //     scaled_wXK,
-    //     scaled_wXK.length,
-    //     'scaled'
-    //   )
-    //   await tensorUtils.fileCreator(
-    //     `${dirPath}/parallel/fYK_${i}_${PreImgIdx}.zkey`,
-    //     fYK[kPrime],
-    //     fYK[kPrime][0].length,
-    //     'fYK'
-    //   )
+      // await tensorUtils.fileCreator(
+      //   `${dirPath}/parallel/scaledUXK_${i}_${PreImgIdx}.zkey`,
+      //   scaled_uXK,
+      //   scaled_uXK.length,
+      //   'scaled'
+      // )
+      // await tensorUtils.fileCreator(
+      //   `${dirPath}/parallel/scaledVXK_${i}_${PreImgIdx}.zkey`,
+      //   scaled_vXK,
+      //   scaled_vXK.length,
+      //   'scaled'
+      // )
+      // await tensorUtils.fileCreator(
+      //   `${dirPath}/parallel/scaledWXK_${i}_${PreImgIdx}.zkey`,
+      //   scaled_wXK,
+      //   scaled_wXK.length,
+      //   'scaled'
+      // )
+      // await tensorUtils.fileCreator(
+      //   `${dirPath}/parallel/fYK_${i}_${PreImgIdx}.zkey`,
+      //   fYK[kPrime],
+      //   fYK[kPrime][0].length,
+      //   'fYK'
+      // )
 
       timertemp = timer.start();
     
-    // await tensorUtils.runTensorProduct(scaled_uXK, fYK[kPrime], 'scaledUXK', path, i, PreImgIdx)
-    // await tensorUtils.runTensorProduct(scaled_vXK, fYK[kPrime], 'scaledVXK', path, i, PreImgIdx)
-    // await tensorUtils.runTensorProduct(scaled_wXK, fYK[kPrime], 'scaledWXK', path, i, PreImgIdx)
+      // await tensorUtils.runTensorProduct(scaled_uXK, fYK[kPrime], 'scaledUXK', path, i, PreImgIdx)
+      // await tensorUtils.runTensorProduct(scaled_vXK, fYK[kPrime], 'scaledVXK', path, i, PreImgIdx)
+      // await tensorUtils.runTensorProduct(scaled_wXK, fYK[kPrime], 'scaledWXK', path, i, PreImgIdx)
     
-    const uTerm = await tensorUtils.getJsonOutput(Fr, scaled_uXK, fYK[kPrime], path, 'scaledUXK', i, PreImgIdx)
-    const vTerm = await tensorUtils.getJsonOutput(Fr, scaled_vXK, fYK[kPrime], path, 'scaledVXK', i, PreImgIdx)
-    const wTerm = await tensorUtils.getJsonOutput(Fr, scaled_wXK, fYK[kPrime], path, 'scaledWXK', i, PreImgIdx)
+      // const uTerm = await tensorUtils.getJsonOutput(Fr, scaled_uXK, fYK[kPrime], path, 'scaledUXK', i, PreImgIdx)
+      // const vTerm = await tensorUtils.getJsonOutput(Fr, scaled_vXK, fYK[kPrime], path, 'scaledVXK', i, PreImgIdx)
+      // const wTerm = await tensorUtils.getJsonOutput(Fr, scaled_wXK, fYK[kPrime], path, 'scaledWXK', i, PreImgIdx)
 
-    // const uTerm = await polyUtils.tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
+    const uTerm = await polyUtils.tensorProduct(Fr, scaled_uXK, fYK[kPrime]);
     // const vTerm = await polyUtils.tensorProduct(Fr, scaled_vXK, fYK[kPrime]);
     // const wTerm = await polyUtils.tensorProduct(Fr, scaled_wXK, fYK[kPrime]);
-
-    //  if (i === 1 && PreImgIdx === 2) {
-    //    console.log(uTerm[0][0])
-    //    console.log(uTerms[0][0])
-    //    console.log(uTerm[0][0] === uTerms[0][0])
-      // const data = JSON.parse(fs.readFileSync(`${dirPath}/parallel/products.json`));
-      // for(let i = 0; i< 1024; i ++) {
-      //   for (let j = 0; j < 32; j ++) {
-      //     if (data[i][j] !== stringifyBigInts(uTerm[i][j]).toString()) console.log(`error at  ${i} ${j}`)
-      //   }
-      // }
-    // }
      
       timers.polTensorAccum += timer.end(timertemp);
 
       timertemp = timer.start();
       p1XY = await polyUtils.addPoly(Fr, p1XY, uTerm);
-      p2XY = await polyUtils.addPoly(Fr, p2XY, vTerm);
-      p3XY = await polyUtils.addPoly(Fr, p3XY, wTerm);
+      if (PreImgIdx === 1 && i === 4) console.log(p1XY)
+      // p2XY = await polyUtils.addPoly(Fr, p2XY, vTerm);
+      // p3XY = await polyUtils.addPoly(Fr, p3XY, wTerm);
       timers.polAddAccum += timer.end(timertemp);
     }
   }
   timers.polMul = timer.start();
   const temp = await polyUtils.fftMulPoly(Fr, p1XY, p2XY);
+  console.log(temp)
   timers.polMul = timer.end(timers.polMul);
   timertemp = timer.start();
   const pXY = await polyUtils.subPoly(Fr, temp, p3XY);
@@ -382,9 +376,6 @@ export default async function groth16Prove(
   // End of the Header
 
   await binFileUtils.startWriteSection(fdPrf, 2);
-  console.log(vk1A)
-  console.log(vk2B)
-  console.log(vk1C)
   await zkeyUtils.writeG1(fdPrf, curve, vk1A);
   await zkeyUtils.writeG2(fdPrf, curve, vk2B);
   await zkeyUtils.writeG1(fdPrf, curve, vk1C);

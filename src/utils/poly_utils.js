@@ -829,7 +829,6 @@ export async function tensorProduct(Fr, _array1, _array2) {
   for (let i = 0; i < _array1.length; i++) {
     for (let j = 0; j<_array2[0].length; j++) {
       product[i][j] = Fr.mul(_array2[0][j], _array1[i][0]);
-      // if (i === 0 && j === 0) console.log(_array2[0][j].length)
     }
   }
 

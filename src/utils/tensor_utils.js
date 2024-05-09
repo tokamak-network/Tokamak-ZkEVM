@@ -1,4 +1,7 @@
 import fs from 'fs'
+import * as binFileUtils from '@iden3/binfileutils';
+import util from 'util'
+import { exec } from 'child_process';
 
 export async function fileCreator(filePath, data, dataLength, type) {
   const input = await binFileUtils.createBinFile(
@@ -75,9 +78,9 @@ export async function getJsonOutput(Fr, scaled, fYK, path, type, i, PreImgIdx) {
   const file3 = `${path}/resource/circuits/test_transfer/parallel/output/${type}_${i}_${PreImgIdx}_output.json`
   const json = JSON.parse(fs.readFileSync(file3));
   let bufferArray = []
-  for (let i=0; i < json.length; i ++) {
+  for (let i = 0; i < json.length; i ++) {
     let buffer = []
-    for (let j=0; j<json[0].length; j++){
+    for (let j = 0; j < json[0].length; j++){
       buffer.push(bigIntToUint8Array(json[i][j], 32))
     }
     bufferArray.push(buffer)
