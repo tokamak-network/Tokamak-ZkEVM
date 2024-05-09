@@ -1,7 +1,10 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 #circuit nums: 27
-names=("load" "add" "mul" "sub" "div" "sha3" "sdiv" "mod" "smod" "addmod" "mulmod" "exp" "lt" "gt" "slt" "sgt" "eq" "iszero" "and" "or" "xor" "not" "shl" "shr" "sar" "signextend" "byte")
+#names=("load" "add" "mul" "sub" "div" "sha3" "sdiv" "mod" "smod" "addmod" "mulmod" "exp" "lt" "gt" "slt" "sgt" "eq" "iszero" "and" "or" "xor" "not" "shl" "shr" "sar" "signextend" "byte")
+# large constraints(EXP,SDIV,SMOD) removed version
+names=("load" "add" "mul" "sub" "div" "sha3" "mod" "addmod" "mulmod" "lt" "gt" "slt" "sgt" "eq" "iszero" "and" "or" "xor" "not" "shl" "shr" "sar" "signextend" "byte")
+
 
 for (( i = 0 ; i < ${#names[@]} ; i++ )) ; do
   echo "id[$i] = ${names[$i]}" >> temp.txt && \
