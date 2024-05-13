@@ -2367,23 +2367,23 @@ var witness_calculator = async function builder(code, options) {
         runtime: {
             exceptionHandler : function(code) {
 		let err;
-        if (code == 1) {
-            err = "Signal not found.\n";
-        } else if (code == 2) {
-            err = "Too many signals set.\n";
-        } else if (code == 3) {
-            err = "Signal already set.\n";
-        } else if (code == 4) {
-            err = "Assert Failed.\n";
-        } else if (code == 5) {
-            err = "Not enough memory.\n";
+                if (code == 1) {
+                    err = "Signal not found.\n";
+                } else if (code == 2) {
+                    err = "Too many signals set.\n";
+                } else if (code == 3) {
+                    err = "Signal already set.\n";
+		} else if (code == 4) {
+                    err = "Assert Failed.\n";
+		} else if (code == 5) {
+                    err = "Not enough memory.\n";
 		} else if (code == 6) {
                     err = "Input signal array access exceeds the size.\n";
 		} else {
-            err = "Unknown error.\n";
-        }
-            throw new Error(err + errStr);
-        },
+		    err = "Unknown error.\n";
+                }
+                throw new Error(err + errStr);
+            },
 	    printErrorMessage : function() {
 		errStr += getMessage() + "\n";
                 // console.error(getMessage());
@@ -2496,7 +2496,7 @@ class WitnessCalculator {
 		throw new Error(`Too many values for input signal ${k}\n`);
 	    }
             for (let i=0; i<fArr.length; i++) {
-                const arrFr = toArray32(BigInt(fArr[i])%this.prime,this.n32);
+                const arrFr = toArray32(normalize(fArr[i],this.prime),this.n32);
                 for (let j=0; j<this.n32; j++) {
 		    this.instance.exports.writeSharedRWMemory(j,arrFr[this.n32-1-j]);
 		}
@@ -2661,6 +2661,12 @@ function flatArray(a) {
             res.push(a);
         }
     }
+}
+
+function normalize(n, prime) {
+    let res = BigInt(n) % prime;
+    if (res < 0) res += prime;
+    return res
 }
 
 function fnvHash(str) {
@@ -4538,11 +4544,12 @@ class Decoder {
     while (pc < codelen) {
       const op = decimalToHex(code[pc]);
       pc = pc + 1;
-      // console.log('op', pc, op)
-      
-      let d = 0;
-      let a = 0;
-      stack_pt.length;
+      console.log('pc', pc);
+      console.log("=========OP===============");
+      console.log("op", op);
+
+      let d = 0; //input
+      let a = 0; //output
 
       if (hexToInteger(op) - hexToInteger('60') >= 0 
         && hexToInteger(op) - hexToInteger('60') < 32) {
@@ -4550,13 +4557,13 @@ class Decoder {
 
         stack_pt.unshift([0, pc+call_pt[this.calldepth - 1][0], pushlen]);
         pc = pc + pushlen;
-      } else if (hexToInteger(op) === hexToInteger('50')) {
+      } else if (op === '50') {
         d = 1;
         a = 0;
 
         stack_pt = pop_stack(stack_pt, d);
       } 
-      else if (hexToInteger(op) === hexToInteger('51')) { // mload
+      else if (op === '51') { // mload
         d = 1;
         a = 0;
         const addr = Number(this.evalEVM(stack_pt[0])) + 1;
@@ -4567,7 +4574,7 @@ class Decoder {
         // }
         
         stack_pt.unshift(mem_pt[addr]);
-      } else if (hexToInteger(op) === hexToInteger('52')) { //mstore
+      } else if (op === '52') { //mstore
         d = 2;
         a = 0;
 
@@ -4576,7 +4583,7 @@ class Decoder {
         mem_pt[addr] = data;
 
         stack_pt = pop_stack(stack_pt, d);
-      } else if (hexToInteger(op) === hexToInteger('53')) {
+      } else if (op === '53') {
         d = 2;
         a = 0;
         const addr = Number(this.evalEVM(stack_pt[0])) + 1;
@@ -4587,7 +4594,7 @@ class Decoder {
         
         stack_pt = pop_stack(stack_pt, d);
       }
-      else if (hexToInteger(op) === hexToInteger('54')) { //sload
+      else if (op === '54') { //sload
         d = 1;
         a = 1;
 
@@ -4597,7 +4604,7 @@ class Decoder {
         const sdata_pt = storage_pt[addr] ? storage_pt[addr] : [0, zero_pt, zero_len];
 
         stack_pt.unshift(sdata_pt);
-      } else if (hexToInteger(op) === hexToInteger('55')) { // store
+      } else if (op === '55') { // store
         d = 2;
         a = 0;
 
@@ -4607,17 +4614,17 @@ class Decoder {
 
         storage_pt[addr] = sdata_pt;
         
-      } else if (hexToInteger(op) === hexToInteger('33')) { // caller
+      } else if (op === '33') { // caller
         d = 0;
         a = 1;
 
         stack_pt.unshift([0, Is_pt, Is_len]);
-      } else if (hexToInteger(op) === hexToInteger('34')) { // callvalue
+      } else if (op === '34') { // callvalue
         d = 0;
         a = 1;
 
         stack_pt.unshift([0, Iv_pt, Iv_len]);
-      } else if (hexToInteger(op) === hexToInteger('35')) { // calldataload
+      } else if (op === '35') { // calldataload
         d = 1;
         a = 1;
 
@@ -4630,12 +4637,12 @@ class Decoder {
         if (pt >= Id_pt && pt + chose_data_len - 1 <= Id_pt + Id_len - 1) {
           stack_pt.unshift([0, pt, chose_data_len]);
         }
-      } else if (hexToInteger(op) === hexToInteger('36')) { // calldatasize
+      } else if (op === '36') { // calldatasize
         d = 0;
         a = 1;
 
         stack_pt.unshift([0, Id_len_info_pt, Id_len_info_len]);
-      } else if (hexToInteger(op) === hexToInteger('47')) { // selfbalance
+      } else if (op === '47') { // selfbalance
         d = 0;
         a = 1;
 
@@ -4657,24 +4664,24 @@ class Decoder {
         stack_pt[0] = stack_pt[target_index];
         stack_pt[target_index] = temp;
       } 
-      else if (hexToInteger(op) >= '1' && hexToInteger(op) < '11'
-          || (hexToInteger(op) >= '16' && hexToInteger(op) <= '29')
-          || (hexToInteger(op) == 32)
+      else if (hexToInteger(op) >= hexToInteger('01') && hexToInteger(op) < hexToInteger('0b')
+          || (hexToInteger(op) >= hexToInteger('10') && hexToInteger(op) <= hexToInteger('1d'))
+          || (hexToInteger(op) === hexToInteger('20'))
       ) {
         const numberOfInputs = getNumberOfInputs(op);
         d = numberOfInputs;
 
         switch (op) {
-          case ['15','19'].includes(op) :
+          case ['15','19'].includes(op) : //ISZERO, NOT
             d = 1;
             a = 1;
           case ['10', '1b', '1c', '14', '01', '02', '03', '04', '16', '17', '18', '0a', '12', '11', '06', '05', '07', '0b', '13', '1a', '1d'].includes(op):
             d = 2;
             a = 1;
-          case ['08', '09'].includes(op):
+          case ['08', '09'].includes(op): //ADDMOD, MULMOD
             d = 3;
             a = 1;
-          case '20': // keccak256
+          case '20': // SHA3
             a=1;
             const addr = Number(this.evalEVM(stack_pt[0])) + 1;
             let len = Number(this.evalEVM(stack_pt[1]));
@@ -4971,54 +4978,56 @@ class Decoder {
           inputs.push(this.evalEVM(pt_inputs[i]));
         }
 
-        if (op === '01') {
+        if (op === '01') { //ADD
           if (inputlen !== 2) throw new Error("Invalid input length");
-          outputs = BigInt(inputs[0]) + BigInt(inputs[1]);
+          outputs = (BigInt(inputs[0]) + BigInt(inputs[1])) % BigInt(2**256);
         }
-        if (op === '02') {
+        if (op === '02') { //MUL
           if (inputlen !== 2) throw new Error("Invalid input length");
-          outputs = BigInt(inputs[0]) * BigInt(inputs[1]);
+          outputs = (BigInt(inputs[0]) * BigInt(inputs[1])) % BigInt(2**256);
         }
-        if (op === '03') {
+        if (op === '03') { //SUB
           if (inputlen !== 2) throw new Error("Invalid input length");
-          if (op_pointer === 45) console.log('45', inputs[0], inputs[1], pt_inputs);
-          outputs = BigInt(inputs[0]) - BigInt(inputs[1]);
+          outputs = (BigInt(2**256) + BigInt(inputs[0]) - BigInt(inputs[1])) % BigInt(2**256);
         }
-        if (op === '04') {
+        if (op === '04') { //DIV
           if (inputlen !== 2) throw new Error("Invalid input length");
-          if (op_pointer == 35) console.log('35 input',inputs);
-          outputs = BigInt(inputs[0]) / BigInt(inputs[1]);
+          outputs = (BigInt(inputs[1]) == BigInt(0)) ? 0 : BigInt(inputs[0]) / BigInt(inputs[1]);
         }
-        if (op === '05') {
+        if (op === '05') { //SDIV
           if (inputlen !== 2) throw new Error("Invalid input length");
-          const result = BigInt(inputs[1]) === 0 ? 0 : BigInt(inputs[0]) / BigInt(inputs[1]);
-          outputs = result;
+          outputs = (BigInt(inputs[1]) == BigInt(0)) ? 0 : BigInt(inputs[0]) / BigInt(inputs[1]);
         }
-        if (op === '06') {
+        if (op === '06') { //MOD
           if (inputlen !== 2) throw new Error("Invalid input length");
-          const result = BigInt(inputs[1]) === 0 ? BigInt(inputs[1]) : BigInt(inputs[0]) % BigInt(inputs[1]);
-          outputs = result;
+          outputs = BigInt(inputs[1]) === 0 ? BigInt(inputs[1]) : BigInt(inputs[0]) % BigInt(inputs[1]);
         }
-        if (op === '0a') {
+        if (op === '07') { //SMOD
           if (inputlen !== 2) throw new Error("Invalid input length");
-          outputs = BigInt(inputs[0]) ** BigInt(inputs[1]);
-        } 
-        if (op === '10') {
+          outputs = BigInt(inputs[1]) === 0 ? BigInt(inputs[1]) : BigInt(inputs[0]) % BigInt(inputs[1]);
+        }
+        if (op === '08') { //ADDMOD
+
+        }
+        if (op === '09') { //MULMOD
+
+        }
+        if (op === '0a') { //EXP
           if (inputlen !== 2) throw new Error("Invalid input length");
-          inputs[0] = BigInt(inputs[0]) % BigInt((2**256));
-          inputs[1] = BigInt(inputs[1]) % BigInt(2**256);
-          
-          outputs = inputs[0] < inputs[1] ? BigInt(1) : BigInt(0);
+          outputs = (BigInt(inputs[0]) ** BigInt(inputs[1])) % BigInt(2**256);
         }
-        if (op === '11') {
-          if (inputlen !== 2 && !inputs[0] && !inputs[1]) throw new Error("Invalid input length");
-          console.log('11', inputs);
-          inputs[0] = BigInt(inputs[0]) % BigInt(2**256);
-          inputs[1] = BigInt(inputs[1]) % BigInt(2**256);
-         
-          outputs = inputs[0] > inputs[2] ? 1 : 0;
+        if (op === '0b') { //SIGNEXTEND
+
         }
-        if (op === '12') { // slt: signed less than
+        if (op === '10') { //LT
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = BigInt(BigInt(inputs[0]) < BigInt(inputs[1]));
+        }
+        if (op === '11') { //GT
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = BigInt(BigInt(inputs[0]) > BigInt(inputs[1]));
+        }
+        if (op === '12') { //SLT: signed less than
           if (inputlen !== 2 && !inputs[0] && !inputs[1]) throw new Error("Invalid input length");
           
           var inputlengths = [pt_inputs[0][2], pt_inputs[1][2]];
@@ -5036,7 +5045,7 @@ class Decoder {
           
           outputs = BigInt(signed_inputs[0] < signed_inputs[1]);      
         }
-        if (op === '13') { // sgt: signed greater than
+        if (op === '13') { //SGT: signed greater than
           if (inputlen !== 2 && !inputs[0] && !inputs[1]) throw new Error("Invalid input length");
           
           var inputlengths = [pt_inputs[0][2], pt_inputs[1][2]];
@@ -5054,15 +5063,15 @@ class Decoder {
           
           outputs = BigInt(signed_inputs[0] > signed_inputs[1]);  
         }
-        if (op === '14') { // equality
-          if (inputlen !== 2 && inputs[0] && inputs[1]) throw new Error("Invalid input length");
-          outputs = BigInt(inputs[0]) === BigInt(inputs[1]) ? 1 : 0;
+        if (op === '14') { //EQ
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = BigInt(BigInt(inputs[0]) == BigInt(inputs[1]));
         }
-        if (op === '15') { // iszero
+        if (op === '15') { //ISZERO
           if (inputlen !== 1) throw new Error("Invalid input length");
-          outputs = BigInt(Number(inputs[0]) === 0);
+          outputs = BigInt(BigInt(inputs[0]) == BigInt(0));
         }
-        if (op === '16') { // and
+        if (op === '16') { //AND
           if (inputlen !== 2) throw new Error("Invalid input length");
           
           var bin_input = [];
@@ -5076,7 +5085,7 @@ class Decoder {
           
           outputs = bin_and_result1.toString();
         }
-        if (op === '17') { // or
+        if (op === '17') { //OR
           if (inputlen !== 2) throw new Error("Invalid input length");
           
           var bin_input = [];
@@ -5087,7 +5096,7 @@ class Decoder {
           outputs = bin_or_result.toString();
           
         }
-        if (op === '18') { // xor
+        if (op === '18') { //XOR
           if (inputlen !== 2) throw new Error("Invalid input length");
           
           var bin_input = [];
@@ -5100,7 +5109,7 @@ class Decoder {
           
           outputs = BigInt(bin2dec(bin_not_result));  
         }
-        if (op === '19') { // not
+        if (op === '19') { //NOT
           if (inputlen !== 1) throw new Error("Invalid input length");
           
           var bin_input = hd_dec2bin(inputs[0], 253);
@@ -5111,8 +5120,8 @@ class Decoder {
           outputs = bin2decimal(bin_not_result).toString();
         }
         
-        if (op === '20') {
-          const inputLen = inputs.length;
+        if (op === '20') { //SHA3
+          const inputLen = inputs.length; //?
           for (let i = 0; i < inputLen; i ++) {
             inputs[i] = BigInt(inputs[i]).toString(16).padStart(64, '0');
           }
@@ -5123,7 +5132,7 @@ class Decoder {
           
           outputs = hex;
         } 
-        if (op === '1a') {
+        if (op === '1a') { //BYTE
           if (inputlen !== 2 && inputs[0] && inputs[1]) throw new Error("Invalid input length");
           
           var hex_input2 = hd_dec2hex(inputs[1], 64);
@@ -5136,7 +5145,9 @@ class Decoder {
             outputs = BigInt(hex2dec(hex_input2.slice(pos, pos + 2)));
           }
         }
-        if (op === '1b' || op === '1c1' || op === '1c2') {
+        //@Todo (1c1, 1c2) => 1c:SHR 
+        //1c1:SHR-L, 1c2:SHR-H : A subcircuit of SHR for input value smaller/greater than circom's modulo
+        if (op === '1b' || op === '1c1' || op === '1c2') { //SHL, SHR
           inputs[1] = typeof inputs[1] == 'bigint' ? BigInt(BigInt('0x' + inputs[1]).toString()) : inputs[1];
           inputs[0] = BigInt(inputs[0]) % BigInt(2 ** 256);
           inputs[1] = BigInt(inputs[1]) % BigInt(2 ** 256);
@@ -5149,6 +5160,9 @@ class Decoder {
             const calc = inputs[1] / BigInt(BigInt(2) ** (inputs[0] - BigInt(8)));
             outputs = Math.floor(Number(calc));
           }
+        }
+        if (op === '1d') { //SAR
+
         }
 
         this.oplist[op_pointer - 1].outputs.push(outputs);
@@ -5256,7 +5270,7 @@ function buildQAP() {
         type: 'input',
         name: 'sD',
         message: 'How many instructions are defined in the EVM?',
-        default: '12',
+        default: '12', //Number of subcircuits in subcircuit library
         validate: value => {
           return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
         }
