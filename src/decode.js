@@ -15,14 +15,13 @@ import {
   getIVIP, 
   makeBinFile, 
   makeJsonFile,
-  hd_dec2bin,
-  bin2dec,
-  bin2decimal,
   hexToString,
   getSubcircuit
 } from './utils/convert.js';
 
 import {
+  getByte,
+  sar256BitInteger,
   signExtend,
   signedDivide,
   signedLessThan256BitInteger,
@@ -399,7 +398,7 @@ export class Decoder {
         const numberOfInputs = getNumberOfInputs(op); // @Todo: Fixed
         d = numberOfInputs
 
-        switch (op) {//d,a 여기서 두배로 늘려야되나?
+        switch (op) {
           case ['15','19'].includes(op) : //ISZERO, NOT
             d = 1;
             a = 1;
@@ -565,8 +564,6 @@ export class Decoder {
           }
           mem_pt_data[i] = pt;
         }
-
-        let call_output_pt = [];
 
         if (this.calldepth < 1024 && value <= this.evalEVM([0, balance_pt, balance_len])) {
           this.calldepth++;
@@ -798,40 +795,23 @@ export class Decoder {
           outputs = BigInt(inputs[0]) ^ bitmask
         }
         if (op === '1a') { //BYTE
-          if (inputlen !== 2 && inputs[0] && inputs[1]) throw new Error("Invalid input length");
-          
-          var hex_input2 = hd_dec2hex(inputs[1], 64);
-          var input1 = BigInt(inputs[0]);
-          
-          if (input1 >= 32) {
-            outputs = BigInt(0);
-          } else {
-            var pos = input1 * 2 + 1;
-            outputs = BigInt(hex2dec(hex_input2.slice(pos, pos + 2)));
-          }
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = getByte(inputs[0],inputs[1])
         }
-        //@Todo (1c1, 1c2) => 1c:SHR 
-        //1c1:SHR-L, 1c2:SHR-H : A subcircuit of SHR for input value smaller/greater than circom's modulo
-        if (op === '1b' || op === '1c1' || op === '1c2') { //SHL, SHR
-          inputs[1] = typeof inputs[1] == 'bigint' ? BigInt(BigInt('0x' + inputs[1]).toString()) : inputs[1]
-          inputs[0] = BigInt(inputs[0]) % BigInt(2 ** 256)
-          inputs[1] = BigInt(inputs[1]) % BigInt(2 ** 256)
-
-          if (op === '1b') {
-            outputs = inputs[1] * (2 ** inputs[0])
-          } else if (op === '1c1') {
-            outputs = Math.floor(inputs[1] / BigInt(BigInt(2) ** inputs[0]))
-          } if (op === '1c2') {
-            const calc = inputs[1] / BigInt(BigInt(2) ** (inputs[0] - BigInt(8)))
-            outputs = Math.floor(Number(calc))
-          }
+        if (op === '1b') { //SHL
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = (BigInt(inputs[1]) << BigInt(inputs[0])) % 2n**256n
+        } 
+        if (op === '1c') { //SHR
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = (BigInt(inputs[1]) >> BigInt(inputs[0])) % 2n**256n
         }
         if (op === '1d') { //SAR
-
+          if (inputlen !== 2) throw new Error("Invalid input length");
+          outputs = sar256BitInteger(inputs[1],inputs[0])
         }
         if (op === '20') { //SHA3
-          const inputLen = inputs.length //?
-          for (let i = 0; i < inputLen; i ++) {
+          for (let i = 0; i < inputs.length; i ++) {
             inputs[i] = BigInt(inputs[i]).toString(16).padStart(64, '0')
           }
           const { keccak256 } = hash;
