@@ -1,4 +1,4 @@
-function construct256BitInteger(parts) {
+export function construct256BitInteger(parts) {
   // Ensure the input array has exactly two elements
   if (parts.length !== 2) {
     throw new Error('Input array must contain exactly two elements.');
@@ -17,7 +17,7 @@ function construct256BitInteger(parts) {
   return result;
 }
 
-function split256BitInteger(value) {
+export function split256BitInteger(value) {
   if (typeof value !== 'bigint') {
     value = BigInt(value);
   }
@@ -29,7 +29,7 @@ function split256BitInteger(value) {
   return [lower, upper];
 }
 
-function sar256BitInteger(value, shiftAmount) {
+export function sar256BitInteger(value, shiftAmount) {
   if (typeof value !== 'bigint') {
     value = BigInt(value);
   }
@@ -55,7 +55,7 @@ function sar256BitInteger(value, shiftAmount) {
   return result % (2n ** 256n);
 }
 
-function signedLessThan256BitInteger(a, b) {
+export function signedLessThan256BitInteger(a, b) {
   if (typeof a !== 'bigint') {
     a = BigInt(a);
   }
@@ -76,7 +76,7 @@ function signedLessThan256BitInteger(a, b) {
   }
 }
 
-function getByte(byteIndex, value) {
+export function getByte(byteIndex, value) {
   if (typeof value !== 'bigint') {
     value = BigInt(value);
   }
@@ -93,7 +93,7 @@ function getByte(byteIndex, value) {
   return (value >> (8n * (31n - byteIndex))) % 2n ** 8n;
 }
 
-function signExtend (index, value) {
+export function signExtend (index, value) {
   if (typeof index !== 'bigint') {
     index = BigInt(index);
   }
@@ -117,7 +117,7 @@ function signExtend (index, value) {
   return value & ((1n << signBitPos) - 1n);
 }
 
-function signedDivide(a, b) {
+export function signedDivide(a, b) {
   if (typeof a !== 'bigint') {
     a = BigInt(a);
   }
@@ -150,7 +150,7 @@ function signedDivide(a, b) {
   }
 }
 
-function signedMod(a, b) {
+export function signedMod(a, b) {
   if (typeof a !== 'bigint') {
     a = BigInt(a);
   }
@@ -176,14 +176,3 @@ function signedMod(a, b) {
     return 2n**256n - (a % b);
   }
 }
-
-module.exports = {
-  construct256BitInteger,
-  split256BitInteger,
-  sar256BitInteger,
-  signedLessThan256BitInteger,
-  getByte,
-  signExtend,
-  signedDivide,
-  signedMod
-};

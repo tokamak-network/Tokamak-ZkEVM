@@ -4,21 +4,6 @@ import { Decoder } from "./decode.js"
 export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {
   const decoder = new Decoder({})
   decoder.getEnv(code, config)
-  if (op === '1c') {
-    // console.log(stack_pt)
-    const target_val = decoder.evalEVM(stack_pt[1])
-    const threshold = 2**248
-    const flag = Number(target_val) < threshold ? true : false
-    const shiftamount = decoder.evalEVM(stack_pt[0])
-    if (flag) {
-      op = '1c1'
-    } else if (!flag && Number(shiftamount)>=8) {
-      op= '1c2'
-    } else {
-      console.log('error')
-      return
-    }
-  }
   // console.log('op',op, stack_pt)
   let checks = 0
   oplist[0].opcode = 'fff'
