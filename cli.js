@@ -99,8 +99,6 @@ async function decode(params, options) {
   const circuitName = params[0]
   const instanceid = params[1]
 
-  const system = os.platform()
-  const slash = system === 'darwin' ? '/' : '\\'
   const json = fs.readFileSync(`${circuitName}/config.json`, 'utf8')
   const jsonData = JSON.parse(json);
 

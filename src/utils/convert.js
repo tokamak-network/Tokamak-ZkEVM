@@ -34,13 +34,11 @@ export function getWire(oplist) {
   const NWires = []
   const wireIndex = []
   oplist.map((op) => {
-    const wire = subcircuits.find(circuit => {
-      if (hexToInteger(circuit.opcode) === hexToInteger(op.opcode)) return true
-    })
+    const wire = subcircuits.find(circuit => circuit.opcode === op.opcode)
     NWires.push(wire.Nwires)
     wireIndex.push(wire.id)
   })
-  
+
   return { NWires, wireIndex }
 }
 

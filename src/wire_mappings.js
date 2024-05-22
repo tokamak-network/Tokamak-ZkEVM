@@ -4,23 +4,14 @@ import { Decoder } from "./decode.js"
 export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {
   const decoder = new Decoder({})
   decoder.getEnv(code, config)
-  // console.log('op',op, stack_pt)
   let checks = 0
   oplist[0].opcode = 'fff'
-  // console.log('stack_pt', op, stack_pt)
+
   for (let i = 0; i < d; i++) {
     if (stack_pt[i][0] === 0) {
       let data = stack_pt[i]
-      
+
       let checkArray = []
-      if (i==1 && (op === '1c1' || op === '1c2')) {
-        let original_bytelength = data[2]
-        data[2] = Math.min(31, original_bytelength)
-        
-        if (op === '1c1') {
-          data[0] = data[0] + max(original_bytelength-data[2], 0)
-        }
-      }
 
       if (oplist[0].pt_outputs.length == 0) {
         checks = 0
@@ -45,7 +36,7 @@ export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, conf
         stack_pt[i] = [1, index + 1, 32]
       }
 
-      if (hexToInteger(op) == hexToInteger('20')) {
+      if (op === '20') {//SHA3
         stack_pt[i][2] = data[2]
       }
     }
