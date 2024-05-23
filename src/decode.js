@@ -187,15 +187,18 @@ export class Decoder {
     this.getEnv(code, this.config)
     let outputs_pt = this.decode(code)
     this.oplist[0].pt_inputs = outputs_pt[0] ?  outputs_pt[0] : []
+
     
     for (let i = 0; i < this.oplist.length ;i ++) {
       let k_pt_inputs = this.oplist[i].pt_inputs
+      console.log("init k_pt_inputs", k_pt_inputs)
       k_pt_inputs = this.oplist[i].opcode == 'fff' && !k_pt_inputs[0]
                     ? [] 
                     : k_pt_inputs[0][0] 
                     ? k_pt_inputs[0]
                     : [k_pt_inputs]
       let k_inputs = []
+      //console.log('After k_pt_inputs', k_pt_inputs,"this.oplist[i]", this.oplist[i])
 
       for (let j=0; j < k_pt_inputs.length ; j++) {
         const result = this.evalEVM(k_pt_inputs[j])
@@ -219,7 +222,11 @@ export class Decoder {
     
     const listLength = this.oplist.length
     const oplist = this.oplist
+
     const { NWires, wireIndex } = getWire(this.oplist)
+    console.log("NWires: ",NWires)
+    console.log("wireIndex: ",wireIndex)
+
     
     const NCONSTWIRES=1
     const NINPUT = (NWires[0] - NCONSTWIRES)/2
@@ -231,6 +238,10 @@ export class Decoder {
     const { SetData_I_V, SetData_I_P } = getIVIP(WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell)
 
     const dir = dirname
+
+    console.log("=================final====================")
+    console.log('oplist length', this.oplist.length)
+    console.log(this.oplist[0])
     
     makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, WireListm)
     makeJsonFile (dir, oplist, NINPUT, this.codewdata, instanceId)
@@ -400,24 +411,11 @@ export class Decoder {
           || (hexToInteger(op) >= hexToInteger('10') && hexToInteger(op) <= hexToInteger('1d'))
           || (hexToInteger(op) === hexToInteger('20'))
       ) {
-        const numberOfInputs = getNumberOfInputs(op); // @Todo: Fixed
-        d = numberOfInputs
-        console.log("d: ",d)
+        const {numberOfInputs, numberOfOutputs} = getNumberOfIO(op);
+        d = numberOfInputs / 2
+        a = numberOfOutputs / 2
 
-        switch (true) {
-          case ['15','19'].includes(op) : //ISZERO, NOT
-            d = 1;
-            a = 1;
-            break;
-          case ['01','02','03','04','05','06','07','0a','0b','10','11','12','13','14','16','17','18','1a','1b','1c','1d'].includes(op):
-            d = 2;
-            a = 1;
-            console.log("hi", op)
-            break;
-          case ['08', '09'].includes(op): //ADDMOD, MULMOD
-            d = 3;
-            a = 1;
-          case ['20'].includes(op): // SHA3
+          if (op === '20') {// SHA3
             a=1;
             const addr = Number(this.evalEVM(stack_pt[0])) + 1
             let len = Number(this.evalEVM(stack_pt[1]))
@@ -438,9 +436,9 @@ export class Decoder {
             for (let i = target_mem.length ; i > 0; i --) {
               stack_pt.unshift(target_mem[i - 1])
             }
-        }
-        console.log("swich d: ",d)
-        //console.log('op', pc, op, stack_pt)
+          }
+        console.log("d: ",d)
+        console.log("a: ",a)
         
         this.op_pointer = this.op_pointer + 1
         this.oplist.push({
@@ -451,6 +449,7 @@ export class Decoder {
           outputs: [],
         })
         this.oplist = wire_mapping(op, stack_pt, d, a, this.oplist, this.op_pointer, code, this.config)
+        console.log(this.oplist[this.oplist.length - 1])
         stack_pt = pop_stack(stack_pt, d)
         stack_pt.unshift(this.oplist[this.op_pointer].pt_outputs)
       }
@@ -617,7 +616,7 @@ export class Decoder {
 
         let next_callcode = this.callcode_suffix;
         let vmTraceStep_old = this.vmTraceStep;
-        let trash = this.decode(next_callcode);
+        this.decode(next_callcode);
         this.vmTraceStep = vmTraceStep_old;
 
         this.calldepth--;
@@ -687,11 +686,13 @@ export class Decoder {
 
   evalEVM (pt) {
     const codewdata = this.codewdata
+
     const op_pointer = pt[0]
     const wire_pointer = pt[1]
     const byte_size = pt[2]
 
-    if (op_pointer == 0) {
+    console.log("op_pointer", op_pointer, "wire_pointer", wire_pointer, "byte_size", byte_size)
+    if (op_pointer === 0) {
       const slice = codewdata.slice(wire_pointer - 1, wire_pointer + byte_size - 1)
       let output = ''
       for (let i=0; i < slice.length; i ++){
@@ -699,7 +700,7 @@ export class Decoder {
       }
       return BigNumber.from('0x' + output).toString()
     }
-    
+
     let t_oplist = this.oplist[op_pointer - 1]
     const op = t_oplist.opcode
     if (t_oplist.outputs.length !== 0) {
@@ -845,15 +846,13 @@ export class Decoder {
   }
 }
 
-function getNumberOfInputs (op) {
+function getNumberOfIO (op) {
   const subcircuits = getSubcircuit()
-  for (let i = 0; i < subcircuits.length; i++) {
-    const opcode = subcircuits[i].opcode;
-    if (hexToInteger(opcode) === hexToInteger(op)) {
-      return subcircuits[i].In_idx[1];
-    } else if (op === '1c') {
-      return 2
-    }
+  const opcode = subcircuits.find(subcircuit => subcircuit.opcode === op)
+  //if op does not exist in subcircuits
+  if (!opcode) {
+    console.error(`No subcircuit found for opcode: ${op}`);
+    return {numberOfInputs: -1, numberOfOutputs: -1}
   }
-  return -1;
+  return {numberOfInputs: opcode.In_idx[1], numberOfOutputs: opcode.Out_idx[1]}
 }

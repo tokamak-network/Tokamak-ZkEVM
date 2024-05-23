@@ -1,4 +1,3 @@
-import { hexToInteger } from "./utils/convert.js"
 import { Decoder } from "./decode.js"
 
 export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, config) {

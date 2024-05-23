@@ -206,7 +206,6 @@ export function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) 
 export function makeJsonFile (dir, oplist, NINPUT, codewdata, instanceId) {
   const InstanceFormatIn = [];
   const InstanceFormatOut = [];
-  const system = os.platform()
 
   for (let k = 0; k < oplist.length; k++) {
     const outputs = oplist[k].outputs;
