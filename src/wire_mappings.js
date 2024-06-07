@@ -9,7 +9,6 @@ export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, conf
   for (let i = 0; i < d; i++) {
     if (stack_pt[i][0] === 0) {
       let data = stack_pt[i]
-
       let checkArray = []
 
       if (oplist[0].pt_outputs.length == 0) {
@@ -25,10 +24,12 @@ export function wire_mapping (op, stack_pt, d, a, oplist, op_pointer, code, conf
           }
         }
       }
-      
+      console.log("checks",checks)
       const index = checkArray.findIndex(check => check === 1)
+      console.log("index",index)
       if (op === 'fff') console.log('pt_output',oplist[0].pt_outputs[i], data, oplist[0].pt_outputs[i] == data, compare(oplist[0].pt_outputs[i], data))
       if (index == -1 || checks == 0) {
+        console.log('data', data)
         oplist[0].pt_outputs.push(data)
         stack_pt[i] = [1, oplist[0].pt_outputs.length, 32]
       } else {

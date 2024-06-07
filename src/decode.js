@@ -218,32 +218,38 @@ export class Decoder {
       this.oplist[i].inputs=k_inputs
       this.oplist[i].outputs=k_outputs
     }
+    // ======= oplist filed with all the data =======
+
     console.log('oplist length', this.oplist.length)
     
-    const listLength = this.oplist.length
+    const oplist_len = this.oplist.length
     const oplist = this.oplist
 
     const { NWires, wireIndex } = getWire(this.oplist)
     console.log("NWires: ",NWires)
     console.log("wireIndex: ",wireIndex)
 
-    
-    const NCONSTWIRES=1
-    const NINPUT = (NWires[0] - NCONSTWIRES)/2
 
-    const RangeCell = getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT)
-    const WireListm = getWireList(NWires, RangeCell, listLength) 
-    let mWires = WireListm.length;
+    const NCONSTWIRES=1
+    const NINPUT = (NWires[0] - NCONSTWIRES)/2 // IO buffer input number = (Input + Output) / 2
+
+    console.log("oplist_len", oplist_len, "NWires", NWires, "NCONSTWIRES", NCONSTWIRES, "NINPUT", NINPUT)
+    const RangeCell = getRangeCell(oplist_len, oplist, NWires, NCONSTWIRES, NINPUT)
+    const wireList = getWireList(NWires, RangeCell, oplist_len)
+    console.log("wireList", wireList)
     
-    const { SetData_I_V, SetData_I_P } = getIVIP(WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell)
+    const { SetData_I_V, SetData_I_P } = getIVIP(wireList, oplist, NINPUT, NCONSTWIRES, wireList.length, RangeCell)
 
     const dir = dirname
 
     console.log("=================final====================")
     console.log('oplist length', this.oplist.length)
+    console.log(this.oplist)
+    console.log("=========================codewdata====================")
+    console.log(this.codewdata)
     console.log(this.oplist[0])
     
-    makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, WireListm)
+    makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, wireList)
     makeJsonFile (dir, oplist, NINPUT, this.codewdata, instanceId)
   }
 
@@ -440,13 +446,13 @@ export class Decoder {
         console.log("d: ",d)
         console.log("a: ",a)
         
-        this.op_pointer = this.op_pointer + 1
+        this.op_pointer = this.op_pointer + 1 //for subcircuit sequence (0: LOAD)
         this.oplist.push({
           opcode: '',
-          pt_inputs: [],
-          pt_outputs: [],
-          inputs: [],
-          outputs: [],
+          pt_inputs: [], //For wires
+          pt_outputs: [], //For wires
+          inputs: [], //EVM inputs
+          outputs: [], //EVM outputs
         })
         this.oplist = wire_mapping(op, stack_pt, d, a, this.oplist, this.op_pointer, code, this.config)
         console.log(this.oplist[this.oplist.length - 1])
@@ -678,7 +684,7 @@ export class Decoder {
 
       // }
       this.vmTraceStep = this.vmTraceStep + 1
-
+      console.log("stack_pt", stack_pt)
       console.log("==========next step==============")
     }
     return outputs_pt
@@ -703,6 +709,7 @@ export class Decoder {
 
     let t_oplist = this.oplist[op_pointer - 1]
     const op = t_oplist.opcode
+    console.log("t_oplist", t_oplist)
     if (t_oplist.outputs.length !== 0) {
       return t_oplist.outputs[wire_pointer - 1]
     }
@@ -717,6 +724,7 @@ export class Decoder {
         let inputs = []
         let outputs
         let pt_inputs = t_oplist.pt_inputs[0][0][0] ? t_oplist.pt_inputs[0] : t_oplist.pt_inputs
+        console.log("**********pt_inputs", pt_inputs)
         for (let i=0; i < inputlen; i ++) {
           inputs.push(this.evalEVM(pt_inputs[i]))
         }
@@ -836,7 +844,7 @@ export class Decoder {
           default:
             throw new Error("Unknown operation");
         }
-        this.oplist[op_pointer - 1].outputs.push(outputs);
+        //this.oplist[op_pointer - 1].outputs.push(outputs);
         return outputs;
       }
 

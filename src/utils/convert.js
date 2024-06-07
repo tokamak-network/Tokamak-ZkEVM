@@ -42,25 +42,27 @@ export function getWire(oplist) {
   return { NWires, wireIndex }
 }
 
-export function getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT) {
-  let RangeCell = new Array(listLength);
-  const cellSize = Math.max(NWires[0], NCONSTWIRES + 2 * NINPUT)
+export function getRangeCell(oplist_len, oplist, NWires, NCONSTWIRES, NINPUT) {
+  let RangeCell = new Array(oplist_len)
+  const maxNWires = Math.max(...NWires)
+  const cellSize = Math.max(maxNWires, NCONSTWIRES + 2 * NINPUT) // NWires[0] -> max(NWires)?
+  console.log("cellSize", cellSize)
 
-  for (let i = 0; i < listLength; i++) {
+  for (let i = 0; i < oplist_len; i++) {
     RangeCell[i] = new Array(cellSize);
   }
 
   // Load subcircuit with 32 inputs and 32 outputs, where every input refers
   // to the corresponding output
-  for (let i = NCONSTWIRES; i <= NINPUT + NCONSTWIRES - 1; i++) {
+  for (let i = NCONSTWIRES; i < NINPUT + NCONSTWIRES; i++) {
     RangeCell[0][i] = [[1, i + 1], [1, i + 1 + NINPUT]];
   }
 
-  for (let k = 1; k < listLength + 1; k++) {
+  for (let k = 1; k < oplist_len + 1; k++) {
     RangeCell[0][0] ? RangeCell[0][0].push([k, 1]) : RangeCell[0][0] = [[k, 1]]
   }
   
-  for (let k = 1; k < listLength; k++) {
+  for (let k = 1; k < oplist_len; k++) {
     let oplist_k = oplist[k];
     let k_pt_inputs = oplist_k.pt_inputs;
     let inlen = oplist_k.pt_inputs[0].length;
@@ -74,7 +76,7 @@ export function getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT) {
   }
 
   // Apply oplist into RangeCell
-  for (let k = 1; k < listLength; k++) {
+  for (let k = 1; k < oplist_len; k++) {
     let oplist_k = oplist[k];
     let k_pt_inputs = oplist_k.pt_inputs[0];
     let inlen = oplist_k.pt_inputs[0].length;
@@ -94,29 +96,29 @@ export function getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT) {
   return RangeCell
 }
 
-export function getWireList (NWires, RangeCell, listLength) {
-  let WireListm = [];
-  for (let k = 0; k < listLength; k++) {
+export function getWireList (NWires, RangeCell, oplist_len) {
+  let wireList = [];
+  for (let k = 0; k < oplist_len; k++) {
     let NWires_k = NWires[k];
 
     for (let i = 0; i < NWires_k; i++) {
       if (RangeCell[k][i] && RangeCell[k][i].length > 0) {
-        WireListm.push([k, i]);
+        wireList.push([k, i]);
       }
     }
   }
   
-  return WireListm
+  return wireList
 }
 
 
-export function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell) {
+export function getIVIP (wireList, oplist, NINPUT, NCONSTWIRES, wireList_len, RangeCell) {
   let I_V = [];
   let I_P = [];
 
-  for (let i = 0; i < mWires; i++) {
-    let k = WireListm[i][0];
-    let wireIdx = WireListm[i][1];
+  for (let i = 0; i < wireList_len; i++) {
+    let k = wireList[i][0];
+    let wireIdx = wireList[i][1];
     let oplist_k = oplist[k];
 
     let inlen, outlen;
@@ -142,8 +144,8 @@ export function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCe
   let rowInv_I_P = [];
 
   for (let i of I_V) {
-    let k = WireListm[i][0];
-    let wireIdx = WireListm[i][1];
+    let k = wireList[i][0];
+    let wireIdx = wireList[i][1];
 
     let InvSet = RangeCell[k][wireIdx].map(value => value.map(value => value -1))
     let NInvSet = InvSet.length;
@@ -157,8 +159,8 @@ export function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCe
   }
 
   for (let i of I_P) {
-    let k = WireListm[i][0];
-    let wireIdx = WireListm[i][1];
+    let k = wireList[i][0];
+    let wireIdx = wireList[i][1];
     let InvSet = RangeCell[k][wireIdx].map(value => value.map(value => value -1))
     let NInvSet = InvSet.length;
     let temp = []
@@ -175,7 +177,8 @@ export function getIVIP (WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCe
   return { SetData_I_V, SetData_I_P }
 }
 
-export function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) {
+//make Set_I_V(Set Input Value), Set_I_P(Set Input Pointer), Oplist and WireList bin file
+export function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, wireList) {
   
   // !fs.existsSync(dir) && fs.mkdirSync(dir)
   const system = os.platform()
@@ -189,7 +192,7 @@ export function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) 
   const setIDataBuffer = Buffer.from(Uint32Array.from(SetData_I_V).buffer);
   const setPDataBuffer = Buffer.from(Uint32Array.from(SetData_I_P).buffer);
   const opListDataBuffer = Buffer.from(Uint32Array.from([OpLists.length, ...OpLists]).buffer);
-  const wireListDataBuffer = Buffer.from(Uint32Array.from([WireListm.length, ...WireListm.flat()]).buffer);
+  const wireListDataBuffer = Buffer.from(Uint32Array.from([wireList.length, ...wireList.flat()]).buffer);
 
   fs.writeSync(fdset1, setIDataBuffer, 0, setIDataBuffer.length);
   fs.writeSync(fdset2, setPDataBuffer, 0, setPDataBuffer.length);
@@ -203,6 +206,7 @@ export function makeBinFile (dir, SetData_I_V, SetData_I_P, OpLists, WireListm) 
 
 }
 
+//make Instance: Input, Output json file
 export function makeJsonFile (dir, oplist, NINPUT, codewdata, instanceId) {
   const InstanceFormatIn = [];
   const InstanceFormatOut = [];
@@ -234,9 +238,11 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata, instanceId) {
     for (let i = 0; i < outputs_hex.length; i++) {
       if (i <= outputs.length) {
         if (outputs[i]) {
-          oplist[k].opcode === '20' 
-            ? outputs_hex[i] = '0x' + outputs[i].padStart(64, '0')
-            : outputs_hex[i] = '0x' + BigInt(outputs[i]).toString(16).padStart(64, '0');
+          if(oplist[k].opcode === '20') {
+            outputs_hex[i] = '0x' + outputs[i].padStart(64, '0')
+          } else {
+            outputs_hex[i] = '0x' + BigInt(outputs[i]).toString(16).padStart(64, '0')
+          }
         }
       } else {
         outputs_hex[i] = '0x0'
@@ -255,13 +261,33 @@ export function makeJsonFile (dir, oplist, NINPUT, codewdata, instanceId) {
           slice = slice + decimalToHex(sourcevalue[i]).toString(16)
         }
         sourcevalue = '0x' + slice.toString().padStart(64, '0');
-        // console.log(i, sourcevalue, outputs_hex[i])
+        console.log(i, sourcevalue, outputs_hex[i])
         if (sourcevalue !== outputs_hex[i]) throw new Error('source value mismatch');
       }
     }
 
-    InstanceFormatIn.push({ in: inputs_hex });
-    InstanceFormatOut.push({ out: outputs_hex });
+    const split128Bit = (hex) => {
+      const high = '0x' + hex.slice(2, 34).padStart(32, '0');
+      const low = '0x' + hex.slice(34).padStart(32, '0');
+      return [high, low];
+    }
+
+    const inputs_hex_128 = [];
+    const outputs_hex_128 = [];
+
+    inputs_hex.forEach(hex => {
+      const [high, low] = split128Bit(hex);
+      inputs_hex_128.push(high, low);
+    });
+
+    outputs_hex.forEach(hex => {
+      const [high, low] = split128Bit(hex);
+      outputs_hex_128.push(high, low);
+    });
+
+    InstanceFormatIn.push({ in: inputs_hex_128 });
+    InstanceFormatOut.push({ out: outputs_hex_128 });
+
     !fs.existsSync(path.join(dir, `instance${instanceId}`)) && fs.mkdirSync(path.join(dir, `instance${instanceId}`))
     const fdInput = fs.openSync(path.join(dir, `instance${instanceId}`, `Input_opcode${k}.json`), 'w');
     const fdOutput = fs.openSync(path.join(dir, `instance${instanceId}`, `Output_opcode${k}.json`), 'w');

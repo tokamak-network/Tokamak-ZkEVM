@@ -4,14 +4,14 @@
 			"id": 0,
 			"opcode": "fff",
 			"name": "LOAD",
-			"Nwires": 65,
+			"Nwires": 129,
 			"Out_idx": [
 				1,
-				32
+				64
 			],
 			"In_idx": [
-				33,
-				32
+				65,
+				64
 			]
 		},
 		{
