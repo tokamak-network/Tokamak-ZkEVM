@@ -1,25 +1,49 @@
-pragma circom 2.0.5;
-include "shr.circom";
-include "mod.circom";
+pragma circom 2.1.6;
+include "templates/128bit/exp.circom";
+include "templates/comparators.circom";
+include "templates/128bit/divider.circom";
 include "../../../../node_modules/circomlib/circuits/comparators.circom";
 
-// y = (in[1] >> (248 - in[0] * 8)) & 0xFF
-// in[0] >= 32 : out = 0
 template Byte () {
-  signal input in[2];
-  signal output out;
+  signal input in1[2], in2[2];  // 256-bit integers consisting of two 128-bit integers; in[0]: lower, in[1]: upper
+                                // in1: index, in2: value
+  
+  // check if in1 < 32 (2**5)
+  // if lt_32 = 0 output should be 0.
+  signal lt_32 <== IsLessThanExp(5)(in1);
 
-  component lt = LessThan(252);
-  lt.in[0] <== in[0];
-  lt.in[1] <== 32;
+  //in2 >> (248 - (in1[0]*8)) & 0xff
 
-  component shr = SHR();
-  shr.in[0] <== lt.out * (248 - in[0] * 8);
-  shr.in[1] <== in[1];
+  //selector
+  //(1) 0~128bit : in1[0] < 16(bytes), (0) 128~256bit : in1[0] >= 16(bytes)
+  component divider_index = Divider(4);
+  divider_index.in <== in1[0];
+  signal selector <== IsZero()(divider_index.q);
 
-  component mod = Mod();
-  mod.in[0] <== shr.out;
-  mod.in[1] <== 256;
+  signal divisor_exp <== 120 - (divider_index.r*8);
+  //var divisor_exp = 120 - (divider_index.r*8);
 
-  out <==  mod.out * lt.out;
+  signal shr_exp <== BinaryExp128()(divisor_exp * lt_32);
+
+  // inter[0] <-- selector * (in2[0] / divisor);
+  // inter[1] <-- (1 - selector) * (in2[1] / divisor);
+  // in2[0] === inter[0] * divisor
+  component select_cell[2];
+  for (var i = 0; i < 2; i++) { select_cell[i] = Divider128(); }
+
+  select_cell[0].in <== [in2[1], shr_exp];
+  select_cell[1].in <== [in2[0], shr_exp];
+
+  signal inter[2];
+  inter[0] <== selector * select_cell[0].q;
+  inter[1] <== inter[0] + (1 - selector) * select_cell[1].q;
+
+  //inter[1] & 0xff
+  component num_bytes = Divider(8);
+  num_bytes.in <== inter[1];
+
+  signal output out[2] <== [
+    num_bytes.r * lt_32,
+    0
+  ];
 }

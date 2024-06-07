@@ -15,12 +15,18 @@ import {
   getIVIP, 
   makeBinFile, 
   makeJsonFile,
-  hd_dec2bin,
-  bin2dec,
-  bin2decimal,
   hexToString,
   getSubcircuit
 } from './utils/convert.js';
+
+import {
+  getByte,
+  sar256BitInteger,
+  signExtend,
+  signedDivide,
+  signedLessThan256BitInteger,
+  signedMod
+} from './utils/helper_functions.js';
 
 export class Decoder {
   constructor () {
@@ -181,15 +187,18 @@ export class Decoder {
     this.getEnv(code, this.config)
     let outputs_pt = this.decode(code)
     this.oplist[0].pt_inputs = outputs_pt[0] ?  outputs_pt[0] : []
+
     
     for (let i = 0; i < this.oplist.length ;i ++) {
       let k_pt_inputs = this.oplist[i].pt_inputs
+      console.log("init k_pt_inputs", k_pt_inputs)
       k_pt_inputs = this.oplist[i].opcode == 'fff' && !k_pt_inputs[0]
                     ? [] 
                     : k_pt_inputs[0][0] 
-                    ? k_pt_inputs[0] 
+                    ? k_pt_inputs[0]
                     : [k_pt_inputs]
       let k_inputs = []
+      //console.log('After k_pt_inputs', k_pt_inputs,"this.oplist[i]", this.oplist[i])
 
       for (let j=0; j < k_pt_inputs.length ; j++) {
         const result = this.evalEVM(k_pt_inputs[j])
@@ -209,24 +218,38 @@ export class Decoder {
       this.oplist[i].inputs=k_inputs
       this.oplist[i].outputs=k_outputs
     }
+    // ======= oplist filed with all the data =======
+
     console.log('oplist length', this.oplist.length)
     
-    const listLength = this.oplist.length
+    const oplist_len = this.oplist.length
     const oplist = this.oplist
-    const { NWires, wireIndex } = getWire(this.oplist)
-    
-    const NCONSTWIRES=1
-    const NINPUT = (NWires[0] - NCONSTWIRES)/2
 
-    const RangeCell = getRangeCell(listLength, oplist, NWires, NCONSTWIRES, NINPUT)
-    const WireListm = getWireList(NWires, RangeCell, listLength) 
-    let mWires = WireListm.length;
+    const { NWires, wireIndex } = getWire(this.oplist)
+    console.log("NWires: ",NWires)
+    console.log("wireIndex: ",wireIndex)
+
+
+    const NCONSTWIRES=1
+    const NINPUT = (NWires[0] - NCONSTWIRES)/2 // IO buffer input number = (Input + Output) / 2
+
+    console.log("oplist_len", oplist_len, "NWires", NWires, "NCONSTWIRES", NCONSTWIRES, "NINPUT", NINPUT)
+    const RangeCell = getRangeCell(oplist_len, oplist, NWires, NCONSTWIRES, NINPUT)
+    const wireList = getWireList(NWires, RangeCell, oplist_len)
+    console.log("wireList", wireList)
     
-    const { SetData_I_V, SetData_I_P } = getIVIP(WireListm, oplist, NINPUT, NCONSTWIRES, mWires, RangeCell)
+    const { SetData_I_V, SetData_I_P } = getIVIP(wireList, oplist, NINPUT, NCONSTWIRES, wireList.length, RangeCell)
 
     const dir = dirname
+
+    console.log("=================final====================")
+    console.log('oplist length', this.oplist.length)
+    console.log(this.oplist)
+    console.log("=========================codewdata====================")
+    console.log(this.codewdata)
+    console.log(this.oplist[0])
     
-    makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, WireListm)
+    makeBinFile(dir, SetData_I_V, SetData_I_P, wireIndex, wireList)
     makeJsonFile (dir, oplist, NINPUT, this.codewdata, instanceId)
   }
 
@@ -264,26 +287,30 @@ export class Decoder {
     let pc = 0;
     while (pc < codelen) {
       const op = decimalToHex(code[pc])
+
+      console.log('pc', pc)
+      console.log("op", op)
       pc = pc + 1
-      // console.log('op', pc, op)
-      
-      let d = 0
-      let a = 0
-      const prev_stack_size = stack_pt.length
+
+      let d = 0 //input
+      let a = 0 //output
 
       if (hexToInteger(op) - hexToInteger('60') >= 0 
         && hexToInteger(op) - hexToInteger('60') < 32) {
         const pushlen = hexToInteger(op) - hexToInteger('60') + 1
-
+        console.log("PUSH length",pushlen)
+        for(let i = 0; i < pushlen; i++){
+          console.log("PUSH value",decimalToHex(code[pc + i]))
+        }
         stack_pt.unshift([0, pc+call_pt[this.calldepth - 1][0], pushlen])
         pc = pc + pushlen
-      } else if (hexToInteger(op) === hexToInteger('50')) {
+      } else if (op === '50') {
         d = 1;
         a = 0
 
         stack_pt = pop_stack(stack_pt, d)
       } 
-      else if (hexToInteger(op) === hexToInteger('51')) { // mload
+      else if (op === '51') { // mload
         d = 1
         a = 0
         const addr = Number(this.evalEVM(stack_pt[0])) + 1
@@ -294,7 +321,7 @@ export class Decoder {
         // }
         
         stack_pt.unshift(mem_pt[addr])
-      } else if (hexToInteger(op) === hexToInteger('52')) { //mstore
+      } else if (op === '52') { //mstore
         d = 2
         a = 0
 
@@ -303,7 +330,7 @@ export class Decoder {
         mem_pt[addr] = data
 
         stack_pt = pop_stack(stack_pt, d)
-      } else if (hexToInteger(op) === hexToInteger('53')) {
+      } else if (op === '53') {
         d = 2;
         a = 0;
         const addr = Number(this.evalEVM(stack_pt[0])) + 1
@@ -314,7 +341,7 @@ export class Decoder {
         
         stack_pt = pop_stack(stack_pt, d)
       }
-      else if (hexToInteger(op) === hexToInteger('54')) { //sload
+      else if (op === '54') { //sload
         d = 1
         a = 1
 
@@ -324,7 +351,7 @@ export class Decoder {
         const sdata_pt = storage_pt[addr] ? storage_pt[addr] : [0, zero_pt, zero_len]
 
         stack_pt.unshift(sdata_pt)
-      } else if (hexToInteger(op) === hexToInteger('55')) { // store
+      } else if (op === '55') { // store
         d = 2;
         a = 0;
 
@@ -334,17 +361,17 @@ export class Decoder {
 
         storage_pt[addr] = sdata_pt
         
-      } else if (hexToInteger(op) === hexToInteger('33')) { // caller
+      } else if (op === '33') { // caller
         d = 0;
         a = 1
 
         stack_pt.unshift([0, Is_pt, Is_len])
-      } else if (hexToInteger(op) === hexToInteger('34')) { // callvalue
+      } else if (op === '34') { // callvalue
         d = 0;
         a = 1
 
         stack_pt.unshift([0, Iv_pt, Iv_len])
-      } else if (hexToInteger(op) === hexToInteger('35')) { // calldataload
+      } else if (op === '35') { // calldataload
         d = 1;
         a = 1
 
@@ -357,12 +384,12 @@ export class Decoder {
         if (pt >= Id_pt && pt + chose_data_len - 1 <= Id_pt + Id_len - 1) {
           stack_pt.unshift([0, pt, chose_data_len])
         }
-      } else if (hexToInteger(op) === hexToInteger('36')) { // calldatasize
+      } else if (op === '36') { // calldatasize
         d = 0;
         a = 1
 
         stack_pt.unshift([0, Id_len_info_pt, Id_len_info_len])
-      } else if (hexToInteger(op) === hexToInteger('47')) { // selfbalance
+      } else if (op === '47') { // selfbalance
         d = 0;
         a = 1
 
@@ -384,31 +411,23 @@ export class Decoder {
         stack_pt[0] = stack_pt[target_index]
         stack_pt[target_index] = temp
       } 
-      else if (hexToInteger(op) >= '1' && hexToInteger(op) < '11'
-          || (hexToInteger(op) >= '16' && hexToInteger(op) <= '29')
-          || (hexToInteger(op) == 32)
-      ) {
-        const numberOfInputs = getNumberOfInputs(op);
-        d = numberOfInputs
 
-        switch (op) {
-          case ['15','19'].includes(op) :
-            d = 1;
-            a = 1;
-          case ['10', '1b', '1c', '14', '01', '02', '03', '04', '16', '17', '18', '0a', '12', '11', '06', '05', '07', '0b', '13', '1a', '1d'].includes(op):
-            d = 2
-            a = 1
-          case ['08', '09'].includes(op):
-            d = 3;
-            a = 1;
-          case '20': // keccak256
+      /************* SUB Circuit Library *************/
+      else if (hexToInteger(op) >= hexToInteger('01') && hexToInteger(op) < hexToInteger('0b')
+          || (hexToInteger(op) >= hexToInteger('10') && hexToInteger(op) <= hexToInteger('1d'))
+          || (hexToInteger(op) === hexToInteger('20'))
+      ) {
+        const {numberOfInputs, numberOfOutputs} = getNumberOfIO(op);
+        d = numberOfInputs / 2
+        a = numberOfOutputs / 2
+
+          if (op === '20') {// SHA3
             a=1;
             const addr = Number(this.evalEVM(stack_pt[0])) + 1
             let len = Number(this.evalEVM(stack_pt[1]))
             stack_pt = pop_stack(stack_pt, 2)
             
             let len_left = len
-            let data_lengths = [];
             let target_mem = []
             let target_addr = addr.toString()
 
@@ -423,29 +442,33 @@ export class Decoder {
             for (let i = target_mem.length ; i > 0; i --) {
               stack_pt.unshift(target_mem[i - 1])
             }
-        }
-        console.log('op', pc, op, stack_pt)
+          }
+        console.log("d: ",d)
+        console.log("a: ",a)
         
-        this.op_pointer = this.op_pointer + 1
+        this.op_pointer = this.op_pointer + 1 //for subcircuit sequence (0: LOAD)
         this.oplist.push({
           opcode: '',
-          pt_inputs: [],
-          pt_outputs: [],
-          inputs: [],
-          outputs: [],
+          pt_inputs: [], //For wires
+          pt_outputs: [], //For wires
+          inputs: [], //EVM inputs
+          outputs: [], //EVM outputs
         })
         this.oplist = wire_mapping(op, stack_pt, d, a, this.oplist, this.op_pointer, code, this.config)
+        console.log(this.oplist[this.oplist.length - 1])
         stack_pt = pop_stack(stack_pt, d)
         stack_pt.unshift(this.oplist[this.op_pointer].pt_outputs)
       }
-      else if (hexToInteger(op) == hexToInteger('56')) {
+      /****************************/
+
+      else if (op === '56') {
         d = 1;
         a = 0;
         const target_pc = this.evalEVM(stack_pt[0])
         pc = Number(target_pc)
 
         stack_pt = pop_stack(stack_pt, d)
-      } else if (hexToInteger(op) == hexToInteger('57')) {
+      } else if (op === '57') {
         cjmp_pointer = cjmp_pointer + 1;
 
         d = 2;
@@ -462,16 +485,16 @@ export class Decoder {
           // }
         }
         stack_pt = pop_stack(stack_pt, d)
-      } else if (hexToInteger(op) == hexToInteger('58')) {
+      } else if (op === '57') {
         d = 0;
         a = 1;
 
         codewdata.set([pc, pc_len * 2], pc_pt - 1);
         stack_pt.unshift([0, pc_pt, pc_len])
-      } else if (hexToInteger(op) == hexToInteger('5b')) {
+      } else if (op === '5b') {
 
       }
-      else if (hexToInteger(op) == hexToInteger('39')) { // codecopy
+      else if (op === '39') { // codecopy
         d = 3
         a = 0
 
@@ -499,7 +522,7 @@ export class Decoder {
 
         stack_pt = pop_stack(stack_pt, d)
       }
-      else if (hexToInteger(op) == hexToInteger('3e')) { //returndatacopy
+      else if (op === '3e') { //returndatacopy
         d = 3
         a = 0
 
@@ -521,13 +544,13 @@ export class Decoder {
         }
         stack_pt = pop_stack(stack_pt, d)
       }
-      else if (hexToInteger(op) == hexToInteger('3d')) {
+      else if (op === '3d') {
         d = 0
         a = 1
 
         stack_pt.push([0, this.od_len_info_pt, this.od_len_info_len])
       }
-      else if (hexToInteger(op) == hexToInteger('f1')) {
+      else if (op === 'f1') {
         d = 7;
         a = 1;
 
@@ -557,8 +580,6 @@ export class Decoder {
           }
           mem_pt_data[i] = pt;
         }
-
-        let call_output_pt = [];
 
         if (this.calldepth < 1024 && value <= this.evalEVM([0, balance_pt, balance_len])) {
           this.calldepth++;
@@ -601,7 +622,7 @@ export class Decoder {
 
         let next_callcode = this.callcode_suffix;
         let vmTraceStep_old = this.vmTraceStep;
-        let trash = this.decode(next_callcode);
+        this.decode(next_callcode);
         this.vmTraceStep = vmTraceStep_old;
 
         this.calldepth--;
@@ -619,15 +640,13 @@ export class Decoder {
         stack_pt = [x_pointer, ...stack_pt];
 
       }
-      else if (hexToInteger(op) == hexToInteger('f3') || 
-                hexToInteger(op) == hexToInteger('fd')) {
+      else if (op === 'f3' || op === 'fd') {
         d=2
         a=0
         // console.log(stack_pt)
         const addr_offset = Number(this.evalEVM(stack_pt[0])) + 1
         const addr_len = this.evalEVM(stack_pt[1])
 
-        // outputs_pt = []
         let len_left = Number(addr_len)
         let addr = addr_offset
         // console.log('addr', addr, mem_pt[addr],mem_pt)
@@ -640,13 +659,12 @@ export class Decoder {
         stack_pt = pop_stack(stack_pt, d)
         pc = codelen
       } 
-      else if (hexToInteger(op) == hexToInteger('ff')) {
+      else if (op === 'ff') {
 
       }
-      else if (hexToInteger(op) == hexToInteger('00')) {
+      else if (op === '00') {
         d = 0;
         a = 0;
-        // outputs_pt=[]
         pc = codelen
       } 
       
@@ -666,17 +684,21 @@ export class Decoder {
 
       // }
       this.vmTraceStep = this.vmTraceStep + 1
+      console.log("stack_pt", stack_pt)
+      console.log("==========next step==============")
     }
     return outputs_pt
   }
 
   evalEVM (pt) {
     const codewdata = this.codewdata
+
     const op_pointer = pt[0]
     const wire_pointer = pt[1]
     const byte_size = pt[2]
 
-    if (op_pointer == 0) {
+    console.log("op_pointer", op_pointer, "wire_pointer", wire_pointer, "byte_size", byte_size)
+    if (op_pointer === 0) {
       const slice = codewdata.slice(wire_pointer - 1, wire_pointer + byte_size - 1)
       let output = ''
       for (let i=0; i < slice.length; i ++){
@@ -684,15 +706,16 @@ export class Decoder {
       }
       return BigNumber.from('0x' + output).toString()
     }
-    
+
     let t_oplist = this.oplist[op_pointer - 1]
     const op = t_oplist.opcode
+    console.log("t_oplist", t_oplist)
     if (t_oplist.outputs.length !== 0) {
       return t_oplist.outputs[wire_pointer - 1]
     }
     
     try {
-      if (hexToInteger(op) == hexToInteger('fff')) {
+      if (op === 'fff') {
         let new_pt = t_oplist.pt_outputs[wire_pointer - 1]
         const value = this.evalEVM(new_pt)
         return value
@@ -701,191 +724,127 @@ export class Decoder {
         let inputs = []
         let outputs
         let pt_inputs = t_oplist.pt_inputs[0][0][0] ? t_oplist.pt_inputs[0] : t_oplist.pt_inputs
+        console.log("**********pt_inputs", pt_inputs)
         for (let i=0; i < inputlen; i ++) {
           inputs.push(this.evalEVM(pt_inputs[i]))
         }
 
-        if (op === '01') {
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          outputs = BigInt(inputs[0]) + BigInt(inputs[1])
+        switch (op) {
+          case '01': // ADD
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = (BigInt(inputs[0]) + BigInt(inputs[1])) % 2n**256n
+            break;
+          case '02': // MUL
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = (BigInt(inputs[0]) * BigInt(inputs[1])) % 2n ** 256n;
+            break;
+          case '03': // SUB
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = (2n ** 256n + BigInt(inputs[0]) - BigInt(inputs[1])) % 2n ** 256n;
+            break;
+          case '04': // DIV
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = (BigInt(inputs[1]) === 0n) ? 0n : BigInt(inputs[0]) / BigInt(inputs[1]);
+            break;
+          case '05': // SDIV
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = signedDivide(inputs[0], inputs[1]);
+            break;
+          case '06': // MOD
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = (BigInt(inputs[1]) === 0n) ? 0n : BigInt(inputs[0]) % BigInt(inputs[1]);
+            break;
+          case '07': // SMOD
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = signedMod(inputs[0], inputs[1]);
+            break;
+          case '08': // ADDMOD
+            if (inputlen !== 3) throw new Error("Invalid input length");
+            outputs = (BigInt(inputs[2]) === 0n) ? 0n : (BigInt(inputs[0]) + BigInt(inputs[1])) % BigInt(inputs[2]);
+            break;
+          case '09': // MULMOD
+            if (inputlen !== 3) throw new Error("Invalid input length");
+            outputs = (BigInt(inputs[2]) === 0n) ? 0n : (BigInt(inputs[0]) * BigInt(inputs[1])) % BigInt(inputs[2]);
+            break;
+          case '0a': // EXP
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = (BigInt(inputs[0]) ** BigInt(inputs[1])) % 2n ** 256n;
+            break;
+          case '0b': // SIGNEXTEND
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = signExtend(inputs[0], inputs[1]);
+            break;
+          case '10': // LT
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = BigInt(inputs[0]) < BigInt(inputs[1]) ? 1 : 0;
+            break;
+          case '11': // GT
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = BigInt(inputs[0]) > BigInt(inputs[1]) ? 1 : 0;
+            break;
+          case '12': // SLT
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = signedLessThan256BitInteger(inputs[0], inputs[1]);
+            break;
+          case '13': // SGT
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = signedLessThan256BitInteger(inputs[1], inputs[0]);
+            break;
+          case '14': // EQ
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = BigInt(inputs[0]) == BigInt(inputs[1]) ? 1 : 0;
+            break;
+          case '15': // ISZERO
+            if (inputlen !== 1) throw new Error("Invalid input length");
+            outputs = BigInt(inputs[0]) == BigInt(0) ? 1 : 0;
+            break;
+          case '16': // AND
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = BigInt(inputs[0]) & BigInt(inputs[1]);
+            break;
+          case '17': // OR
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = BigInt(inputs[0]) | BigInt(inputs[1]);
+            break;
+          case '18': // XOR
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = BigInt(inputs[0]) ^ BigInt(inputs[1]);
+            break;
+          case '19': // NOT
+            if (inputlen !== 1) throw new Error("Invalid input length");
+            const bitmask = (1n << 256n) - 1n;
+            outputs = BigInt(inputs[0]) ^ bitmask;
+            break;
+          case '1a': // BYTE
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = getByte(inputs[0], inputs[1]);
+            break;
+          case '1b': // SHL
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = (BigInt(inputs[1]) << BigInt(inputs[0])) % 2n ** 256n;
+            break;
+          case '1c': // SHR
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = (BigInt(inputs[1]) >> BigInt(inputs[0])) % 2n ** 256n;
+            break;
+          case '1d': // SAR
+            if (inputlen !== 2) throw new Error("Invalid input length");
+            outputs = sar256BitInteger(inputs[1], inputs[0]);
+            break;
+          case '20': // SHA3
+            for (let i = 0; i < inputs.length; i++) {
+              inputs[i] = BigInt(inputs[i]).toString(16).padStart(64, '0');
+            }
+            const { keccak256 } = hash;
+            const input_con = inputs.join('');
+            const hToString = hexToString(input_con);
+            const hex = keccak256(hToString);
+            outputs = hex;
+            break;
+          default:
+            throw new Error("Unknown operation");
         }
-        if (op === '02') {
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          outputs = BigInt(inputs[0]) * BigInt(inputs[1])
-        }
-        if (op === '03') {
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          if (op_pointer === 45) console.log('45', inputs[0], inputs[1], pt_inputs)
-          outputs = BigInt(inputs[0]) - BigInt(inputs[1])
-        }
-        if (op === '04') {
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          if (op_pointer == 35) console.log('35 input',inputs)
-          outputs = BigInt(inputs[0]) / BigInt(inputs[1])
-        }
-        if (op === '05') {
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          const result = BigInt(inputs[1]) === 0 ? 0 : BigInt(inputs[0]) / BigInt(inputs[1])
-          outputs = result
-        }
-        if (op === '06') {
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          const result = BigInt(inputs[1]) === 0 ? BigInt(inputs[1]) : BigInt(inputs[0]) % BigInt(inputs[1])
-          outputs = result
-        }
-        if (op === '0a') {
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          outputs = BigInt(inputs[0]) ** BigInt(inputs[1])
-        } 
-        if (op === '10') {
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          inputs[0] = BigInt(inputs[0]) % BigInt((2**256))
-          inputs[1] = BigInt(inputs[1]) % BigInt(2**256)
-          
-          outputs = inputs[0] < inputs[1] ? BigInt(1) : BigInt(0)
-        }
-        if (op === '11') {
-          if (inputlen !== 2 && !inputs[0] && !inputs[1]) throw new Error("Invalid input length");
-          console.log('11', inputs)
-          inputs[0] = BigInt(inputs[0]) % BigInt(2**256)
-          inputs[1] = BigInt(inputs[1]) % BigInt(2**256)
-         
-          outputs = inputs[0] > inputs[2] ? 1 : 0
-        }
-        if (op === '12') { // slt: signed less than
-          if (inputlen !== 2 && !inputs[0] && !inputs[1]) throw new Error("Invalid input length");
-          
-          var inputlengths = [pt_inputs[0][2], pt_inputs[1][2]];
-          var bin_input = [];
-          
-          bin_input[0] = hd_dec2bin(inputs[0], inputlengths[0] * 8);
-          bin_input[1] = hd_dec2bin(inputs[1], inputlengths[1] * 8);
-          
-          var signed_inputs = new Array(2);
-          
-          for (var i = 0; i < 2; i++) {
-            var temp = bin_input[i];
-            signed_inputs[i] = -bin2dec(temp[0]) * Math.pow(2, inputlengths[i] * 8 - 1) + bin2dec(temp.slice(1));
-          }
-          
-          outputs = BigInt(signed_inputs[0] < signed_inputs[1]);      
-        }
-        if (op === '13') { // sgt: signed greater than
-          if (inputlen !== 2 && !inputs[0] && !inputs[1]) throw new Error("Invalid input length");
-          
-          var inputlengths = [pt_inputs[0][2], pt_inputs[1][2]];
-          var bin_input = [];
-          
-          bin_input[0] = hd_dec2bin(inputs[0], inputlengths[0] * 8);
-          bin_input[1] = hd_dec2bin(inputs[1], inputlengths[1] * 8);
-          
-          var signed_inputs = new Array(2);
-          
-          for (var i = 0; i < 2; i++) {
-            var temp = bin_input[i];
-            signed_inputs[i] = -bin2dec(temp[0]) * Math.pow(2, inputlengths[i] * 8 - 1) + bin2dec(temp.slice(1));
-          }
-          
-          outputs = BigInt(signed_inputs[0] > signed_inputs[1]);  
-        }
-        if (op === '14') { // equality
-          if (inputlen !== 2 && inputs[0] && inputs[1]) throw new Error("Invalid input length");
-          outputs = BigInt(inputs[0]) === BigInt(inputs[1]) ? 1 : 0;
-        }
-        if (op === '15') { // iszero
-          if (inputlen !== 1) throw new Error("Invalid input length");
-          outputs = BigInt(Number(inputs[0]) === 0);
-        }
-        if (op === '16') { // and
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          
-          var bin_input = [];
-          bin_input[0] = hd_dec2bin(inputs[0], 253);
-          bin_input[1] = hd_dec2bin(inputs[1], 253);
-          
-          // var bin_and_result = bin_input[0].split('').map((digit, index) => {
-          //   return (BigInt(digit) * BigInt(bin_input[1][index])).toString();
-          // }).join('');
-          let bin_and_result1 = BigInt(inputs[0]) & BigInt(inputs[1])
-          
-          outputs = bin_and_result1.toString()
-        }
-        if (op === '17') { // or
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          
-          var bin_input = [];
-          bin_input[0] = hd_dec2bin(inputs[0], 253);
-          bin_input[1] = hd_dec2bin(inputs[1], 253);
-          const bin_or_result = BigInt(inputs[0]) | BigInt(inputs[1])
-
-          outputs = bin_or_result.toString();
-          
-        }
-        if (op === '18') { // xor
-          if (inputlen !== 2) throw new Error("Invalid input length");
-          
-          var bin_input = [];
-          bin_input[0] = hd_dec2bin(inputs[0], 253);
-          bin_input[1] = hd_dec2bin(inputs[1], 253);
-          
-          var bin_not_result = bin_input[0].split('').map((digit, index) => {
-            return (BigInt(digit) + BigInt(bin_input[1][index])) % 2;
-          }).join('');
-          
-          outputs = BigInt(bin2dec(bin_not_result));  
-        }
-        if (op === '19') { // not
-          if (inputlen !== 1) throw new Error("Invalid input length");
-          
-          var bin_input = hd_dec2bin(inputs[0], 253);
-          var bin_not_result = bin_input.split('').map((digit) => {
-            return digit === '0' ? '1' : '0'
-          }).join('');
-          
-          outputs = bin2decimal(bin_not_result).toString()
-        }
-        
-        if (op === '20') {
-          const inputLen = inputs.length
-          for (let i = 0; i < inputLen; i ++) {
-            inputs[i] = BigInt(inputs[i]).toString(16).padStart(64, '0')
-          }
-          const { keccak256 } = hash;
-          const input_con = inputs.join('')
-          const hToString = hexToString(input_con)
-          const hex = keccak256(hToString)
-          
-          outputs = hex
-        } 
-        if (op === '1a') {
-          if (inputlen !== 2 && inputs[0] && inputs[1]) throw new Error("Invalid input length");
-          
-          var hex_input2 = hd_dec2hex(inputs[1], 64);
-          var input1 = BigInt(inputs[0]);
-          
-          if (input1 >= 32) {
-            outputs = BigInt(0);
-          } else {
-            var pos = input1 * 2 + 1;
-            outputs = BigInt(hex2dec(hex_input2.slice(pos, pos + 2)));
-          }
-        }
-        if (op === '1b' || op === '1c1' || op === '1c2') {
-          inputs[1] = typeof inputs[1] == 'bigint' ? BigInt(BigInt('0x' + inputs[1]).toString()) : inputs[1]
-          inputs[0] = BigInt(inputs[0]) % BigInt(2 ** 256)
-          inputs[1] = BigInt(inputs[1]) % BigInt(2 ** 256)
-
-          if (op === '1b') {
-            outputs = inputs[1] * (2 ** inputs[0])
-          } else if (op === '1c1') {
-            outputs = Math.floor(inputs[1] / BigInt(BigInt(2) ** inputs[0]))
-          } if (op === '1c2') {
-            const calc = inputs[1] / BigInt(BigInt(2) ** (inputs[0] - BigInt(8)))
-            outputs = Math.floor(Number(calc))
-          }
-        }
-
-        this.oplist[op_pointer - 1].outputs.push(outputs);
+        //this.oplist[op_pointer - 1].outputs.push(outputs);
         return outputs;
       }
 
@@ -895,15 +854,13 @@ export class Decoder {
   }
 }
 
-function getNumberOfInputs (op) {
+function getNumberOfIO (op) {
   const subcircuits = getSubcircuit()
-  for (let i = 0; i < subcircuits.length; i++) {
-    const opcode = subcircuits[i].opcode;
-    if (hexToInteger(opcode) === hexToInteger(op)) {
-      return subcircuits[i].In_idx[1];
-    } else if (op === '1c') {
-      return 2
-    }
+  const opcode = subcircuits.find(subcircuit => subcircuit.opcode === op)
+  //if op does not exist in subcircuits
+  if (!opcode) {
+    console.error(`No subcircuit found for opcode: ${op}`);
+    return {numberOfInputs: -1, numberOfOutputs: -1}
   }
-  return -1;
+  return {numberOfInputs: opcode.In_idx[1], numberOfOutputs: opcode.Out_idx[1]}
 }

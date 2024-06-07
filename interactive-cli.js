@@ -93,7 +93,7 @@ function buildQAP() {
         type: 'input',
         name: 'sD',
         message: 'How many instructions are defined in the EVM?',
-        default: '12',
+        default: '12', //Number of subcircuits in subcircuit library
         validate: value => {
           return !isNaN(value) && Number.isInteger(Number(value)) ? true : 'Please enter a valid integer';
         }

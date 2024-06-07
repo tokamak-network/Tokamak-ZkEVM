@@ -5,8 +5,7 @@ import * as zkey from './src/zkey.js';
 import { Decoder } from './src/decode.js';
 import Logger from 'logplease';
 import fs from 'fs'
-import { readFileSync } from "fs";
-import os from 'os';
+
 const logger = Logger.create('UniGro16js', {showTimestamp: false});
 Logger.setLogLevel('INFO');
 
@@ -99,8 +98,6 @@ async function decode(params, options) {
   const circuitName = params[0]
   const instanceid = params[1]
 
-  const system = os.platform()
-  const slash = system === 'darwin' ? '/' : '\\'
   const json = fs.readFileSync(`${circuitName}/config.json`, 'utf8')
   const jsonData = JSON.parse(json);
 

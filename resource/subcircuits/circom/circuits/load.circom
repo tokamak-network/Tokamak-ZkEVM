@@ -1,10 +1,6 @@
-pragma circom 2.0.5;
+pragma circom 2.1.6;
 
 template Load () {
-    signal input in[16];
-    signal output out[16];
-
-    for (var i = 0; i < 16; i++){
-      out[i] <== in[i];
-    }
+    signal input in[64];
+    signal output out[64] <== in;
 }
