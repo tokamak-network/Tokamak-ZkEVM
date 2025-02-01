@@ -1,3 +1,6 @@
+# Deprecated
+There will be no update on this repository. Go to [Tokamak-zk-EVM](https://github.com/tokamak-network/Tokamak-zk-EVM)
+
 # Tokamak zk-EVM
 
 Development of a new zk-EVM for L2 rollup.
